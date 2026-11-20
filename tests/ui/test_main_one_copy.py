@@ -44,6 +44,8 @@ class FakeLock:
 class FakeOs:
     """The OS's adapters `this_copy` and `main`'s first lines use."""
 
+    qt_platform = None  # Qt's own choice, as on Windows
+
     def __init__(self, data: Path, held: bool) -> None:
         self.data = data
         self.lock = FakeLock(held)

@@ -62,6 +62,8 @@ def test_macos_gets_a_whole_record() -> None:
             assert piece is not None and callable(piece.allowed)
         elif field.name == "mic_permission":  # the Mac's microphone (478)
             assert isinstance(piece, mic_permission.Permission)
+        elif field.name == "qt_platform":  # Qt's own choice on a Mac (550)
+            assert piece is None
         else:
             assert callable(piece), field.name
             assert "windows" not in getattr(piece, "__module__", ""), field.name

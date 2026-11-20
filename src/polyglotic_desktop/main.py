@@ -104,7 +104,14 @@ import threading
 import time
 import traceback
 import uuid
-from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+from collections.abc import (
+    Callable,
+    Collection,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
@@ -880,6 +887,29 @@ class OsAdapters:
     """Whether macOS runs the app from a temporary copy it can't update
     itself in, and the move to Applications (polyglotic-hq 433). None where
     an OS has no such thing (Windows)."""
+    qt_platform: str | None = None
+    """The Qt platform the app's windows need on this OS, whatever the
+    session would pick (`use_qt_platform`): Linux's `xcb` - the app is an
+    X11 program, through XWayland on a Wayland desktop, where a window can
+    stay on top, place itself and let clicks through (decision 0258); the
+    packed app carries no other. None: Qt's own choice (Windows, a Mac)."""
+
+
+QT_PLATFORM_KEPT = ("offscreen", "minimal")
+"""Qt platforms asked for that `use_qt_platform` leaves alone: the tests',
+the install check's and CI's, which show no window."""
+
+
+def use_qt_platform(
+    wanted: str | None, environ: MutableMapping[str, str] | None = None
+) -> None:
+    """Qt's platform as the OS's adapters need it (`OsAdapters.qt_platform`),
+    set before the application is made - unless none is needed, or one that
+    shows no window was asked for."""
+    env = os.environ if environ is None else environ
+    if wanted is None or env.get("QT_QPA_PLATFORM", "") in QT_PLATFORM_KEPT:
+        return
+    env["QT_QPA_PLATFORM"] = wanted
 
 
 def os_adapters(system: str = sys.platform) -> OsAdapters:
@@ -1133,6 +1163,7 @@ def linux_adapters() -> OsAdapters:
         keyboard_window=not_yet.no_window,
         metered=not_yet.not_metered,
         sound_devices=devices.sound_devices,
+        qt_platform="xcb",
     )
 
 
@@ -7171,6 +7202,7 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
         return FirstCopy(name, lock)
     if started is not one_copy.Start.NO_ANSWER:
         sys.exit(0)
+    use_qt_platform(system.qt_platform)
     app = QApplication(sys.argv[:1])  # the learner's language, from the file as it is
     start_interface_language(app, ReadOnlySettings(data / "settings.json"))
     system.show_error("Polyglotic", one_copy.not_answering())
@@ -7271,6 +7303,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     # (they're imported where used, after the first paint - 136)
     threading.Thread(target=import_the_rest, name="imports", daemon=True).start()
     start_parts.done("logging_and_updates")
+    use_qt_platform(system.qt_platform)  # Linux: X11, through XWayland (0258)
     app = QApplication(sys.argv[:1])
     # Windows' fonts, read on a thread of their own from now - beside the
     # learner's data, not at Home's first label (about 0.3 s; polyglotic-hq

@@ -45,7 +45,8 @@ class Session:
     def __init__(self) -> None:
         from jeepney.io.blocking import open_dbus_connection
 
-        self.bus = open_dbus_connection(bus="SESSION")
+        # KWin hands the picture back through a file descriptor
+        self.bus = open_dbus_connection(bus="SESSION", enable_fds=True)
 
     def call(
         self,

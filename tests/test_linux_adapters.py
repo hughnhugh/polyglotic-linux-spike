@@ -57,6 +57,8 @@ def test_linux_gets_a_whole_record() -> None:
             assert piece is None, field.name
         elif field.name in ("common_apps", "translocation"):
             assert not piece, field.name
+        elif field.name == "qt_platform":  # X11, through XWayland (0258)
+            assert piece == "xcb"
         else:
             assert callable(piece), field.name
             module = getattr(piece, "__module__", "") or ""
@@ -358,3 +360,30 @@ def test_the_caption_windows_are_always_put_in_order() -> None:
 def test_nothing_needs_the_os_to_import() -> None:
     """Every module imports on any OS: libpulse and D-Bus load on first use."""
     assert os.path.basename(capture.__file__) == "capture.py"
+
+
+# --- X11, whatever the session would pick ------------------------------------------
+
+
+def test_linux_runs_on_x11_whatever_the_session_picks() -> None:
+    """On a Wayland desktop Qt would pick its Wayland platform, where a
+    window can't stay on top or place itself - and the packed app carries
+    none (550): the app asks for X11 (XWayland) before Qt starts."""
+    from polyglotic_desktop.main import use_qt_platform
+
+    assert os_adapters("linux").qt_platform == "xcb"
+    for asked in (
+        {},
+        {"QT_QPA_PLATFORM": "wayland"},
+        {"QT_QPA_PLATFORM": "wayland;xcb"},
+    ):
+        env = dict(asked)
+        use_qt_platform("xcb", env)
+        assert env["QT_QPA_PLATFORM"] == "xcb"
+    for kept in ("offscreen", "minimal"):  # the tests' and the install check's
+        env = {"QT_QPA_PLATFORM": kept}
+        use_qt_platform("xcb", env)
+        assert env["QT_QPA_PLATFORM"] == kept
+    env = {}
+    use_qt_platform(None, env)  # Windows, a Mac: Qt's own choice
+    assert env == {}
