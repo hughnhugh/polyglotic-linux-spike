@@ -38,19 +38,40 @@ permissions:
 
 env:
   PLAN: ${{ inputs.plan }}
-  # The shard's arguments from the plan, then pytest with a JUnit report
-  # whose testcases carry their file (xunit1), and a failing test's output
+  # The shard's share of the plan. pytest: its arguments, with a JUnit
+  # report whose testcases carry their file (xunit1) and a failing test's
+  # output. "each": one command per item ({} is the item), each reported as
+  # a testcase of its own, its output's end as a failure's text.
   RUN_SHARD: |
-    import base64, json, os, shutil, subprocess, sys, zlib
+    import base64, json, os, shutil, subprocess, sys, time, zlib
+    from xml.sax.saxutils import escape, quoteattr
     plan = json.loads(zlib.decompress(base64.b64decode(os.environ["PLAN"])))
     shard = int(os.environ["SHARD"])
-    args = plan["common"] + plan["shards"][shard]
     os.makedirs("out", exist_ok=True)
-    report = [f"--junitxml=out/junit-{shard}.xml", "-o", "junit_family=xunit1",
-              "-o", "junit_logging=all", "-o", "junit_log_passing_tests=False"]
-    command = [shutil.which("pytest") or "pytest", "-p", "no:cacheprovider", *report, *args]
-    print(f"shard {shard}: {len(plan['shards'][shard])} arguments", flush=True)
-    sys.exit(subprocess.call(command))
+    if "each" not in plan:
+        args = plan["common"] + plan["shards"][shard]
+        report = [f"--junitxml=out/junit-{shard}.xml", "-o", "junit_family=xunit1",
+                  "-o", "junit_logging=all", "-o", "junit_log_passing_tests=False"]
+        command = [shutil.which("pytest") or "pytest", "-p", "no:cacheprovider", *report, *args]
+        print(f"shard {shard}: {len(plan['shards'][shard])} arguments", flush=True)
+        sys.exit(subprocess.call(command))
+    cases, failed, began = [], 0, time.time()
+    for item in plan["shards"][shard]:
+        start = time.time()
+        done = subprocess.run(plan["each"].replace("{}", item), shell=True, capture_output=True,
+                              text=True, encoding="utf-8", errors="replace")
+        took, said = time.time() - start, (done.stdout + done.stderr)[-20000:]
+        print(f"::group::{item}: exit {done.returncode} in {took:.0f} s\n{said}\n::endgroup::", flush=True)
+        failure = ""
+        if done.returncode:
+            failed += 1
+            failure = f"<failure message={quoteattr(f'exit {done.returncode}')}>{escape(said)}</failure>"
+        cases.append(f"<testcase classname=\"each\" name={quoteattr(item)} file=\"each\" "
+                      f"time=\"{took:.2f}\">{failure}</testcase>")
+    with open(f"out/junit-{shard}.xml", "w", encoding="utf-8") as junit:
+        junit.write(f"<testsuites><testsuite name=\"each\" time=\"{time.time() - began:.2f}\">"
+                    + "".join(cases) + "</testsuite></testsuites>")
+    sys.exit(1 if failed else 0)
 
 jobs:
   linux:
