@@ -32,6 +32,12 @@ def on_a_mac() -> bool:
     return sys.platform == "darwin"
 
 
+def on_linux() -> bool:
+    """Linux (polyglotic-hq 550): the PC's words, but where a string names
+    Windows itself - each such string Linux shows gets its own words."""
+    return sys.platform.startswith("linux")
+
+
 def pc_or_mac(pc: str, mac: str) -> str:
     """`mac` on a Mac, else `pc` - both already translated."""
     return mac if on_a_mac() else pc

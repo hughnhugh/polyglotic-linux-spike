@@ -46,16 +46,55 @@ pactl set-default-source session_mic
   echo "== inputs"; pactl list short sources
 } > "$out/sound.txt" 2>&1
 
+# The screen ($LINUX_SESSION_SCREEN): a bare X server (xvfb, the default),
+# or a desktop's own window manager, headless, with XWayland - GNOME's
+# (mutter) or KDE's (KWin), as 547's harness ran them.
+case "${LINUX_SESSION_SCREEN:-xvfb}" in
+gnome)
+  before="$(ls /tmp/.X11-unix 2>/dev/null || true)"
+  GSETTINGS_BACKEND=memory mutter --wayland --headless --virtual-monitor 1920x1080 \
+    --wayland-display wayland-550 > "$out/mutter.log" 2>&1 & started+=($!)
+  for _ in $(seq 60); do [ -S "$XDG_RUNTIME_DIR/wayland-550" ] && break; sleep 0.5; done
+  xs=""
+  for _ in $(seq 60); do
+    xs="$(comm -13 <(echo "$before" | sort) <(ls /tmp/.X11-unix 2>/dev/null | sort) | head -1)"
+    [ -n "$xs" ] && break; sleep 0.5
+  done
+  [ -n "$xs" ] || { echo "mutter's XWayland didn't start"; tail -20 "$out/mutter.log"; exit 1; }
+  export WAYLAND_DISPLAY=wayland-550 DISPLAY=":${xs#X}"
+  auth="$(ls "$XDG_RUNTIME_DIR"/.mutter-Xwaylandauth.* 2>/dev/null | head -1 || true)"
+  [ -n "$auth" ] && export XAUTHORITY="$auth"
+  echo "GNOME: $(mutter --version 2>&1 | head -1)" >> "$out/sound.txt"
+  ;;
+kde)
+  KWIN_SCREENSHOT_NO_PERMISSION_CHECKS=1 KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 \
+    kwin_wayland --virtual --xwayland --width=1920 --height=1080 --socket=wayland-550 \
+    > "$out/kwin.log" 2>&1 & started+=($!)
+  for _ in $(seq 60); do [ -S "$XDG_RUNTIME_DIR/wayland-550" ] && break; sleep 0.5; done
+  [ -S "$XDG_RUNTIME_DIR/wayland-550" ] || { echo "KWin didn't start"; tail -20 "$out/kwin.log"; exit 1; }
+  export WAYLAND_DISPLAY=wayland-550 DISPLAY=:0
+  sleep 2
+  auth="$(ls "$XDG_RUNTIME_DIR"/xauth_* 2>/dev/null | head -1 || true)"
+  [ -n "$auth" ] && export XAUTHORITY="$auth"
+  echo "KDE: $(kwin_wayland --version 2>&1 | head -1)" >> "$out/sound.txt"
+  ;;
+*)
+  if [ -z "${DISPLAY:-}" ]; then
+    Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp > "$out/xvfb.log" 2>&1 & started+=($!)
+    export DISPLAY=:99
+    for _ in $(seq 50); do [ -S /tmp/.X11-unix/X99 ] && break; sleep 0.1; done
+  fi
+  ;;
+esac
+
+# The keyring, made new for this session (its own folder: a login keyring
+# left by an earlier session has another password, and would ask for it),
+# after the screen, so a box it shows has somewhere to show
 password="$(head -c 18 /dev/urandom | base64)"
-eval "$(printf '%s' "$password" | gnome-keyring-daemon --unlock --components=secrets)"
+keyrings="$(mktemp -d)"
+eval "$(printf '%s' "$password" | XDG_DATA_HOME="$keyrings" gnome-keyring-daemon --unlock --components=secrets)"
 unset password
 export GNOME_KEYRING_CONTROL
-
-if [ -z "${DISPLAY:-}" ]; then
-  Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp > "$out/xvfb.log" 2>&1 & started+=($!)
-  export DISPLAY=:99
-  for _ in $(seq 50); do [ -S /tmp/.X11-unix/X99 ] && break; sleep 0.1; done
-fi
 
 "$@"; code=$?
 

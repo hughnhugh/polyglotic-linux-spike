@@ -3265,6 +3265,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
+        <source>instead of apps (the only choice on Linux for now)</source>
+        <translation type="unfinished">代替單獨的應用程式（Linux 上目前只能這樣選）</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>instead of apps (the only choice on this version of Windows)</source>
         <translation type="unfinished">代替單獨的應用程式（這個版本的 Windows 上只能這樣選）</translation>
     </message>

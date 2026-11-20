@@ -40,7 +40,7 @@ INVALID_INDEX = 0xFFFFFFFF
 NO_VALUE = 0xFFFFFFFF
 """`(uint32_t) -1`: "the server's choice" in a buffer's attributes."""
 CONTEXT_READY, CONTEXT_FAILED, CONTEXT_TERMINATED = 4, 5, 6
-STREAM_READY, STREAM_FAILED, STREAM_TERMINATED = 2, 3, 4
+STREAM_CREATING, STREAM_READY, STREAM_FAILED, STREAM_TERMINATED = 1, 2, 3, 4
 OPERATION_RUNNING = 0
 STATE_RUNNING = 0
 """A sink's or source's state: playing or recording now."""
@@ -284,9 +284,13 @@ class Recording:
         return pieces
 
     def close(self) -> None:
+        """Disconnected (while it's being made or recording), its callbacks
+        taken away - nothing calls into Python after this - and let go."""
         if self._stream:
-            if self.state == STREAM_READY:
+            if self.state in (STREAM_CREATING, STREAM_READY):
                 self._lib.pa_stream_disconnect(self._stream)
+            self._lib.pa_stream_set_read_callback(self._stream, None, None)
+            self._lib.pa_stream_set_state_callback(self._stream, None, None)
             self._lib.pa_stream_unref(self._stream)
             self._stream = None
 

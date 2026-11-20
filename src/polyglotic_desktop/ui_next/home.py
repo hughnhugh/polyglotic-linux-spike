@@ -109,7 +109,7 @@ from polyglotic_desktop.ui_next.languages import (
     target_languages,
 )
 from polyglotic_desktop.ui_next.lookup_card import dictionary_out
-from polyglotic_desktop.ui_next.os_words import hotkeys_here, pc_or_mac
+from polyglotic_desktop.ui_next.os_words import hotkeys_here, on_linux, pc_or_mac
 from polyglotic_desktop.ui_next.pack_row import megabytes
 from polyglotic_desktop.ui_next.plan import get_plus_text
 from polyglotic_desktop.ui_next.sound_card import SoundCard
@@ -1360,6 +1360,8 @@ class PickerCard(Card):
                 ),
                 _tr("instead of apps: this Mac couldn't caption one app alone"),
             )
+        elif not value.per_app and on_linux():  # one app alone: slice 2 (550)
+            note = _tr("instead of apps (the only choice on Linux for now)")
         elif not value.per_app:
             note = pc_or_mac(
                 _tr("instead of apps (the only choice on this version of Windows)"),

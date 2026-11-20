@@ -147,6 +147,15 @@ src/polyglotic_desktop/
       categories.py    bundle ID -> category; the known-apps list's public names (those Windows' list has) and Mac-only apps' names
       devices.py       outputs and mics by Core Audio UID, and macOS' defaults; a mic's PortAudio index
       cf.py            Core Foundation and Security through ctypes: strings, data, dictionaries, constants
+    linux/           Linux's adapters (polyglotic-hq 546, 547, 550; decision 0258); only main's os_adapters imports it (decision 0038); the app an X11 program everywhere (XWayland on Wayland desktops); every module imports on any OS, libpulse and D-Bus loaded on first use
+      system.py        `linux-<kernel major>` (protocol.md's `os`), the distribution, desktop and session for feedback, the XDG folders (data in `~/.local/share/Polyglotic`), the launch clock (`/proc`), the desktop's own error box (zenity, kdialog, xmessage)
+      secret_service.py the device token in the desktop's keyring: the Secret Service through jeepney, plain session; a 0600 file in `$XDG_STATE_HOME` where there's no keyring; a keyring that won't open is not signed in (0080's install id kept)
+      one_copy.py      one copy per user and data folder: an exclusive flock in `$XDG_RUNTIME_DIR/Polyglotic`
+      pulse.py         the sound server through libpulse by ctypes: one connection per thread on a hand-driven main loop; defaults, outputs and inputs; record streams at 16kHz mono float32, never moved by the server; its changes counted
+      capture.py       everything the PC plays (the default or chosen output's monitor, by name) and the mic (never an output's monitor: no microphone then), following the server's changes and reconnecting; one app at a time not yet (`app_capture_support` no)
+      devices.py       outputs and mics by the server's names, and its defaults; how many outputs play
+      on_top.py        the caption windows, popovers and cards above everything as override-redirect windows (`ui_next.above_all`), their order kept by hand: the windows given, then the app's other override-redirect windows above them
+      not_yet.py       what the first Linux build hasn't got, each saying so through its port: one app at a time, hotkeys, dictation, Esc and clicks read, the sample aloud
   connection/        talks to the server: WebSocket, handshake, speech out, captions in
     protocol.py        protocol v1's messages as pydantic models; the speech frame (decision 0011)
     listening.py       timing decisions -> speech frames and `withdraw`; `caption_update` -> core's CaptionUpdate
@@ -157,7 +166,7 @@ src/polyglotic_desktop/
     problem_reports.py alpha testers' problem reports: built, kept and sent to `POST /v1/problem-reports` on a thread of their own (275, 0067)
     session.py         a session: hello, settings, speech out, captions in, keepalive (decision 0012); or a sync session
     reconnect.py       after a session ends: back off and retry, or stop - by close code
-    tls.py             every secure connection the app makes: a failure on a certificate's dates tried once more with everything else checked, the leaf's end held against when the app was built; each failure logged once (polyglotic-hq 313, decision 0104); on a Mac, macOS's own roots trusted (polyglotic-hq 512, decision 0236)
+    tls.py             every secure connection the app makes: a failure on a certificate's dates tried once more with everything else checked, the leaf's end held against when the app was built; each failure logged once (polyglotic-hq 313, decision 0104); on a Mac, macOS's own roots trusted (polyglotic-hq 512, decision 0236); on Linux, the distribution's own bundle (polyglotic-hq 550)
     failures.py        why a try to open a session failed, from what the network said (a name not found, refused, a tunnel's 502/530, a proxy's page, TLS), and why the server closed one (1001, 1011) (polyglotic-hq 251)
     unanswered.py      finished speech not yet answered: kept in memory, sent again after a reconnect
     exchange.py        learning data, consent, usage, exposures: kept until `received`, sent on any session; consent rules (decision 0013); a sync cursor per language; a deletion made on any device applied, and what's done after it kept whatever the clock (decision 0023); a consent choice dated after the one it replaces, sent again at most once a day (decision 0102)
@@ -325,7 +334,11 @@ tools/
   caption_fonts.py   how the captions' bundled faces in `ui/assets/fonts` were made, from pinned sources: Medium instances, Noto Sans SC's and Ma Shan Zheng's cuts and readings' SemiBold, the line boxes (polyglotic-hq 482, 532; decisions 0223, 0249); not part of the build
   mypy_platforms.py  mypy as macOS and Linux see the code: only Windows' own modules may fail (decision 0038)
   linux_qt_libs.sh   Qt's system libraries for the Linux runner, unpacked without root (decision 0038)
-  app_tour.py        the app from source on this OS's real windows, signed in to a stand-in server, captioning the app's own FLEURS sample fed straight in: checks and each window's grab() - Home, a caption window, the card, Words, Settings, the transcript (the macOS job, decision 0186)
+  app_tour.py        the app from source on this OS's real windows, signed in to a stand-in server, captioning the app's own FLEURS sample fed straight in: checks and each window's grab() - Home, a caption window, the card, Words, Settings, the transcript (the macOS job, decision 0186); with `--real-capture` (Linux, 550) the sample played through the sound server and another into the mic, captured by the OS's own adapters, the token in the OS's keyring
+  linux_session.sh   a Linux desktop session on GitHub's runner for the Linux job: PipeWire with a default output and a real default mic, gnome-keyring unlocked, and a screen - Xvfb, or GNOME's (mutter) or KDE's (KWin) window manager headless with XWayland (polyglotic-hq 550)
+  linux_desktop_tour.sh, linux_in_fedora.sh  the tour over a focused full-screen Wayland window on GNOME and KDE (Fedora 45's in a container), with the window manager's own pictures of its virtual screen (550)
+  linux_desktop_pictures.py  those pictures: mutter's ScreenCast or KWin's ScreenShot2, on the tour's request; and the full-screen window beneath (550)
+  linux_keyring_probe.py  which keyring answers the Secret Service and whether it takes the plain session (gnome-keyring; KDE's ksecretd or kwalletd6), through the app's own store (550)
   macos_measure.py   what a GitHub macOS machine allows for capture: BlackHole, the sound devices, whether a system-audio permission can be written; reported, never failing (decision 0186)
   macos_parity_checks.py  the Mac's hotkeys (pressed by AppleScript), the card's voice (said on BlackHole and heard; a recorded word and Say it judged for silence, clipping, level, length and pitch: polyglotic-hq 523), the menu-bar icon and the packed app's login item, on GitHub's macOS machine; pass, fail or unknown each (polyglotic-hq 428)
   macos_full_screen_checks.py  the caption windows over a full-screen TextEdit (the window list's levels and order), dictation's typing and key, Esc and clicks elsewhere, on GitHub's macOS machine; pass, fail or unknown each (polyglotic-hq 429, 438)
@@ -382,7 +395,7 @@ Each package's docstring says what belongs in it.
 | `core` and `ports` import no Qt, audio, Windows API, network, storage or vendor library | import-linter `core-no-infrastructure` (the list is in `pyproject.toml`) |
 | Contexts inside `core` don't import each other; they meet in `core.shared` | import-linter `contexts-independent` and `shared-imports-no-context`; `tests/test_layout.py` keeps the lists in step with the folders |
 | `core` and the protocol (`connection`) are fully typed | mypy, strict for `core` and `connection` (normal elsewhere) |
-| Only Windows' own modules (`platform/windows`, the Windows credential store) and the Mac's (`platform/macos`) are imported by `main` alone; only Windows' may fail to type-check as macOS and Linux see them (the Mac's type-check on every OS) | import-linter `os-in-one-place`; `tools/mypy_platforms.py` in CI (decision 0038) |
+| Only Windows' own modules (`platform/windows`, the Windows credential store), the Mac's (`platform/macos`) and Linux's (`platform/linux`) are imported by `main` alone; only Windows' may fail to type-check as macOS and Linux see them (the Mac's type-check on every OS) | import-linter `os-in-one-place`; `tools/mypy_platforms.py` in CI (decision 0038) |
 | Tests that need Windows (or macOS) itself say so, and are skipped elsewhere; the rest pass on Linux | the `windows_only` and `macos_only` markers (`tests/conftest.py`); CI's Linux job (`Checks (Linux)`, Qt's libraries from `tools/linux_qt_libs.sh`) |
 | The app's messages match the server's protocol examples | `tests/test_protocol.py`, against a copy kept by `tools/protocol_examples.py` (decision 0011) |
 | The rules give the answers in `docs/rule-cases/` | `tests/test_rule_cases.py`, reading only the JSON (decision 0022) |

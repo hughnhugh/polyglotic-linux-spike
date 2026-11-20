@@ -473,6 +473,26 @@ def a_word(window: Any) -> QPointF | None:
     return None
 
 
+def desk(name: str) -> Step:
+    """The desktop's own picture of its screen at this moment, where the
+    run has a window manager that takes one (POLYGLOTIC_DESK_PICTURES: a
+    folder `tools/linux_desktop_pictures.py serve` answers, 550) - asked
+    for, and waited for up to 40 s; never a failed check."""
+    folder = os.environ.get("POLYGLOTIC_DESK_PICTURES")
+    if not folder:
+        return
+    asked = Path(folder)
+    (asked / f"{name}.want").write_text("", encoding="utf-8")
+    for _ in range(80):
+        if (asked / f"{name}.png").exists() or (asked / f"{name}.failed").exists():
+            break
+        yield pause(0.5)
+    took = (asked / f"{name}.png").exists()
+    RESULTS["facts"].setdefault("desktop_pictures", []).append(
+        name if took else f"{name}: not taken"
+    )
+
+
 def tour() -> Step:
     for _ in range(5):  # the first run's questions, answered as a learner would
         yield wait(lambda: QApplication.activeModalWidget() or ready(), 90,
@@ -511,6 +531,7 @@ def tour() -> Step:
           f"{len(finished_lines())} finished")  # fmt: skip
     captions = caption_window()
     picture(captions, "caption-window", "A caption window with captions")
+    yield from desk("captions")
 
     spot = a_word(captions) if captions is not None else None
     if check("a word on the caption window to look up", spot is not None) and spot:
@@ -519,6 +540,7 @@ def tour() -> Step:
         yield wait(lambda: card() is not None and card().isVisible(), 10, "the card")
         yield pause(1.5)
         picture(card(), "card", "The lookup card")
+        yield from desk("card")
         if card() is not None:
             QTest.keyClick(card(), Qt.Key.Key_Escape)
             card().hide()
@@ -733,8 +755,11 @@ def main(argv: list[str] | None = None) -> int:
         soundfile.write(str(spoken), join([read_clip(mine)], gap=1.0), 16_000)
         players.play(spoken, args.mic_sink)  # the learner's own speech
         store = app.os_adapters().credentials(args.credentials)
-        store.save(TOKEN)  # the keyring keeps it; the app reads it there
-        check("the keyring kept the tour's token", store.load() == TOKEN)
+        try:
+            store.save(TOKEN)  # the keyring keeps it; the app reads it there
+            check("the keyring kept the tour's token", store.load() == TOKEN)
+        except OSError as error:  # the app then asks to sign in: a failed check
+            check("the keyring kept the tour's token", False, error)
 
     fake_server.caption_for = caption_for
     server = fake_server.FakeServer()
