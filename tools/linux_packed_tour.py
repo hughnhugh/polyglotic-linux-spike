@@ -201,6 +201,9 @@ class Packed:
             env["APPIMAGE_EXTRACT_AND_RUN"] = "1"
         self.log = log
         self.data = data
+        (data.parent / "no-feed").mkdir(
+            parents=True, exist_ok=True
+        )  # a feed of nothing
         self._log = log.open("wb")
         self.process = subprocess.Popen(
             [

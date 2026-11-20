@@ -52,7 +52,10 @@ case "$desktop" in fedora-gnome|kde) fedora=1 ;; *) fedora="" ;; esac
 
 if [ -n "$fedora" ] && [ -z "${IN_FEDORA_574:-}" ]; then
   stand_in_root
-  devices=(--device /dev/fuse --cap-add SYS_ADMIN --security-opt apparmor=unconfined)
+  # no FUSE here (the AppImage extracts and runs; Fedora's FUSE 3 mount is
+  # linux_update_fedora.sh's): with SYS_ADMIN added, gnome-keyring-daemon
+  # aborts dropping its capabilities, and the session has no keyring
+  devices=()
   if [ "$desktop" = kde ]; then
     sudo modprobe vgem && sudo modprobe vkms  # KWin needs a render device (547)
     devices+=(--device /dev/dri)
