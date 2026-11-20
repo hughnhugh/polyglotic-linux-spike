@@ -30,7 +30,12 @@ through the sound server to its default output, and a second one into the
 input the session made the default mic, and the app captions everything
 the PC plays and the mic with the OS's own captures; the device token is
 kept in the OS's own keyring under an entry of the tour's (`--credentials`),
-deleted at the end. Runs on Windows and Linux too: offscreen
+deleted at the end. With `--one-app` (polyglotic-hq 561) one app is
+captioned alone: the recording played by `pw-play` - the app captioned,
+chosen as a learner would on Home - while `paplay`, a second app, plays a
+1 kHz tone; the tour checks the app list names both, the stand-in server
+hears the app's source, and the audio captioned has the recording and not
+the tone (`one_app.json`). Runs on Windows and Linux too: offscreen
 with `QT_QPA_PLATFORM=offscreen` (how it was tried before its first macOS
 run), or on a private desktop on Windows (`tools/private_desktop.py`).
 """
@@ -74,8 +79,16 @@ not the recording's)."""
 TOKEN = DeviceCredentials("install-410-tour", "pgd_" + "t" * 43)
 """The stand-in server takes any token of the protocol's shape."""
 SYSTEM_KEY = "system"
+ONE_APP = "pw-play"
+"""`--one-app`: the app captioned alone - PipeWire's own player, whose
+executable and process are only on its client (547)."""
+OTHER_APP = "paplay"
+"""`--one-app`: the app playing something else meanwhile (a tone)."""
+TONE_HZ = 1000.0
+ONE_APP_SEC = 240.0
+"""How long each `--one-app` player plays: the whole tour."""
 """The caption window of everything the PC plays (`--real-capture`)."""
-REAL: dict[str, Any] = {"on": False}
+REAL: dict[str, Any] = {"on": False, "one_app": False, "prefix": ""}
 """`--real-capture`: the OS's own captures and keyring, and the players."""
 PAGES = ("words", "settings")
 MORE_PAGES = ("learning", "account", "help")
@@ -183,6 +196,8 @@ class NoLinks:
 def window_key() -> str:
     """The caption window the tour looks at: the player's, or everything the
     PC plays' with `--real-capture`."""
+    if REAL["one_app"]:
+        return ONE_APP
     return SYSTEM_KEY if REAL["on"] else PLAYER
 
 
@@ -194,6 +209,36 @@ def noted(make: Callable[..., Any]) -> Callable[..., Any]:
         return make(*args, **kwargs)
 
     return made
+
+
+class Kept:
+    """`--one-app`: the OS's own capture of the app, what it delivers kept
+    too (the samples, for `one_app.json`'s measures)."""
+
+    def __init__(self, capture: Any) -> None:
+        self._capture = capture
+        self.samples: list[bytes] = []
+        STATE["one_app_capture"] = self
+
+    def start(self, on_audio: Callable[[float, bytes], None]) -> None:
+        STATE.setdefault("capture_started", time.monotonic())
+
+        def kept(at: float, data: bytes) -> None:
+            self.samples.append(data)
+            on_audio(at, data)
+
+        self._capture.start(kept)
+
+    def stop(self) -> None:
+        self._capture.stop()
+
+    @property
+    def capturing(self) -> str | None:
+        return self._capture.capturing
+
+    @property
+    def error(self) -> str | None:
+        return self._capture.error
 
 
 def adapters(real: Callable[[str], Any], audio: np.ndarray) -> Callable[..., Any]:
@@ -243,6 +288,9 @@ def adapters(real: Callable[[str], Any], audio: np.ndarray) -> Callable[..., Any
                 swaps.pop(kept, None)
             swaps["system_capture"] = noted(found.system_capture)
             swaps["mic_capture"] = noted(found.mic_capture)
+            if REAL["one_app"]:  # the OS's own capture of one app (561)
+                real_app = found.app_capture
+                swaps["app_capture"] = lambda *a, **k: Kept(real_app(*a, **k))
         return dataclasses.replace(
             found, **{k: v for k, v in swaps.items() if k in names}
         )
@@ -263,7 +311,10 @@ def seed_settings(data: Path) -> None:
         "whole_system": False,
         "caption_windows": {"windows": {PLAYER: window}, "last": dict(window)},
     }
-    if REAL["on"]:  # everything the PC plays, and the mic in its window
+    if REAL["one_app"]:  # one app alone, chosen on Home below (561)
+        settings |= {"apps": [], "whole_system": False, "caption_windows": {
+            "windows": {ONE_APP: window}, "last": dict(window)}}  # fmt: skip
+    elif REAL["on"]:  # everything the PC plays, and the mic in its window
         heard = dict(window, show_mic=True)
         settings |= {
             "apps": [],
@@ -284,11 +335,14 @@ class Players:
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
 
-    def play(self, clip: Path, device: str | None) -> None:
+    def play(self, clip: Path, device: str | None, app: str | None = None) -> None:
+        """`app`: this player only (`pw-play` or `paplay`), as an app of its
+        own (561); else whichever there is."""
         import shutil
         import subprocess
 
-        player = shutil.which("paplay") or shutil.which("pw-play")
+        player = shutil.which(app) if app else None
+        player = player or shutil.which("paplay") or shutil.which("pw-play")
         if player is None:
             check("a player for the sound server (paplay or pw-play)", False)
             return
@@ -299,8 +353,12 @@ class Players:
             )
 
         def loop() -> None:
-            while not self._stop.is_set():
-                subprocess.run([player, *target, str(clip)], check=False, timeout=120)
+            while not self._stop.is_set():  # until stopped: never left playing
+                playing = subprocess.Popen([player, *target, str(clip)])
+                while playing.poll() is None and not self._stop.wait(0.2):
+                    pass
+                if playing.poll() is None:
+                    playing.kill()
                 self._stop.wait(0.5)
 
         thread = threading.Thread(target=loop, name="tour player", daemon=True)
@@ -492,6 +550,7 @@ def desk(name: str, home_hidden: bool = False) -> Step:
         yield pause(1.0)
         return
     asked = Path(folder)
+    name = f"{REAL['prefix']}{name}"  # the one-app tour's own (561)
     (asked / f"{name}.want").write_text("", encoding="utf-8")
     for _ in range(80):
         if (asked / f"{name}.png").exists() or (asked / f"{name}.failed").exists():
@@ -528,7 +587,20 @@ def tour() -> Step:
     yield pause(2.0)
     picture(window, "home", "Home")
 
-    if caption_window() is None and not REAL["on"]:  # Home's picker
+    if REAL["one_app"]:  # the app, chosen on Home's list as a learner does
+        yield wait(lambda: window.findChild(QAbstractButton, f"picker.add.{ONE_APP}"),
+                   30, "the app on Home's list")  # fmt: skip
+        listed = sorted(a.name for a in STATE["app_list"].playing_apps())
+        RESULTS["facts"]["apps_listed"] = listed
+        check(
+            "Home lists both apps playing", {ONE_APP, OTHER_APP} <= set(listed), listed
+        )
+        picture(window, "home-apps", "Home's list of the apps playing")
+        yield from desk("home-apps")
+        button = window.findChild(QAbstractButton, f"picker.add.{ONE_APP}")
+        if check("the app can be chosen on Home", button is not None):
+            button.click()
+    elif caption_window() is None and not REAL["on"]:  # Home's picker
         button = window.findChild(QAbstractButton, f"picker.add.{PLAYER}")
         if button is not None:
             button.click()
@@ -723,6 +795,46 @@ class Driver:
             QApplication.quit()
 
 
+def tone_over_neighbours(samples: np.ndarray, hz: float) -> tuple[float, float]:
+    """The tone at `hz` in `samples` (16kHz): its level in dB of full scale
+    (the strongest bin within 3 Hz), and how far it stands over the bins
+    around it (50 Hz either side, the 5 Hz nearest left out) - a played
+    tone stands 40 dB or more over speech; speech alone, a few dB."""
+    spectrum = np.abs(np.fft.rfft(samples * np.hanning(len(samples))))
+    freqs = np.fft.rfftfreq(len(samples), 1 / 16_000)
+    peak = float(spectrum[(freqs > hz - 3) & (freqs < hz + 3)].max())
+    around = spectrum[(abs(freqs - hz) < 50) & (abs(freqs - hz) > 5)]
+    level = 20 * np.log10(max(peak / (len(samples) / 4), 1e-12))
+    over = 20 * np.log10(max(peak, 1e-12) / max(float(np.median(around)), 1e-12))
+    return round(float(level), 1), round(float(over), 1)
+
+
+def one_app_checks(heard: list[str]) -> None:
+    """`--one-app` (561): the app's own source heard, and in what it
+    delivered the recording but not the other app's tone."""
+    apps_heard = [h for h in heard if h.startswith("app-")]
+    check("the app was captioned on its own source", apps_heard, heard)
+    check("nothing else was captioned", set(heard) <= set(apps_heard), heard)
+    kept = STATE.get("one_app_capture")
+    raw = b"".join(kept.samples) if kept is not None else b""
+    samples = np.frombuffer(raw, "<f4")
+    measured: dict[str, Any] = {"seconds": round(len(samples) / 16_000, 1)}
+    if len(samples) >= 16_000 * 4:
+        loud = samples[np.abs(samples) > 0][-16_000 * 20 :]
+        measured["rms_dbfs"] = round(
+            float(20 * np.log10(max(float(np.sqrt(np.mean(loud**2))), 1e-12))), 1
+        )
+        measured["tone_dbfs"], measured["tone_over_neighbours_db"] = (
+            tone_over_neighbours(loud, TONE_HZ)
+        )
+    RESULTS["facts"]["one_app"] = measured
+    (OUT / "one_app.json").write_text(json.dumps(measured, indent=2), encoding="utf-8")
+    check("the app's recording was in what it captured",
+          measured.get("rms_dbfs", -200) > -45, measured)  # fmt: skip
+    check("the other app's tone wasn't",
+          measured.get("tone_over_neighbours_db", 99) < 20, measured)  # fmt: skip
+
+
 def main(argv: list[str] | None = None) -> int:
     global OUT
     parser = argparse.ArgumentParser(prog="python -m tools.app_tour")
@@ -737,12 +849,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--mic-sink", help="with --real-capture: the mic's feed")
     parser.add_argument(
+        "--one-app",
+        action="store_true",
+        help="with --real-capture (561): one app captioned alone, another"
+        " playing a tone",
+    )
+    parser.add_argument(
         "--credentials",
         default="Polyglotic/tour-550",
         help="with --real-capture: the keyring's entry for the tour's token",
     )
     args = parser.parse_args(argv)
     REAL["on"] = args.real_capture
+    REAL["one_app"] = args.real_capture and args.one_app
+    REAL["prefix"] = "one-app-" if REAL["one_app"] else ""
     OUT = args.out
     OUT.mkdir(parents=True, exist_ok=True)
     data = OUT / "data"
@@ -760,11 +880,26 @@ def main(argv: list[str] | None = None) -> int:
 
         clip = OUT / "played-zh.wav"
         soundfile.write(str(clip), audio, 16_000)
-        players.play(clip, None)  # everything the PC plays
-        mine = sample_file("en") or sample
-        spoken = OUT / "spoken-en.wav"
-        soundfile.write(str(spoken), join([read_clip(mine)], gap=1.0), 16_000)
-        players.play(spoken, args.mic_sink)  # the learner's own speech
+        if REAL["one_app"]:  # the app's recording, and another app's tone
+            # each as one long file: one player process for the whole tour,
+            # as an app is (a player started again for each file is an app
+            # closing and opening again)
+            long = OUT / "played-zh-long.wav"
+            times = int(np.ceil(ONE_APP_SEC * 16_000 / len(audio)))
+            soundfile.write(str(long), np.tile(audio, times), 16_000)
+            players.play(long, None, ONE_APP)
+            tone = OUT / "other-app-tone.wav"
+            seconds = np.arange(int(16_000 * ONE_APP_SEC)) / 16_000
+            soundfile.write(str(tone), 0.3 * np.sin(2 * np.pi * TONE_HZ * seconds),
+                            16_000)  # fmt: skip
+            players.play(tone, None, OTHER_APP)
+            STATE["app_list"] = app.os_adapters().app_list()
+        else:
+            players.play(clip, None)  # everything the PC plays
+            mine = sample_file("en") or sample
+            spoken = OUT / "spoken-en.wav"
+            soundfile.write(str(spoken), join([read_clip(mine)], gap=1.0), 16_000)
+            players.play(spoken, args.mic_sink)  # the learner's own speech
         store = app.os_adapters().credentials(args.credentials)
         try:
             store.save(TOKEN)  # the keyring keeps it; the app reads it there
@@ -826,8 +961,11 @@ def main(argv: list[str] | None = None) -> int:
         players.stop()
         heard = sorted({str(header.source.id) for header, _ in server.speech})
         RESULTS["facts"]["sources_heard"] = heard
-        check("everything the PC plays was captioned", "system" in heard, heard)
-        check("the mic was captioned", "mic" in heard, heard)
+        if REAL["one_app"]:
+            one_app_checks(heard)
+        else:
+            check("everything the PC plays was captioned", "system" in heard, heard)
+            check("the mic was captioned", "mic" in heard, heard)
         try:
             store.delete()
         except OSError as error:

@@ -1,10 +1,7 @@
 """What the first Linux build doesn't have yet (polyglotic-hq 546's slices
-2-8, 550): each piece says so through its port, the way the app already
+3-8, 550, 561): each piece says so through its port, the way the app already
 handles an OS that refuses it, so the interface hides it or explains it.
 
-- `NoApps` - no app is listed as playing: one app at a time is slice 2,
-  so everything the PC plays is the only choice (`capture.
-  app_capture_support` says no);
 - `NoHotkeys` - Ctrl+Alt+L, P and H answer "not working here" (slice 3);
 - `NoHoldKey`, `type_nothing`, `no_window` - dictation's key and typing
   (slice 8);
@@ -20,17 +17,8 @@ metered connection (NetworkManager isn't asked yet).
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING
 
-from polyglotic_desktop.ports.capture import PlayingApp
-
 if TYPE_CHECKING:
     from polyglotic_desktop.platform.speech_detection import Audio
-
-
-class NoApps:
-    """`AppList`: no app listed (one app at a time is slice 2)."""
-
-    def playing_apps(self) -> list[PlayingApp]:
-        return []
 
 
 class NoHotkeys:

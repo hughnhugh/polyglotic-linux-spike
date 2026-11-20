@@ -26,7 +26,7 @@ if [ -z "${IN_FEDORA_550:-}" ]; then
     -v "$root:/w" -v "$out:/out" -v "$(command -v uv):/usr/local/bin/uv:ro" \
     -w /w fedora:45 bash /w/tools/linux_in_fedora.sh "$desktop" /out
 fi
-common=(xorg-x11-server-Xwayland pipewire wireplumber pipewire-pulseaudio pulseaudio-utils
+common=(xorg-x11-server-Xwayland pipewire wireplumber pipewire-pulseaudio pulseaudio-utils pipewire-utils
   pulseaudio-libs gnome-keyring dbus-daemon dbus-tools mesa-dri-drivers mesa-libEGL mesa-libGL
   libglvnd-egl xcb-util-cursor xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil
   libxkbcommon-x11 libwayland-client libwayland-cursor libwayland-egl fontconfig

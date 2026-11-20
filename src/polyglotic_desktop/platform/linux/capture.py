@@ -20,8 +20,19 @@ the `AudioCapture` port.
   within a moment. A stream is never moved by the server itself
   (`PA_STREAM_DONT_MOVE`): it ends with its device, and is opened again
   on what's wanted now.
-- **One app, everything else:** not yet (slice 2): `app_capture_support`
-  says no, so the app offers everything the PC plays only.
+- **One app** (561, decision 0268): a record stream on each stream the
+  app plays (a sink input), from the monitor of the output it plays to,
+  with `pa_stream_set_monitor_stream` - only that stream's sound, about
+  109 dB clear of the others (547) - each fixed to its stream
+  (`PA_STREAM_DONT_MOVE`): when the app's stream ends the record stream
+  ends too (`FAILED`), rather than WirePlumber moving it to the mic (547),
+  and the capture takes the app's next stream. Several streams are summed
+  on the app's clock (`Mixer`); one alone goes straight on. The app is
+  known by its key (`apps.app_key`: its executable's name), its streams
+  followed through the server's subscription; it has closed once it plays
+  nothing and its process is gone.
+- **Everything else:** every other app's streams the same way, summed,
+  leaving out the one app (known by its process) and Polyglotic's own.
 
 The server delivers 16kHz mono float32 itself, so nothing is converted
 here: each piece is stamped on the app's clock (`Stamper`) and kept
@@ -33,13 +44,17 @@ made on that thread (libpulse's loop is driven there: `pulse.PulseServer`).
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from collections.abc import Callable, Hashable
+from dataclasses import dataclass
 from typing import Protocol
 
+import numpy as np
+
 from polyglotic_desktop.core.listening.timing import VAD_SAMPLE_RATE
-from polyglotic_desktop.platform.linux import pulse
+from polyglotic_desktop.platform.linux import apps, pulse
 from polyglotic_desktop.platform.timeline import BYTES_PER_SAMPLE, Timeline
 from polyglotic_desktop.ports.capture import (
     AppCaptureSupport,
@@ -57,6 +72,10 @@ before the stamps start again from its arrival (a stall, a lost piece)."""
 RECONNECT_SEC = 2.0
 NO_MIC = "No microphone is plugged in."
 NO_OUTPUT = "No speakers or headphones are plugged in."
+APP_CLOSED = "The app has closed."
+MIX_BEHIND_SEC = 0.1
+"""How long several streams' audio waits to be summed: a piece of one
+arriving that late still counts (each comes about every 20 ms, 547)."""
 
 
 class Recording(Protocol):
@@ -82,9 +101,11 @@ class Server(Protocol):
 
     def sources(self) -> list[pulse.Device]: ...
 
-    def watch(self) -> None: ...
+    def streams(self) -> list[pulse.PlayingStream]: ...
 
-    def record(self, source: str) -> Recording: ...
+    def watch(self, what: int = pulse.DEVICES) -> None: ...
+
+    def record(self, source: str, monitor_of: int | None = None) -> Recording: ...
 
     def run(self, seconds: float) -> None: ...
 
@@ -305,13 +326,260 @@ class MicCapture(_Capture):
         return microphone(server, self.device_id)
 
 
-# -- one app at a time: not yet (slice 2) ---------------------------------------
+# -- one app at a time (561) -----------------------------------------------------
 
 
-def app_capture_support() -> AppCaptureSupport:
-    """One app alone: not yet on Linux (polyglotic-hq 546's slice 2) - so
-    everything the PC plays is the only choice, as on an older Windows 10."""
-    return AppCaptureSupport.NO
+@dataclass(frozen=True, slots=True)
+class Tap:
+    """One stream an app plays (a sink input, by index), recorded from the
+    monitor of the output it plays to."""
+
+    stream: int
+    monitor: str
+
+
+class Mixer:
+    """Several streams' audio summed on the app's clock: each piece added
+    where its stamp puts it, and what is MIX_BEHIND_SEC old handed on,
+    summed and kept within full scale. While no stream delivers, nothing
+    is handed on: the timeline fills in silence."""
+
+    def __init__(self) -> None:
+        self._start: float | None = None
+        self._sum = np.zeros(0, np.float32)
+
+    def add(self, start: float, samples: np.ndarray) -> None:
+        if self._start is None or (not len(self._sum) and start > self._start):
+            self._start = start  # nothing waiting: from this piece on
+        offset = round((start - self._start) * VAD_SAMPLE_RATE)
+        if offset < 0:  # its start was handed on already: the rest of it
+            samples, offset = samples[-offset:], 0
+        end = offset + len(samples)
+        if end > len(self._sum):
+            grown = np.zeros(end, np.float32)
+            grown[: len(self._sum)] = self._sum
+            self._sum = grown
+        self._sum[offset:end] += samples
+
+    def take(self, now: float, everything: bool = False) -> list[tuple[float, bytes]]:
+        """What's ready by `now` (all of it: `everything`) as one piece."""
+        if self._start is None or not len(self._sum):
+            return []
+        ready = round((now - MIX_BEHIND_SEC - self._start) * VAD_SAMPLE_RATE)
+        upto = len(self._sum) if everything else min(len(self._sum), ready)
+        if upto <= 0:
+            return []
+        start, out = self._start, np.clip(self._sum[:upto], -1.0, 1.0)
+        self._sum = self._sum[upto:]
+        self._start += upto / VAD_SAMPLE_RATE
+        return [(start, out.astype("<f4").tobytes())]
+
+
+Wanted = Callable[[str, list[pulse.PlayingStream]], bool]
+"""Whether an app's streams are recorded, by its key and its streams."""
+
+
+def taps_of(
+    server: Server, wanted: Wanted
+) -> tuple[frozenset[Tap], dict[str, list[pulse.PlayingStream]]]:
+    """The streams of the apps `wanted` picks, each from its output's
+    monitor; and every app's streams, by key (`apps.grouped`)."""
+    monitors = {sink.index: sink.monitor for sink in server.sinks() if sink.monitor}
+    groups = apps.grouped(server.streams())
+    taps = frozenset(
+        Tap(stream.index, monitors[stream.sink])
+        for key, members in groups.items()
+        if wanted(key, members)
+        for stream in members
+        if stream.sink in monitors
+    )
+    return taps, groups
+
+
+class _Streams(_Capture):
+    """Apps' streams: a record stream on each (`Tap`), summed (`Mixer`) -
+    opened as the app's streams come and closed as they go, each fixed to
+    its stream (`PA_STREAM_DONT_MOVE`: it ends with the stream, 547). One
+    stream alone is delivered as it comes, without the mixer's wait."""
+
+    def _taps(self, server: Server) -> frozenset[Tap] | None:
+        """The streams to record now; None once the capture has ended."""
+        raise NotImplementedError
+
+    def _name(self) -> str:
+        """What's captured, for the learner's eyes (`capturing`)."""
+        raise NotImplementedError
+
+    def _connected(
+        self, server: Server, timeline: Timeline, on_audio: AudioCallback
+    ) -> None:
+        server.watch(pulse.STREAMS)
+        recording: dict[Tap, tuple[Recording, Stamper]] = {}
+        mixer = Mixer()
+        seen, next_check = server.changes - 1, 0.0
+        try:
+            while not self._stop.is_set():
+                server.run(WAKE_SEC)
+                now = time.perf_counter()
+                ended = any(kept.failed for kept, _ in recording.values())
+                if ended or server.changes != seen or now >= next_check:
+                    if not server.alive:
+                        raise OSError("The sound server went away")
+                    seen, next_check = server.changes, now + DEVICE_POLL_SEC
+                    taps = self._taps(server)
+                    if taps is None:  # the app has closed
+                        self._end(mixer, timeline, on_audio, now)
+                        return
+                    self._follow(server, taps, recording)
+                if not self._deliver(recording, mixer, timeline, on_audio, now):
+                    for piece in timeline.idle(now):
+                        on_audio(*piece)
+        finally:
+            for kept, _ in recording.values():
+                kept.close()
+
+    def _follow(
+        self,
+        server: Server,
+        taps: frozenset[Tap],
+        recording: dict[Tap, tuple[Recording, Stamper]],
+    ) -> None:
+        """Closes the streams that went, opens the ones that came."""
+        for tap in [t for t, (r, _) in recording.items() if t not in taps or r.failed]:
+            recording.pop(tap)[0].close()
+        for tap in sorted(taps - recording.keys(), key=lambda t: t.stream):
+            try:
+                recording[tap] = (server.record(tap.monitor, tap.stream), Stamper())
+            except OSError as e:  # it went as it was opened: the next look
+                if not server.alive:
+                    raise
+                self._error = str(e)
+        self._capturing = self._name() if recording else None
+        if recording:
+            self._error = None
+
+    def _deliver(
+        self,
+        recording: dict[Tap, tuple[Recording, Stamper]],
+        mixer: Mixer,
+        timeline: Timeline,
+        on_audio: AudioCallback,
+        now: float,
+    ) -> bool:
+        """What the streams delivered, on: one stream's as it came, several
+        summed. Whether anything was."""
+        alone = len(recording) == 1
+        pieces = mixer.take(now, everything=alone)  # what waited, before it
+        for kept, stamper in recording.values():
+            for arrival, data in kept.take():
+                usable = data[: len(data) - len(data) % BYTES_PER_SAMPLE]
+                samples = np.frombuffer(usable, "<f4")
+                start = stamper(arrival, len(samples) / VAD_SAMPLE_RATE)
+                if alone:
+                    pieces.append((start, usable))
+                else:
+                    mixer.add(start, samples)
+        pieces += mixer.take(now)
+        delivered = False
+        for start, data in pieces:
+            for piece in timeline.packet(start, data):
+                on_audio(*piece)
+                delivered = True
+        return delivered
+
+    def _end(
+        self, mixer: Mixer, timeline: Timeline, on_audio: AudioCallback, now: float
+    ) -> None:
+        for start, data in mixer.take(now, everything=True):
+            for piece in timeline.packet(start, data):
+                on_audio(*piece)
+        for piece in timeline.ending():
+            on_audio(*piece)
+        self._capturing, self._error = None, APP_CLOSED
+        self._stop.set()  # ended: not connected again
+
+
+class AppCapture(_Streams):
+    """One app's audio: a record stream on each stream it plays (by its
+    key, `PlayingApp.name`), summed - re-attached to the app's next stream
+    when one ends (547: `FAILED` there means the app's stream ended),
+    silence while it plays none, and ended once the app has closed (no
+    stream, the process it was chosen by gone, and no other process of it
+    running: `apps.running`)."""
+
+    def __init__(
+        self,
+        process_id: int,
+        name: str,
+        trial: AppCaptureTrial | None = None,
+        connect: Callable[[], Server] = connect,
+        alive: Callable[[int], bool] = apps.alive,
+        running: Callable[[str], bool] = apps.running,
+    ) -> None:
+        super().__init__(None, connect)
+        self._process_id = process_id
+        self._app = name
+        self._alive = alive
+        self._running = running
+
+    def _name(self) -> str:
+        return self._app
+
+    def _taps(self, server: Server) -> frozenset[Tap] | None:
+        taps, groups = taps_of(server, lambda key, _members: key == self._app)
+        if not groups.get(self._app) and not (
+            self._alive(self._process_id) or self._running(self._app)
+        ):
+            return None
+        return taps
+
+
+class EverythingElseCapture(_Streams):
+    """Everything the PC plays but one app (all its streams) and
+    Polyglotic's own sounds - captured beside that app's own capture, so
+    nothing is heard twice: every other app's streams, summed. The app is
+    known by its process; if it closes, this goes on hearing the rest."""
+
+    NAME = "everything else"
+
+    def __init__(
+        self,
+        process_id: int,
+        trial: AppCaptureTrial | None = None,
+        connect: Callable[[], Server] = connect,
+    ) -> None:
+        super().__init__(None, connect)
+        self._process_id = process_id
+        self._left_out: str | None = None
+        """The app's key, once a stream of its process has been seen."""
+
+    def _name(self) -> str:
+        return self.NAME
+
+    def _taps(self, server: Server) -> frozenset[Tap]:
+        this = os.getpid()
+
+        def wanted(key: str, members: list[pulse.PlayingStream]) -> bool:
+            if any(s.process_id == self._process_id for s in members):
+                self._left_out = key
+            return not apps.is_polyglotic(key, members, this)
+
+        taps, groups = taps_of(server, wanted)
+        left_out = groups.get(self._left_out or "", [])
+        return taps - {t for t in taps if t.stream in {s.index for s in left_out}}
+
+
+def app_capture_support(
+    load: Callable[[], object] = pulse.library,
+) -> AppCaptureSupport:
+    """One app alone (polyglotic-hq 561): wherever the sound server's
+    library is - PipeWire's pulse server and PulseAudio both give each
+    app's stream a monitor of its own; without it nothing is captured."""
+    try:
+        load()
+    except OSError:
+        return AppCaptureSupport.NO
+    return AppCaptureSupport.YES
 
 
 def no_windows_build() -> str:
@@ -320,8 +588,8 @@ def no_windows_build() -> str:
 
 
 class Trial:
-    """The `AppCaptureTrial` port: never needed (no app is captured alone
-    yet), kept so `main` can ask the same."""
+    """The `AppCaptureTrial` port: never needed (Linux promises one app
+    alone wherever it has a sound server), kept so `main` can ask the same."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -335,38 +603,3 @@ class Trial:
         with self._lock:
             if self._outcome is None:
                 self._outcome = outcome
-
-
-class NotYet:
-    """One app's capture, or everything else's: not on Linux yet. Never
-    asked for while `app_capture_support` says no; if it is, it captures
-    nothing and says why."""
-
-    def __init__(self, *_args: object, **_kwargs: object) -> None:
-        pass
-
-    def start(self, _on_audio: AudioCallback) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
-    @property
-    def capturing(self) -> str | None:
-        return None
-
-    @property
-    def error(self) -> str | None:
-        return "Capturing one app alone isn't on Linux yet."
-
-
-def app_capture(
-    _process_id: int, _name: str, _trial: AppCaptureTrial | None = None
-) -> NotYet:
-    return NotYet()
-
-
-def everything_else_capture(
-    _process_id: int, _trial: AppCaptureTrial | None = None
-) -> NotYet:
-    return NotYet()

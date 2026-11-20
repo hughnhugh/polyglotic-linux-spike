@@ -105,6 +105,13 @@ DISPLAY=:93 QT_QPA_PLATFORM=xcb "$app" --data "$shown" --server http://127.0.0.1
 started=$!
 sleep 25
 check "it is still running 25 s after it started" "kill -0 $started 2> /dev/null"
+# 561: PyInstaller's loader started the app again with its own folder on the
+# library path (the process's environment as it began) - which a link's
+# browser inherited until the start put the outside one back
+loader_path=$(for p in $(pgrep -f '/usr/bin/Polyglotic' 2> /dev/null); do
+  tr '\0' '\n' < "/proc/$p/environ" 2> /dev/null | grep '^LD_LIBRARY_PATH='; done | head -1)
+check "the packed app began with its own folder on the library path" \
+  "echo '$loader_path' | grep -q '_internal'" "($loader_path)"
 kill "$started" 2> /dev/null
 sleep 3
 kill -9 "$started" 2> /dev/null

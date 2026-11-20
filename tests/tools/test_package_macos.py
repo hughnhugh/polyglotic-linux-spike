@@ -78,7 +78,11 @@ def drop_patterns() -> list[str]:
     ]
     found = eval(  # the spec's own expression, nothing else
         compile(ast.Expression(value), str(SPEC), "eval"),
-        {"re": re, "QT_LANGUAGES": ["zh_CN"]},
+        {
+            "re": re,
+            "QT_LANGUAGES": ["zh_CN"],
+            "INPUT_METHODS": "|platforminputcontexts",
+        },
     )
     assert isinstance(found, list)
     return found

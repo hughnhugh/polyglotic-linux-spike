@@ -13,9 +13,13 @@ It answers what capture and the device lists ask:
 - `record` - a record stream on a source by name: 16kHz mono float32 (the
   server converts), about 20 ms a piece, never moved by the server to
   another device (`PA_STREAM_DONT_MOVE`: without it WirePlumber moved a
-  stream whose device went to the mic, 547);
+  stream whose device went to the mic, 547) - or only one app's stream
+  (`monitor_of`, 561), from its output's monitor;
+- `streams` - the streams apps play now (sink inputs), each with its app,
+  from the stream or else its client (`PlayingStream`, 561);
 - `changes` - how many times the server, an output or an input changed
-  (its subscription), so a capture re-checks what it should record.
+  (its subscription) - or, watched with `STREAMS`, an app's stream or
+  client - so a capture re-checks what it should record.
 
 The library is loaded on first use: the module imports on any OS. Every
 failure is an `OSError` naming the call, never what was heard.
@@ -45,6 +49,11 @@ OPERATION_RUNNING = 0
 STATE_RUNNING = 0
 """A sink's or source's state: playing or recording now."""
 SUBSCRIBE_SINK, SUBSCRIBE_SOURCE, SUBSCRIBE_SERVER = 0x0001, 0x0002, 0x0080
+SUBSCRIBE_SINK_INPUT, SUBSCRIBE_CLIENT = 0x0004, 0x0020
+DEVICES = SUBSCRIBE_SINK | SUBSCRIBE_SOURCE | SUBSCRIBE_SERVER
+"""What a capture of a device follows: the outputs, the inputs, the defaults."""
+STREAMS = DEVICES | SUBSCRIBE_SINK_INPUT | SUBSCRIBE_CLIENT
+"""What a capture of apps follows too: the streams apps play, and their clients."""
 CONNECT_SEC = 5.0
 ANSWER_SEC = 5.0
 
@@ -121,11 +130,47 @@ class _SourceInfo(ctypes.Structure):
     _fields_ = _device_fields("monitor_of_sink")
 
 
+class _SinkInputInfo(ctypes.Structure):
+    """`pa_sink_input_info`'s leading fields, as far as `corked`."""
+
+    _fields_ = [
+        ("index", ctypes.c_uint32),
+        ("name", ctypes.c_char_p),
+        ("owner_module", ctypes.c_uint32),
+        ("client", ctypes.c_uint32),
+        ("sink", ctypes.c_uint32),
+        ("sample_spec", _SampleSpec),
+        ("channel_map", _ChannelMap),
+        ("volume", _Volume),
+        ("buffer_usec", ctypes.c_uint64),
+        ("sink_usec", ctypes.c_uint64),
+        ("resample_method", ctypes.c_char_p),
+        ("driver", ctypes.c_char_p),
+        ("mute", ctypes.c_int),
+        ("proplist", _vp),
+        ("corked", ctypes.c_int),
+    ]
+
+
+class _ClientInfo(ctypes.Structure):
+    _fields_ = [
+        ("index", ctypes.c_uint32),
+        ("name", ctypes.c_char_p),
+        ("owner_module", ctypes.c_uint32),
+        ("driver", ctypes.c_char_p),
+        ("proplist", _vp),
+    ]
+
+
 _SERVER_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.POINTER(_ServerInfo), _vp)
 _SINK_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.POINTER(_SinkInfo), ctypes.c_int, _vp)
 _SOURCE_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.POINTER(_SourceInfo), ctypes.c_int, _vp)
 _SUCCESS_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.c_int, _vp)
 _SUBSCRIBE_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.c_int, ctypes.c_uint32, _vp)
+_SINK_INPUT_CB = ctypes.CFUNCTYPE(
+    None, _vp, ctypes.POINTER(_SinkInputInfo), ctypes.c_int, _vp
+)
+_CLIENT_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.POINTER(_ClientInfo), ctypes.c_int, _vp)
 _STREAM_CB = ctypes.CFUNCTYPE(None, _vp, _vp)
 _READ_CB = ctypes.CFUNCTYPE(None, _vp, ctypes.c_size_t, _vp)
 
@@ -139,6 +184,7 @@ _SIGNATURES: dict[str, tuple[Any, list[Any]]] = {
     "pa_proplist_new": (_vp, []),
     "pa_proplist_free": (None, [_vp]),
     "pa_proplist_sets": (ctypes.c_int, [_vp, ctypes.c_char_p, ctypes.c_char_p]),
+    "pa_proplist_gets": (ctypes.c_char_p, [_vp, ctypes.c_char_p]),
     "pa_context_new_with_proplist": (_vp, [_vp, ctypes.c_char_p, _vp]),
     "pa_context_connect": (ctypes.c_int, [_vp, ctypes.c_char_p, ctypes.c_int, _vp]),
     "pa_context_disconnect": (None, [_vp]),
@@ -149,11 +195,14 @@ _SIGNATURES: dict[str, tuple[Any, list[Any]]] = {
     "pa_context_get_server_info": (_vp, [_vp, _SERVER_CB, _vp]),
     "pa_context_get_sink_info_list": (_vp, [_vp, _SINK_CB, _vp]),
     "pa_context_get_source_info_list": (_vp, [_vp, _SOURCE_CB, _vp]),
+    "pa_context_get_sink_input_info_list": (_vp, [_vp, _SINK_INPUT_CB, _vp]),
+    "pa_context_get_client_info_list": (_vp, [_vp, _CLIENT_CB, _vp]),
     "pa_context_set_subscribe_callback": (None, [_vp, _SUBSCRIBE_CB, _vp]),
     "pa_context_subscribe": (_vp, [_vp, ctypes.c_int, _SUCCESS_CB, _vp]),
     "pa_operation_get_state": (ctypes.c_int, [_vp]),
     "pa_operation_unref": (None, [_vp]),
     "pa_stream_new": (_vp, [_vp, ctypes.c_char_p, ctypes.POINTER(_SampleSpec), _vp]),
+    "pa_stream_set_monitor_stream": (ctypes.c_int, [_vp, ctypes.c_uint32]),
     "pa_stream_set_state_callback": (None, [_vp, _STREAM_CB, _vp]),
     "pa_stream_set_read_callback": (None, [_vp, _READ_CB, _vp]),
     "pa_stream_connect_record": (
@@ -220,12 +269,72 @@ class Device:
     monitor_of: int | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class PlayingStream:
+    """A stream an app plays now (a sink input), as the app list and one
+    app's capture need it: its index, the output it plays to (`sink`, by
+    index), whether it's paused (`corked`), and its app - the name the app
+    gives itself (`application.name`), its executable's name
+    (`application.process.binary`) and its process - each from the stream,
+    else from its client: a native PipeWire player puts them only on its
+    client (547). The process is the one the sound server saw connect
+    (`pipewire.sec.pid`) where it says, which is the PC's own number for a
+    sandboxed app, else the one the app gave. Never the stream's own name
+    (`media.name`): a file's path, a tab's or a song's title."""
+
+    index: int
+    sink: int
+    corked: bool
+    app_name: str | None
+    binary: str | None
+    process_id: int | None
+
+
+def _number(value: str | None) -> int | None:
+    try:
+        return int(value) if value else None
+    except ValueError:
+        return None
+
+
+_APP_KEYS = (
+    "application.name",
+    "application.process.binary",
+    "application.process.id",
+    "pipewire.sec.pid",
+)
+
+
+def playing_stream(
+    index: int, sink: int, corked: bool, own: dict[str, str], client: dict[str, str]
+) -> PlayingStream:
+    """A stream's app from its own properties, else its client's; the
+    process the server saw connect (`pipewire.sec.pid`) before the one the
+    app gave (`application.process.id`: a sandboxed app's own number)."""
+
+    def found(key: str) -> str | None:
+        return own.get(key) or client.get(key)
+
+    process = _number(client.get("pipewire.sec.pid") or own.get("pipewire.sec.pid"))
+    return PlayingStream(
+        index,
+        sink,
+        corked,
+        found("application.name"),
+        found("application.process.binary"),
+        process or _number(found("application.process.id")),
+    )
+
+
 class Recording:
     """A record stream on one source, made by `PulseServer.record`: what
     it delivered, as (arrival on `time.perf_counter`, float32 bytes), taken
-    by `take` on the connection's thread."""
+    by `take` on the connection's thread. `monitor_of`: one app's stream
+    (a sink input's index) - only its sound, from its output's monitor."""
 
-    def __init__(self, lib: Any, context: Any, source: str) -> None:
+    def __init__(
+        self, lib: Any, context: Any, source: str, monitor_of: int | None = None
+    ) -> None:
         self._lib = lib
         self._pieces: list[tuple[float, bytes]] = []
         spec = _SampleSpec(SAMPLE_FLOAT32LE, RATE, 1)
@@ -234,6 +343,16 @@ class Recording:
         )
         if not self._stream:
             raise OSError("The sound server wouldn't make a record stream")
+        # one app's stream: set before connecting; with DONT_MOVE below, the
+        # record stream ends with the app's stream rather than being moved
+        # to the mic by WirePlumber (547)
+        if (
+            monitor_of is not None
+            and lib.pa_stream_set_monitor_stream(self._stream, monitor_of) < 0
+        ):
+            lib.pa_stream_unref(self._stream)
+            self._stream = None
+            raise OSError("The sound server wouldn't record that app's stream")
         self._callbacks = (_STREAM_CB(self._state_changed), _READ_CB(self._readable))
         lib.pa_stream_set_state_callback(self._stream, self._callbacks[0], None)
         lib.pa_stream_set_read_callback(self._stream, self._callbacks[1], None)
@@ -297,9 +416,12 @@ class Recording:
 
 class PulseServer:
     """One connection to the sound server, used only on the thread that
-    made it. OSError if there's no server, or it doesn't answer in time."""
+    made it. OSError if there's no server, or it doesn't answer within
+    `wait` seconds."""
 
-    def __init__(self, name: str = "Polyglotic", lib: Any = None) -> None:
+    def __init__(
+        self, name: str = "Polyglotic", lib: Any = None, wait: float = CONNECT_SEC
+    ) -> None:
         self._lib = lib if lib is not None else library()
         self._loop = self._lib.pa_mainloop_new()
         if not self._loop:
@@ -327,7 +449,7 @@ class PulseServer:
                 < 0
             ):
                 raise OSError("No sound server to connect to")
-            if not self._until(lambda: self._state() >= CONTEXT_READY, CONNECT_SEC) or (
+            if not self._until(lambda: self._state() >= CONTEXT_READY, wait) or (
                 self._state() != CONTEXT_READY
             ):
                 raise OSError(f"The sound server didn't answer: {self._error()}")
@@ -456,9 +578,10 @@ class PulseServer:
         )
         return found
 
-    def watch(self) -> None:
-        """Counts the server's changes from now on (`changes`): a new
-        default, an output or input added, changed or removed."""
+    def watch(self, what: int = DEVICES) -> None:
+        """Counts the server's changes from now on (`changes`): by default a
+        new default, an output or input added, changed or removed; with
+        `STREAMS`, the streams apps play and their clients too."""
 
         def changed(_context: Any, _kind: int, _index: int, _data: Any) -> None:
             self.changes += 1
@@ -467,19 +590,63 @@ class PulseServer:
         done = _SUCCESS_CB(lambda *_a: None)
         self._keep += [callback, done]
         self._lib.pa_context_set_subscribe_callback(self._context, callback, None)
-        mask = SUBSCRIBE_SINK | SUBSCRIBE_SOURCE | SUBSCRIBE_SERVER
-        self._answer(self._lib.pa_context_subscribe(self._context, mask, done, None))
+        self._answer(self._lib.pa_context_subscribe(self._context, what, done, None))
 
-    def record(self, source: str) -> Recording:
-        """A record stream on `source`, once the server has started it;
-        OSError if it couldn't (the source went, or the server refused)."""
-        recording = Recording(self._lib, self._context, source)
+    def record(self, source: str, monitor_of: int | None = None) -> Recording:
+        """A record stream on `source`, once the server has started it - only
+        the stream `monitor_of` (a sink input's index) if given, `source`
+        then being its output's monitor; OSError if it couldn't (the source
+        or the stream went, or the server refused)."""
+        recording = Recording(self._lib, self._context, source, monitor_of)
         if not self._until(lambda: recording.ready or recording.failed, ANSWER_SEC) or (
             not recording.ready
         ):
             recording.close()
             raise OSError("The sound server didn't start recording that device")
         return recording
+
+    def _properties(self, proplist: Any) -> dict[str, str]:
+        """The few properties of a stream or client the app reads."""
+        found = {}
+        for key in _APP_KEYS:
+            value = _text(self._lib.pa_proplist_gets(proplist, key.encode()))
+            if value:
+                found[key] = value
+        return found
+
+    def streams(self) -> list[PlayingStream]:
+        """The streams apps play now, each with its app: from the stream's
+        own properties, else its client's (`PlayingStream`)."""
+        clients: dict[int, dict[str, str]] = {}
+
+        def client(_context: Any, info: Any, last: int, _data: Any) -> None:
+            if not last and info:
+                i = info.contents
+                clients[int(i.index)] = self._properties(i.proplist)
+
+        listed: list[tuple[int, int, int, bool, dict[str, str]]] = []
+
+        def stream(_context: Any, info: Any, last: int, _data: Any) -> None:
+            if not last and info:
+                i = info.contents
+                listed.append(
+                    (int(i.index), int(i.sink), int(i.client), bool(i.corked),
+                     self._properties(i.proplist))
+                )  # fmt: skip
+
+        on_client, on_stream = _CLIENT_CB(client), _SINK_INPUT_CB(stream)
+        self._answer(
+            self._lib.pa_context_get_client_info_list(self._context, on_client, None)
+        )
+        self._answer(
+            self._lib.pa_context_get_sink_input_info_list(
+                self._context, on_stream, None
+            )
+        )
+        return [
+            playing_stream(index, sink, corked, own, clients.get(client_index, {}))
+            for index, sink, client_index, corked, own in listed
+        ]
 
     def close(self) -> None:
         if self._context:

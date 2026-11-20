@@ -15,14 +15,18 @@ on Wayland desktops).
   own copy);
 - `capture.py` - everything the PC plays (the default output's monitor,
   by name) and the mic (never an output's monitor), following the
-  server's changes; one app at a time not yet;
+  server's changes; one app at a time and everything else (each app
+  stream's own monitor, fixed to it, summed: 561, decision 0268);
+- `apps.py` - the apps playing, one entry per app (its streams grouped by
+  executable), for the app picker; `categories.py` - the known apps by
+  their Linux executables, and those listed before they play;
 - `devices.py` - the outputs and mics, by the server's names;
 - `menu_entry.py` - the app's own menu entry and icon, written by the
   AppImage at each start (Velopack installs none);
 - `on_top.py` - the caption windows, popovers and card above everything
   as override-redirect windows, their order kept by hand;
 - `not_yet.py` - what the first Linux build doesn't have yet, each saying
-  so through its port: one app at a time, hotkeys, dictation, Esc and
+  so through its port: hotkeys, dictation, Esc and
   clicks elsewhere read, the sample played aloud. Starting at sign-in and
   the word card's voice are None in `main.linux_adapters`: Home never
   offers them.

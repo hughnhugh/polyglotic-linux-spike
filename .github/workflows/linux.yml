@@ -256,9 +256,12 @@ jobs:
         if: ${{ always() }}
         run: |
           cp versions.txt "$OUT/" 2>/dev/null || true
-          if [ -f "$OUT/tour/checks.json" ]; then
-            python3 -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'])[:2000])" "$OUT/tour/checks.json" | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
+          for tour in tour tour-one-app; do  # the second: one app alone (561)
+            if [ -f "$OUT/$tour/checks.json" ]; then
+              echo "### $tour" | tee -a "$GITHUB_STEP_SUMMARY"
+              python3 -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'])[:2000])" "$OUT/$tour/checks.json" | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          done
           ls "$OUT/desk" 2>/dev/null || true
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -274,6 +277,9 @@ jobs:
             ${{ env.OUT }}/tour/*.png
             ${{ env.OUT }}/tour/checks.json
             ${{ env.OUT }}/tour/data/logs/*.log
+            ${{ env.OUT }}/tour-one-app/*.png
+            ${{ env.OUT }}/tour-one-app/*.json
+            ${{ env.OUT }}/tour-one-app/data/logs/*.log
             ${{ env.OUT }}/*.log
             ${{ env.OUT }}/session/*.txt
             ${{ env.OUT }}/session/*.log

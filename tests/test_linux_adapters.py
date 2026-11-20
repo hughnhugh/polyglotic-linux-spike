@@ -19,7 +19,7 @@ import pytest
 from polyglotic_desktop.connection.app import AppInfo, first_channel, this_release
 from polyglotic_desktop.connection.protocol import Hello, HelloAuth
 from polyglotic_desktop.main import OsAdapters, os_adapters, this_copys_release
-from polyglotic_desktop.platform.linux import capture, not_yet, on_top, system
+from polyglotic_desktop.platform.linux import apps, capture, not_yet, on_top, system
 from polyglotic_desktop.platform.linux.one_copy import FileLock
 from polyglotic_desktop.platform.linux.secret_service import (
     FileKeyring,
@@ -55,8 +55,10 @@ def test_linux_gets_a_whole_record() -> None:
         piece = getattr(linux, field.name)
         if field.name in NOT_ON_LINUX_YET:
             assert piece is None, field.name
-        elif field.name in ("common_apps", "translocation"):
+        elif field.name == "translocation":
             assert not piece, field.name
+        elif field.name == "common_apps":  # listed before they play (561)
+            assert piece, field.name
         elif field.name == "qt_platform":  # X11, through XWayland (0258)
             assert piece == "xcb"
         else:
@@ -79,21 +81,31 @@ def test_linux_record_loads_nothing_of_the_other_oses() -> None:
 
 
 def test_what_isnt_there_yet_says_so_through_its_port() -> None:
-    """Slice 1: everything the PC plays only, no hotkeys, no dictation."""
+    """No hotkeys, no dictation, no sample played aloud (slices 3-8)."""
     linux = os_adapters("linux")
-    assert linux.app_capture_support() is AppCaptureSupport.NO
-    assert linux.app_list().playing_apps() == []
     keys = {"l": lambda: None, "p": lambda: None}
     assert sorted(linux.hotkeys(keys).start()) == ["l", "p"]  # none working here
     assert linux.hold_key("ctrl+alt+d", print, print, print).start() is False
     assert linux.type_text("hello") is False
     assert linux.keys("escape") is False
     assert linux.sound_out().play(None, 16_000) is False  # type: ignore[arg-type]
-    assert (
-        capture.app_capture(1, "x").error and capture.everything_else_capture(1).error
-    )
     assert linux.foreground_watch(lambda: None).start() is False
     assert not_yet.same_name("Polyglotic") == "Polyglotic"
+
+
+def test_one_app_at_a_time_is_linuxs_own() -> None:
+    """Slice 2 (561): one app and everything else captured from the apps'
+    own streams, the apps listed from the sound server's, the known apps
+    by their Linux executables."""
+    linux = os_adapters("linux")
+    assert linux.app_capture_support is capture.app_capture_support
+    assert capture.app_capture_support(lambda: None) is AppCaptureSupport.YES
+    assert linux.app_list is apps.LinuxAppList
+    one = linux.app_capture(1, "firefox", None)
+    rest = linux.everything_else_capture(1, None)
+    assert isinstance(one, capture.AppCapture)
+    assert isinstance(rest, capture.EverythingElseCapture)
+    assert {"firefox", "chrome", "Discord"} <= {a.name for a in linux.common_apps}
 
 
 # --- the protocol's os and channel -------------------------------------------

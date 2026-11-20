@@ -944,8 +944,10 @@ def programs_library_path(environ: Mapping[str, str] | None = None) -> str:
     check: "the app's" while the library path names the packed app's own
     folder, else "the system's"."""
     path = (os.environ if environ is None else environ).get("LD_LIBRARY_PATH", "")
-    folder = getattr(sys, "_MEIPASS", None)
-    mine = bool(folder) and any(
+    folder: str | None = getattr(sys, "_MEIPASS", None)
+    if not folder:
+        return "the system's"
+    mine = any(
         part and os.path.realpath(part) == os.path.realpath(folder)
         for part in path.split(os.pathsep)
     )
@@ -1146,16 +1148,19 @@ def macos_adapters() -> OsAdapters:
 
 
 def linux_adapters() -> OsAdapters:
-    """Linux's (polyglotic-hq 546, 547, 550): its own system, the desktop's
-    keyring and one copy; everything the PC plays and the mic through the
-    sound server (libpulse), with the sound devices; the caption windows
-    above everything as override-redirect windows; and what the first
-    Linux build doesn't have yet saying so through its port
-    (`platform/linux/not_yet`): one app at a time, hotkeys, dictation, the
+    """Linux's (polyglotic-hq 546, 547, 550, 561): its own system, the
+    desktop's keyring and one copy; one app at a time, everything else,
+    everything the PC plays and the mic through the sound server
+    (libpulse), with the apps playing, the known apps and the sound
+    devices; the caption windows above everything as override-redirect
+    windows; and what the first Linux build doesn't have yet saying so
+    through its port (`platform/linux/not_yet`): hotkeys, dictation, the
     sample played aloud - with no voice for the word card and no start at
     sign-in, which Home then never offers."""
     from polyglotic_desktop.platform.linux import (
+        apps,
         capture,
+        categories,
         devices,
         menu_entry,
         not_yet,
@@ -1170,11 +1175,11 @@ def linux_adapters() -> OsAdapters:
         return store(entry) if entry else store()
 
     return OsAdapters(
-        app_list=not_yet.NoApps,
+        app_list=apps.LinuxAppList,
         app_capture_support=capture.app_capture_support,
         app_capture_trial=capture.Trial,
-        app_capture=capture.app_capture,
-        everything_else_capture=capture.everything_else_capture,
+        app_capture=capture.AppCapture,
+        everything_else_capture=capture.EverythingElseCapture,
         windows_build=capture.no_windows_build,
         system_capture=capture.SystemCapture,
         mic_capture=capture.MicCapture,
@@ -1207,6 +1212,7 @@ def linux_adapters() -> OsAdapters:
         keyboard_window=not_yet.no_window,
         metered=not_yet.not_metered,
         sound_devices=devices.sound_devices,
+        common_apps=categories.COMMON_APPS,
         qt_platform="xcb",
     )
 
