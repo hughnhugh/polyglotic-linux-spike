@@ -71,19 +71,23 @@ env:
                 print(f"::group::part {part} ({count} arguments): exit {code}\n{said.read()[-60000:]}\n::endgroup::", flush=True)
             worst = worst or code
         sys.exit(worst)
-    cases, failed, began = [], 0, time.time()
-    for item in plan["shards"][shard]:
+    from concurrent.futures import ThreadPoolExecutor
+    began = time.time()
+    def one(item):
         start = time.time()
         done = subprocess.run(plan["each"].replace("{}", item), shell=True, capture_output=True,
                               text=True, encoding="utf-8", errors="replace")
-        took, said = time.time() - start, (done.stdout + done.stderr)[-20000:]
-        print(f"::group::{item}: exit {done.returncode} in {took:.0f} s\n{said}\n::endgroup::", flush=True)
-        failure = ""
-        if done.returncode:
-            failed += 1
-            failure = f"<failure message={quoteattr(f'exit {done.returncode}')}>{escape(said)}</failure>"
-        cases.append(f"<testcase classname=\"each\" name={quoteattr(item)} file=\"each\" "
-                      f"time=\"{took:.2f}\">{failure}</testcase>")
+        return item, done.returncode, time.time() - start, (done.stdout + done.stderr)[-20000:]
+    cases, failed = [], 0
+    with ThreadPoolExecutor(max(1, int(plan.get("processes", 1)))) as pool:
+        for item, code, took, said in pool.map(one, plan["shards"][shard]):
+            print(f"::group::{item}: exit {code} in {took:.0f} s\n{said}\n::endgroup::", flush=True)
+            failure = ""
+            if code:
+                failed += 1
+                failure = f"<failure message={quoteattr(f'exit {code}')}>{escape(said)}</failure>"
+            cases.append(f"<testcase classname=\"each\" name={quoteattr(item)} file=\"each\" "
+                          f"time=\"{took:.2f}\">{failure}</testcase>")
     with open(f"out/junit-{shard}.xml", "w", encoding="utf-8") as junit:
         junit.write(f"<testsuites><testsuite name=\"each\" time=\"{time.time() - began:.2f}\">"
                     + "".join(cases) + "</testsuite></testsuites>")
