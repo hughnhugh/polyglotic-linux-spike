@@ -1,0 +1,47 @@
+name: windows
+# 547: does an always-on-top X11 caption window stay above a focused
+# full-screen window on GNOME (mutter) and KDE (KWin)? Click-through? The
+# pointer over it with a Wayland window beneath? Headless sessions only.
+on:
+  push:
+    branches: [windows]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gnome:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install mutter, XWayland, PipeWire, GStreamer and Qt's X11 libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends mutter xwayland pipewire pipewire-bin wireplumber \
+            gstreamer1.0-pipewire gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            x11-utils dbus dbus-user-session libgl1-mesa-dri libegl1 libgl1 libxcb-cursor0 libxkbcommon-x11-0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+            libxcb-xinerama0 libxcb-xkb1 libwayland-cursor0 libwayland-egl1 fonts-dejavu-core python3-venv > /dev/null
+      - name: PySide6 6.12.0
+        run: python3 -m venv /tmp/venv && /tmp/venv/bin/pip install -q PySide6-Essentials==6.12.0 jeepney==0.9.0
+      - name: The scenarios under mutter
+        run: bash windows/run_gnome.sh out-gnome
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: windows-gnome
+          path: out-gnome
+          retention-days: 1
+  kde:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The scenarios under KWin (Fedora container)
+        run: bash windows/run_kde.sh out-kde latest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: windows-kde
+          path: out-kde
+          retention-days: 1
