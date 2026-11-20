@@ -59,7 +59,11 @@ minimise when it loses focus):
   the language list opens inside it.
 
 So it never has the keyboard, and Windows doesn't tell it about clicks in
-other apps. **Esc or a click elsewhere closes it** from two places: an
+other apps. **On Linux it does take the keyboard** while it's open
+(`above_all.POPOVERS_TAKE_THE_KEYBOARD`, polyglotic-hq 570): an ordinary
+window, brought forward and given the keyboard as it opens, closed by Esc
+or as soon as another window takes the keyboard back - a click anywhere
+else. The app can't read keys or clicks meant for other apps there. **Esc or a click elsewhere closes it** from two places: an
 event filter on this app (a click on any of its other widgets, or Esc
 while one of them has the keyboard), and - while it's open, and only then
 - a look every 40 ms at whether Esc or a mouse button is held anywhere
@@ -92,7 +96,7 @@ from PySide6.QtWidgets import (
 from polyglotic_desktop.core.listening.timing import OFFERED_MODES
 from polyglotic_desktop.ports.system import KeyState  # theirs: the OS's
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.above_all import ABOVE_ALL
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL, POPOVERS_TAKE_THE_KEYBOARD
 from polyglotic_desktop.ui_next.controls import (
     INSET,
     SWITCH,
@@ -327,6 +331,23 @@ class SizeSlider(QSlider):
         event.ignore()
 
 
+FLAGS = (
+    Qt.WindowType.Tool
+    | Qt.WindowType.FramelessWindowHint
+    | Qt.WindowType.WindowStaysOnTopHint
+    | Qt.WindowType.WindowDoesNotAcceptFocus
+    | ABOVE_ALL
+)
+"""A popover that never takes the keyboard (Windows, a Mac)."""
+KEYBOARD_FLAGS = (
+    Qt.WindowType.Dialog
+    | Qt.WindowType.FramelessWindowHint
+    | Qt.WindowType.WindowStaysOnTopHint
+)
+"""A popover that takes the keyboard while it's open (Linux, 570): a window
+the window manager manages, so it can be given the keyboard."""
+
+
 class SettingsPopover(QWidget):
     """The settings of one caption window, beside its settings button - or
     of a joined window's column, or of the joined window (`rows`)."""
@@ -339,13 +360,13 @@ class SettingsPopover(QWidget):
     ) -> None:
         super().__init__(
             window,  # its own window, owned by the caption window: goes with it
-            Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.WindowDoesNotAcceptFocus
-            | ABOVE_ALL,
+            KEYBOARD_FLAGS if POPOVERS_TAKE_THE_KEYBOARD else FLAGS,
         )
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.takes_the_keyboard = POPOVERS_TAKE_THE_KEYBOARD
+        """It takes the keyboard while it's open (Linux, 570)."""
+        self._had_the_keyboard = False
+        if not self.takes_the_keyboard:
+            self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         # on a Mac a tool window hides while the app isn't active - and the
         # app is never active while the learner is in another (polyglotic-hq 429)
         self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
@@ -951,6 +972,10 @@ class SettingsPopover(QWidget):
                 getattr(self, opened).hide()
         self.refresh()
         self.show()  # always on top, and above its window: no raise_(), which activates
+        if self.takes_the_keyboard:  # Linux: Esc and clicks elsewhere reach it (570)
+            self._had_the_keyboard = False
+            self.raise_()
+            self.activateWindow()
         app = QApplication.instance()
         if app is not None:
             app.installEventFilter(self)
@@ -1009,6 +1034,21 @@ class SettingsPopover(QWidget):
             return
         if keys("escape") or (keys("mouse") and self._outside(QCursor.pos())):
             self.close()
+
+    def event(self, event: QEvent) -> bool:
+        """Taking the keyboard (Linux): closed once another window has it."""
+        kind = event.type()
+        if self.takes_the_keyboard and kind == QEvent.Type.WindowActivate:
+            self._had_the_keyboard = True
+        elif (
+            self.takes_the_keyboard
+            and kind == QEvent.Type.WindowDeactivate
+            and self._had_the_keyboard
+            and self.isVisible()
+        ):
+            self._had_the_keyboard = False
+            self.close()
+        return super().event(event)
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         kind = event.type()

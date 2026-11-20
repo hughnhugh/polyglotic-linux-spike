@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">लॉक है: अब क्लिक नीचे तक जाते हैं। खोलने के लिए {keys} दबाएँ या इस कोने के ताले पर माउस कुछ देर रखें</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">लॉक है: अब क्लिक नीचे तक जाते हैं। खोलने के लिए इस कोने के ताले पर माउस कुछ देर रखें, या होम का इस्तेमाल करें</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">लॉक - क्लिक नीचे की चीज़ तक जाते हैं, Ctrl+Alt+L</translation>
     </message>

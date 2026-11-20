@@ -29,6 +29,11 @@ Lock on or off are grabbed alike. Held down, a combination fires once:
 the X server's repeats (a release and a press at the same moment) are
 let go.
 
+A binding's key is a letter or digit, taken with `modifiers` (Linux's:
+Ctrl+Alt+Shift) - today's port - or a whole combination as the settings
+keep one ("ctrl+alt+shift+l", "f9": `core.listening.dictation_keys.
+DictationKey`), for the hotkeys the learner sets (polyglotic-hq 567).
+
 Each combination's binding is called on the hotkeys' own thread; `main`
 hands the call to the interface's thread. Nothing pressed is ever logged.
 """
@@ -44,6 +49,7 @@ import threading
 from collections.abc import Callable, Mapping, Sequence
 from typing import Protocol
 
+from polyglotic_desktop.core.listening.dictation_keys import DictationKey, Modifier
 from polyglotic_desktop.platform.linux.system import desktop_names, wayland_session
 
 log = logging.getLogger(__name__)
@@ -75,6 +81,42 @@ US_KEYCODES = {
 kernel's code plus 8): for a first layout with no Latin letters."""
 
 
+MODIFIER_MASKS = {
+    Modifier.CTRL: CONTROL,
+    Modifier.ALT: MOD1,
+    Modifier.SHIFT: SHIFT,
+    Modifier.WIN: MOD4,
+}
+NAMED_KEYSYMS = {
+    "space": 0x0020, "enter": 0xFF0D, "tab": 0xFF09, "backspace": 0xFF08,
+    "delete": 0xFFFF, "left": 0xFF51, "up": 0xFF52, "right": 0xFF53,
+    "down": 0xFF54, "home": 0xFF50, "end": 0xFF57, "page_up": 0xFF55,
+    "page_down": 0xFF56, "insert": 0xFF63, "escape": 0xFF1B, "pause": 0xFF13,
+    "scroll_lock": 0xFF14, "print_screen": 0xFF61, "menu": 0xFF67,
+    **{f"f{n}": 0xFFBE + n - 1 for n in range(1, 25)},
+}  # fmt: skip
+"""X11's keysym for each key a kept combination can name beside its
+letters and digits (X11's keysymdef.h)."""
+
+
+def binding_key(key: str, modifiers: int) -> tuple[int, str]:
+    """A binding's modifiers and key: a letter or digit with `modifiers`,
+    or a kept combination ("ctrl+alt+shift+l") as it says. Raises
+    ValueError for anything else: a modifier alone can't be pressed, and a
+    letter or digit alone would never be typed anywhere again."""
+    if len(key) == 1 and key.isascii() and (key.isupper() or key.isdigit()):
+        return modifiers, key
+    found = DictationKey.parse(key)
+    lone = found is not None and not found.modifiers and len(found.key or "") == 1
+    if found is None or found.key is None or found.held_alone or lone:
+        raise ValueError(f"not a letter, digit or combination: {key!r}")
+    held = 0
+    for modifier in found.modifiers:
+        held |= MODIFIER_MASKS[modifier]
+    named = found.key.upper() if len(found.key) == 1 else found.key
+    return held, named
+
+
 def combination(modifiers: int, key: str) -> str:
     """A combination as Linux's desktops write it: "Ctrl+Alt+Shift+L"."""
     names = [
@@ -91,7 +133,10 @@ def combination(modifiers: int, key: str) -> str:
 
 
 def keysyms_for(key: str) -> tuple[int, ...]:
-    """The X keysyms a letter or digit key types: lower and upper case."""
+    """The X keysyms a key types: a letter's lower and upper case, a
+    digit's, or a named key's ("f9")."""
+    if len(key) > 1:
+        return (NAMED_KEYSYMS[key],)
     return tuple(dict.fromkeys((ord(key.lower()), ord(key.upper()))))
 
 
@@ -140,7 +185,8 @@ class Xcb(Protocol):
 
 class X11Hotkeys:
     """`Hotkeys` through X11's key grab: each a letter or digit with
-    `modifiers`, its binding called on the hotkeys' own thread."""
+    `modifiers`, or a kept combination (`binding_key`), its binding called on
+    the hotkeys' own thread."""
 
     def __init__(
         self,
@@ -148,15 +194,13 @@ class X11Hotkeys:
         modifiers: int = LINUX_MODIFIERS,
         connect: Callable[[], Xcb] | None = None,
     ) -> None:
-        for key in bindings:
-            if len(key) != 1 or not (key.isascii() and key.isupper() or key.isdigit()):
-                raise ValueError(f"not a letter or digit key: {key!r}")
+        self._combinations = {key: binding_key(key, modifiers) for key in bindings}
+        """Each binding's modifiers and key."""
         self._bindings = dict(bindings)
-        self._modifiers = modifiers
         self._connect = connect or LibXcb
         self._xcb: Xcb | None = None
-        self._keycodes: dict[int, str] = {}
-        """Each grabbed key code's key."""
+        self._grabbed: dict[tuple[int, int], str] = {}
+        """Each grabbed key code and its modifiers: the binding's key."""
         self._thread: threading.Thread | None = None
         self._wake_r, self._wake_w = -1, -1
         self._down: set[int] = set()
@@ -177,31 +221,31 @@ class X11Hotkeys:
             return self.taken
         self._xcb = xcb
         first, mapping = xcb.keyboard()
-        for key in self._bindings:
-            keycode = keycode_for(key, mapping, first)
-            if keycode is None or not self._grab(xcb, keycode):
+        for key, (held, pressed) in self._combinations.items():
+            keycode = keycode_for(pressed, mapping, first)
+            if keycode is None or not self._grab(xcb, keycode, held):
                 self.taken.append(key)
                 continue
-            self._keycodes[keycode] = key
+            self._grabbed[keycode, held & WATCHED] = key
         if self.taken:
             log.warning(
                 "hotkey(s) already taken by another program: %s",
-                ", ".join(combination(self._modifiers, key) for key in self.taken),
+                ", ".join(combination(*self._combinations[key]) for key in self.taken),
             )
         self._wake_r, self._wake_w = os.pipe()
         self._thread = threading.Thread(target=self._run, name="hotkeys", daemon=True)
         self._thread.start()
         return self.taken
 
-    def _grab(self, xcb: Xcb, keycode: int) -> bool:
+    def _grab(self, xcb: Xcb, keycode: int, held: int) -> bool:
         """Every Caps Lock and NumLock variant of one combination, or none."""
         done: list[int] = []
         for extra in IGNORED:
-            if not xcb.grab(keycode, self._modifiers | extra):
+            if not xcb.grab(keycode, held | extra):
                 for undo in done:
                     xcb.ungrab(keycode, undo)
                 return False
-            done.append(self._modifiers | extra)
+            done.append(held | extra)
         return True
 
     def stop(self) -> None:
@@ -215,24 +259,22 @@ class X11Hotkeys:
             os.close(self._wake_r)
             os.close(self._wake_w)
         if not xcb.broken():
-            for keycode in self._keycodes:
+            for keycode, held in self._grabbed:
                 for extra in IGNORED:
-                    xcb.ungrab(keycode, self._modifiers | extra)
+                    xcb.ungrab(keycode, held | extra)
         xcb.close()
-        self._keycodes.clear()
+        self._grabbed.clear()
         self._xcb = self._thread = None
 
     def handle(self, kind: int, keycode: int, modifiers: int, time: int) -> None:
         """One key event from the X server (the thread's; a test's own): a
         grabbed combination's first press calls its binding."""
-        key = self._keycodes.get(keycode)
-        if key is None:
-            return
-        if kind == KEY_RELEASE:
+        if kind == KEY_RELEASE:  # whatever's held with it by now
             self._down.discard(keycode)
             self._released[keycode] = time
             return
-        if kind != KEY_PRESS or modifiers & WATCHED != self._modifiers & WATCHED:
+        key = self._grabbed.get((keycode, modifiers & WATCHED))
+        if kind != KEY_PRESS or key is None:
             return
         repeat = keycode in self._down or self._released.get(keycode) == time
         self._down.add(keycode)

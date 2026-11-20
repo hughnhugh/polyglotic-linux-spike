@@ -1,16 +1,19 @@
 """A locked window's corner that keeps taking the mouse (polyglotic-hq 570,
 DECISIONS #243 item 6): on a Wayland desktop the app, an X11 program,
 can't read the mouse over another app's window, so the lock's corner is a
-small window of its own that the mouse can rest on. Where it isn't on the
-corner, where the mouse was last read doesn't count; the rest of the window
-still lets every click through. The real compositor's side is
+small window of its own. The mouse is heard arriving there, never leaving
+(GNOME's XWayland says nothing when it goes), so Unlock shows as it
+arrives and goes a few seconds after it was last heard; where the mouse
+was last read doesn't count. The rest of the window still lets every
+click through. The real compositor's side is
 `tools/app_tour.py`'s unlocking checks on GitHub's runners (570)."""
 
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
+from PySide6.QtGui import QEnterEvent, QMouseEvent
+from PySide6.QtWidgets import QApplication, QWidget
 from tests.ui.fakes import FakeAppList, MemorySettingsStore
 from tests.ui_next.test_joined_window import SECOND_APP
 
@@ -19,7 +22,11 @@ from polyglotic_desktop.ui.app import DesktopApp
 from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
-from polyglotic_desktop.ui_next.unlock_spot import CATCH_AT_LEAST, REST_LOOKS
+from polyglotic_desktop.ui_next.unlock_spot import (
+    CATCH_AT_LEAST,
+    CAUGHT_SHOW_SEC,
+    REST_LOOKS,
+)
 from polyglotic_desktop.ui_next.views.placement import Rect
 
 THROUGH = Qt.WindowType.WindowTransparentForInput
@@ -53,12 +60,25 @@ def look(window: CaptionWindow, times: int) -> None:
         window.unlock_spot.look()
 
 
-def hover(window: CaptionWindow, on: bool) -> None:
-    """The mouse arriving on the corner's window, or leaving it, as Qt hears
-    it from the X server."""
-    catcher = window.unlock_spot.catcher
-    assert catcher is not None
-    catcher.setAttribute(Qt.WidgetAttribute.WA_UnderMouse, on)
+def arrive(widget: QWidget) -> None:
+    """The mouse arriving on `widget`, as Qt hears it from the X server."""
+    QApplication.sendEvent(
+        widget, QEnterEvent(QPointF(5, 5), QPointF(5, 5), QPointF(5, 5))
+    )
+
+
+def move_on(widget: QWidget) -> None:
+    QApplication.sendEvent(
+        widget,
+        QMouseEvent(
+            QEvent.Type.MouseMove,
+            QPointF(6, 6),
+            QPointF(6, 6),
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
+        ),
+    )
 
 
 def test_locked_its_corner_is_a_window_that_takes_the_mouse(
@@ -99,26 +119,33 @@ def test_a_mouse_read_where_it_last_was_never_offers_unlock(
     assert not window.unlock_spot.shown
 
 
-def test_resting_on_the_corner_offers_unlock_and_leaving_hides_it(
+def test_the_mouse_arriving_on_the_corner_offers_unlock_for_a_while(
     wired: tuple[DesktopApp, CaptionWindows],
 ) -> None:
     desktop, windows = wired
     window = only(windows)
+    now = [100.0]
+    window.unlock_spot.clock = lambda: now[0]
     desktop.lock_windows.setChecked(True)
-    corner = window._lock_spot()
-    assert corner is not None
-    window.pointer = corner.center
-    look(window, 1)  # not on it yet: it can come
-    hover(window, True)
-    look(window, REST_LOOKS - 1)
-    assert not window.unlock_spot.shown  # passing over isn't enough
-    look(window, 1)
+    catcher = window.unlock_spot.catcher
+    assert catcher is not None
+    arrive(catcher)
     button = window.unlock_spot.button
     assert window.unlock_spot.shown and button is not None
-    hover(window, False)  # off to the app beneath: the place read is stale
+    assert window.geometry().contains(button.geometry())  # over its corner
+    now[0] += CAUGHT_SHOW_SEC - 0.5
+    look(window, 1)
+    assert window.unlock_spot.shown
+    move_on(button)  # heard on Unlock: it stays
+    now[0] += CAUGHT_SHOW_SEC - 0.5
+    look(window, 1)
+    assert window.unlock_spot.shown
+    now[0] += 1.0  # nothing heard since: gone, wherever the mouse was last read
     look(window, 1)
     assert not window.unlock_spot.shown
     assert desktop.lock_windows.isChecked()
+    move_on(catcher)  # back on the corner: shown again
+    assert window.unlock_spot.shown
 
 
 def test_a_click_on_the_corner_offers_unlock_at_once(

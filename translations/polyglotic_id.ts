@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Terkunci: klik sekarang tembus ke bawah. Untuk membuka, tekan {keys} atau diamkan mouse di gembok di sudut ini</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Terkunci: klik sekarang tembus ke bawah. Untuk membuka, diamkan mouse di gembok di sudut ini, atau pakai Beranda</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Kunci - klik tembus ke yang ada di bawahnya, Ctrl+Alt+L</translation>
     </message>

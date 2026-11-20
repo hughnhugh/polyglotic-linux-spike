@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Zamčeno: kliknutí teď projdou dál. Odemknete klávesami {keys} nebo podržením myši na zámku v tomto rohu</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Zamčeno: kliknutí teď projdou dál. Odemknete podržením myši na zámku v tomto rohu, nebo na stránce Domů</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Zamknout – kliknutí projdou k tomu, co je pod nimi, Ctrl+Alt+L</translation>
     </message>

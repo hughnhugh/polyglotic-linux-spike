@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Gesperrt: Klicks gehen jetzt durch. Zum Entsperren {keys} drücken oder die Maus kurz auf dem Schloss in dieser Ecke ruhen lassen</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Gesperrt: Klicks gehen jetzt durch. Zum Entsperren die Maus kurz auf dem Schloss in dieser Ecke ruhen lassen, oder auf Start</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Sperren – Klicks gehen durch zu dem, was darunter liegt, Strg+Alt+L</translation>
     </message>

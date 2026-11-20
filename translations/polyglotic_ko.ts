@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">잠김: 이제 클릭이 아래로 전달됩니다. 잠금을 풀려면 {keys} 키를 누르거나 이 모서리의 자물쇠 위에 마우스를 잠시 올려 두세요</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">잠김: 이제 클릭이 아래로 전달됩니다. 잠금을 풀려면 이 모서리의 자물쇠 위에 마우스를 잠시 올려 두거나 홈을 사용하세요</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">잠그기 - 클릭이 아래로 전달됨, Ctrl+Alt+L</translation>
     </message>

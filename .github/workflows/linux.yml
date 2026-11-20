@@ -55,7 +55,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             pipewire pipewire-pulse pipewire-bin wireplumber libpulse0 pulseaudio-utils \
-            dbus-bin dbus-daemon gnome-keyring xvfb \
+            dbus-bin dbus-daemon gnome-keyring xvfb libxtst6 \
             libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
             libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-noto-core fonts-wqy-microhei
@@ -133,10 +133,24 @@ jobs:
           "$OUT/keyring-gnome.json"; uv run --no-sync python -m tools.app_tour "$OUT/tour"
           --limit 300 --real-capture --mic-sink "$POLYGLOTIC_MIC_SINK"'
 
+      # the hotkeys, --lock and the like, the first lock and the popover's Esc
+      # in an Xorg session (570): X11's grab, keys pressed through XTest
+      - name: The hotkeys and unlocking on X11
+        if: ${{ !cancelled() }}
+        env:
+          QT_QPA_PLATFORM: xcb
+        run: >-
+          dbus-run-session -- bash tools/linux_session.sh "$OUT/session-unlocking" --
+          uv run --no-sync python -m tools.app_tour "$OUT/tour-unlocking" --limit 300 --unlocking
+
       - name: What the tour found
         if: ${{ always() }}
         run: |
           cp versions.txt "$OUT/" 2>/dev/null || true
+          if [ -f "$OUT/tour-unlocking/checks.json" ]; then
+            echo "### unlocking (570)" | tee -a "$GITHUB_STEP_SUMMARY"
+            uv run --no-sync python -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'].get('unlocking', {}))[:2000])" "$OUT/tour-unlocking/checks.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f "$OUT/tour/checks.json" ]; then
             uv run --no-sync python -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'])[:2000])" "$OUT/tour/checks.json" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
@@ -153,6 +167,9 @@ jobs:
             ${{ env.OUT }}/tour/*.png
             ${{ env.OUT }}/tour/checks.json
             ${{ env.OUT }}/tour/data/logs/*.log
+            ${{ env.OUT }}/tour-unlocking/*.png
+            ${{ env.OUT }}/tour-unlocking/*.json
+            ${{ env.OUT }}/tour-unlocking/data/logs/*.log
             ${{ env.OUT }}/session-*/*.txt
             ${{ env.OUT }}/session-*/*.log
           retention-days: 1
@@ -244,7 +261,7 @@ jobs:
         if: ${{ always() }}
         run: |
           cp versions.txt "$OUT/" 2>/dev/null || true
-          for tour in tour tour-one-app; do  # the second: one app alone (561)
+          for tour in tour tour-one-app tour-unlocking; do  # one app (561); unlocking (570)
             if [ -f "$OUT/$tour/checks.json" ]; then
               echo "### $tour" | tee -a "$GITHUB_STEP_SUMMARY"
               python3 -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'])[:2000])" "$OUT/$tour/checks.json" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -268,6 +285,9 @@ jobs:
             ${{ env.OUT }}/tour-one-app/*.png
             ${{ env.OUT }}/tour-one-app/*.json
             ${{ env.OUT }}/tour-one-app/data/logs/*.log
+            ${{ env.OUT }}/tour-unlocking/*.png
+            ${{ env.OUT }}/tour-unlocking/*.json
+            ${{ env.OUT }}/tour-unlocking/data/logs/*.log
             ${{ env.OUT }}/*.log
             ${{ env.OUT }}/session/*.txt
             ${{ env.OUT }}/session/*.log

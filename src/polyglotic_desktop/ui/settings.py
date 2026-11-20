@@ -313,6 +313,9 @@ class AppSettings:
     # window (`UnlockSpot.catch`; polyglotic-hq 570, DECISIONS #243 item 6).
     # Not in Settings: a switch to take it out again if it gets in the way
     unlock_spot: bool = True
+    # Linux: the first lock said at length how to unlock again (polyglotic-hq
+    # 570; `main.tell_how_to_unlock`)
+    unlock_told: bool = False
     overlay_geometry: dict[str, list[int]] = field(default_factory=dict)
     # the display: the captions' font and colours, the panel behind them,
     # where the overlays go and how wide (project 054)

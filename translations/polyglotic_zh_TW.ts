@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">已鎖定：點選現在會穿過視窗。要解鎖，請按 {keys}，或把滑鼠停在這個角落的鎖上</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">已鎖定：點選現在會穿過視窗。要解鎖，請把滑鼠停在這個角落的鎖上，或在首頁中解鎖</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">鎖定：點選會穿過視窗，落到下面的內容上，Ctrl+Alt+L</translation>
     </message>

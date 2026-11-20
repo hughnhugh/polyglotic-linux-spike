@@ -439,7 +439,7 @@ from polyglotic_desktop.ui_next.languages import (
 )
 from polyglotic_desktop.ui_next.learning_page import LearningPage, reset_question
 from polyglotic_desktop.ui_next.main_window import MainWindow as NextMainWindow
-from polyglotic_desktop.ui_next.os_words import pc_or_mac
+from polyglotic_desktop.ui_next.os_words import on_linux, pc_or_mac
 from polyglotic_desktop.ui_next.pack_row import (
     failed_notice,
     ready_notice,
@@ -1655,6 +1655,14 @@ def follow_unlock_spot(windows: CaptionWindows, desktop: DesktopApp) -> None:
 
     follow()
     desktop.settings.changed.connect(follow)
+
+
+def tell_how_to_unlock(windows: CaptionWindows, desktop: DesktopApp) -> None:
+    """The first lock says at length how to unlock again, once (Linux:
+    polyglotic-hq 546, 570 - some desktops have no tray, GNOME's Wayland
+    session gives the app no hotkey; `AppSettings.unlock_told`)."""
+    windows.tell_how_to_unlock = not desktop.settings.value.unlock_told
+    windows.unlock_told.connect(lambda: desktop.settings.update(unlock_told=True))
 
 
 def wire_caption_windows(
@@ -8412,6 +8420,8 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     )
     if system.unlock_spot:  # Linux on a Wayland desktop (570): the setting's say
         follow_unlock_spot(windows, desktop)
+    if on_linux():  # after the start's own lock: the learner's first (570)
+        tell_how_to_unlock(windows, desktop)
     follow_settings(windows, desktop, sources)
     # the mic is captured only while a window shows my speech - with the
     # OS's leave, where it asks (478)

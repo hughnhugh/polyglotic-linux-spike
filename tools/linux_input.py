@@ -142,6 +142,15 @@ class MutterInput(Input):
                    "ib", (BTN_LEFT, down))  # fmt: skip
 
 
+def _wayland_socket(path: str) -> socket.socket:
+    """The compositor's Wayland socket, connected: Linux's alone."""
+    if sys.platform == "win32":
+        raise OSError("a Wayland socket: Linux only")
+    connected = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    connected.connect(path)
+    return connected
+
+
 def _wl_string(text: str) -> bytes:
     raw = text.encode() + b"\0"
     return struct.pack("<I", len(raw)) + raw + b"\0" * (-len(raw) % 4)
@@ -156,8 +165,7 @@ class KWinInput(Input):
         path = os.path.join(
             os.environ["XDG_RUNTIME_DIR"], os.environ["WAYLAND_DISPLAY"]
         )
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.connect(path)
+        self.sock = _wayland_socket(path)
         self.buf = b""
         self.next_id = 1
         self.ops = self._opcodes()

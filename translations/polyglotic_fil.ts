@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Naka-lock: tumatagos na ang mga click. Para i-unlock, pindutin ang {keys} o ipahinga ang mouse sa lock sa sulok na ito</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Naka-lock: tumatagos na ang mga click. Para i-unlock, ipahinga ang mouse sa lock sa sulok na ito, o gamitin ang Home</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">I-lock - tumatagos ang mga click sa nasa ilalim, Ctrl+Alt+L</translation>
     </message>

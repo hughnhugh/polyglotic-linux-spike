@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Đã khóa: giờ nhấp chuột sẽ đi xuyên xuống bên dưới. Để mở khóa, nhấn {keys} hoặc để chuột yên trên ổ khóa ở góc này</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Đã khóa: giờ nhấp chuột sẽ đi xuyên xuống bên dưới. Để mở khóa, hãy để chuột yên trên ổ khóa ở góc này, hoặc dùng Trang chủ</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Khóa - nhấp chuột đi xuyên xuống bên dưới, Ctrl+Alt+L</translation>
     </message>

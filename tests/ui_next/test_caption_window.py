@@ -318,7 +318,9 @@ def test_the_popover_never_takes_the_focus(window: CaptionWindow) -> None:
     window.toggle_settings()
     popover = window.popover
     assert popover is not None
-    for shown in (window, popover):
+    # on Linux the popover takes the keyboard while it's open (570): its test
+    # is test_popover_takes_the_keyboard.py
+    for shown in (window,) if popover.takes_the_keyboard else (window, popover):
         assert shown.windowFlags() & Qt.WindowType.WindowDoesNotAcceptFocus
         assert shown.testAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
     assert all(

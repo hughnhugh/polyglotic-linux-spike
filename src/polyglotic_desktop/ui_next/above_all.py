@@ -10,6 +10,13 @@ needs them (polyglotic-hq 546, 547, 550).
   under it every time); their order among themselves is then kept by
   `platform/linux/on_top.py`. Nothing on Windows and macOS, whose own
   `on_top` keeps them above.
+- `POPOVERS_TAKE_THE_KEYBOARD`: on Linux a settings popover is an ordinary
+  window that takes the keyboard while it's open, so Esc and a click
+  elsewhere close it (570) - nothing else can see them there: the app is an
+  X11 program, which hears no key or click meant for a Wayland app, and a
+  real `Qt.Popup`'s grabs don't reach past XWayland either (570's runs on
+  GNOME 46 and 51 and KDE 6.8: Esc and the click went to the app beneath,
+  the popup stayed open; a window that took the keyboard closed on both).
 - `set_click_through`: a window's clicks passing through it, or not,
   changed only while it isn't mapped - hidden, the flag changed, shown
   again - never as a live change to a mapped window's input shape, which
@@ -29,6 +36,8 @@ ABOVE_ALL = (
     else Qt.WindowType.Widget  # no flag
 )
 THROUGH = Qt.WindowType.WindowTransparentForInput
+POPOVERS_TAKE_THE_KEYBOARD = sys.platform.startswith("linux")
+"""Whether a settings popover takes the keyboard while it's open (Linux)."""
 
 
 def set_click_through(widget: QWidget, through: bool, show: bool = True) -> None:

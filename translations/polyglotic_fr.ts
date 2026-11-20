@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Verrouillée : les clics passent maintenant à travers. Pour déverrouiller, appuyez sur {keys} ou laissez la souris sur le cadenas de ce coin</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Verrouillée : les clics passent maintenant à travers. Pour déverrouiller, laissez la souris sur le cadenas de ce coin, ou passez par l&apos;Accueil</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Verrouiller : les clics passent à ce qui est en dessous, Ctrl+Alt+L</translation>
     </message>

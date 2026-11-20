@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">ล็อกอยู่: ตอนนี้การคลิกจะทะลุไปข้างใต้ หากจะปลดล็อก ให้กด {keys} หรือวางเมาส์ค้างไว้ที่รูปกุญแจตรงมุมนี้</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">ล็อกอยู่: ตอนนี้การคลิกจะทะลุไปข้างใต้ หากจะปลดล็อก ให้วางเมาส์ค้างไว้ที่รูปกุญแจตรงมุมนี้ หรือใช้หน้าแรก</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">ล็อก - การคลิกทะลุไปข้างใต้ Ctrl+Alt+L</translation>
     </message>

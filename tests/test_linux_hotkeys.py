@@ -20,6 +20,7 @@ from polyglotic_desktop.platform.linux.hotkeys import (
     LOCK,
     MOD1,
     MOD2,
+    MOD4,
     SHIFT,
     NoHotkeys,
     X11Hotkeys,
@@ -164,7 +165,7 @@ def test_a_press_calls_its_binding_once_however_long_its_held() -> None:
 def test_a_combination_with_other_modifiers_isnt_ours() -> None:
     keys = X11Hotkeys({"L": lambda: calls.append("L")}, connect=FakeX)
     calls: list[str] = []
-    keys._keycodes[L_CODE] = "L"  # as `start` grabs it
+    keys._grabbed[L_CODE, CTRL_ALT_SHIFT] = "L"  # as `start` grabs it
     keys.handle(KEY_PRESS, L_CODE, CONTROL | MOD1, 1)  # Ctrl+Alt+L, no Shift
     keys.handle(KEY_PRESS, P_CODE, CTRL_ALT_SHIFT, 2)  # a key not grabbed
     assert calls == []
@@ -178,7 +179,7 @@ def test_a_failing_action_doesnt_end_the_hotkeys() -> None:
 
     calls: list[str] = []
     keys = X11Hotkeys({"L": fails, "P": lambda: calls.append("P")}, connect=FakeX)
-    keys._keycodes.update({L_CODE: "L", P_CODE: "P"})
+    keys._grabbed.update({(L_CODE, CTRL_ALT_SHIFT): "L", (P_CODE, CTRL_ALT_SHIFT): "P"})
     keys.handle(KEY_PRESS, L_CODE, CTRL_ALT_SHIFT, 1)
     keys.handle(KEY_PRESS, P_CODE, CTRL_ALT_SHIFT, 2)
     assert calls == ["P"]
@@ -193,9 +194,54 @@ def test_no_x_server_is_every_key_not_working_here() -> None:
     keys.stop()  # nothing to give back
 
 
-def test_keys_must_be_one_letter_or_digit() -> None:
-    with pytest.raises(ValueError):
-        X11Hotkeys({"l": print})
+def test_keys_must_be_one_letter_or_digit_or_a_kept_combination() -> None:
+    for wrong in ("l", "ctrl", "ctrl+alt", "right_ctrl", "alt+ctrl+l", "ctrl+alt+lock"):
+        with pytest.raises(ValueError):
+            X11Hotkeys({wrong: print})
+
+
+@needs_select
+def test_a_kept_combination_is_grabbed_as_it_says() -> None:
+    """The hotkeys the learner sets (polyglotic-hq 567): "ctrl+alt+j", "f9",
+    "shift+win+p" - each its own modifiers; a letter beside them still
+    takes Linux's own."""
+    x = FakeX()
+    f9_code = 8 + 67  # the kernel's KEY_F9
+    x.mapping[1][f9_code - 8] = [hotkeys.NAMED_KEYSYMS["f9"], 0]
+    calls: list[str] = []
+    keys = X11Hotkeys(
+        {
+            "ctrl+alt+j": lambda: calls.append("live"),
+            "f9": lambda: calls.append("f9"),
+            "shift+win+p": lambda: calls.append("win"),
+            "L": lambda: calls.append("L"),
+        },
+        connect=lambda: x,
+    )
+    try:
+        assert keys.start() == []
+        j_code = hotkeys.US_KEYCODES["J"]
+        assert (j_code, CONTROL | MOD1) in x.grabbed
+        assert (f9_code, 0) in x.grabbed
+        assert (P_CODE, SHIFT | MOD4) in x.grabbed
+        assert (L_CODE, CTRL_ALT_SHIFT) in x.grabbed
+        x.press(
+            (KEY_PRESS, j_code, CONTROL | MOD1 | MOD2, 1),
+            (KEY_PRESS, P_CODE, SHIFT | MOD4, 2),
+            (KEY_PRESS, j_code, CTRL_ALT_SHIFT, 3),  # Shift too: not its combination
+        )
+        wait_for(lambda: len(calls) >= 2)
+        time.sleep(0.05)
+        assert calls == ["live", "win"]
+    finally:
+        keys.stop()
+
+
+def test_a_function_key_is_found_by_its_keysym() -> None:
+    first, mapping = us_mapping()
+    mapping[67] = [hotkeys.NAMED_KEYSYMS["f9"], 0]  # X key code 75
+    assert keycode_for("f9", mapping, first) == 75
+    assert keycode_for("f10", mapping, first) is None  # not on this keyboard
 
 
 def test_keys_are_found_by_what_they_type() -> None:

@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Travada: agora os cliques passam para o que está embaixo. Para destravar, pressione {keys} ou deixe o mouse sobre o cadeado deste canto</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Travada: agora os cliques passam para o que está embaixo. Para destravar, deixe o mouse sobre o cadeado deste canto, ou use Início</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Travar: os cliques passam para o que está embaixo, Ctrl+Alt+L</translation>
     </message>

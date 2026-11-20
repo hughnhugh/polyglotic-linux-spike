@@ -30,7 +30,8 @@ common=(xorg-x11-server-Xwayland pipewire wireplumber pipewire-pulseaudio pulsea
   pulseaudio-libs gnome-keyring dbus-daemon dbus-tools mesa-dri-drivers mesa-libEGL mesa-libGL
   libglvnd-egl xcb-util-cursor xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil
   libxkbcommon-x11 libwayland-client libwayland-cursor libwayland-egl fontconfig
-  google-noto-sans-fonts google-noto-sans-cjk-vf-fonts findutils procps-ng)
+  google-noto-sans-fonts google-noto-sans-cjk-vf-fonts findutils procps-ng
+  libXtst plasma-wayland-protocols)
 if [ "$desktop" = kde ]; then
   more=(kwin kf6-kwallet)
 else

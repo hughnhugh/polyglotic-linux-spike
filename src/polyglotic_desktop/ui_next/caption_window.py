@@ -380,6 +380,8 @@ MARK_STILL_ALPHA = 0.7
 """The bar with Windows' animations off (reduced motion): three still
 dashes along it, an ellipsis, at this ink - no sweep (260)."""
 LOCKED_SEC = 4.0
+FIRST_LOCKED_SEC = 12.0
+"""How long the first lock says at length how to unlock (Linux, 570)."""
 """How long a window says how to unlock it, on locking; then only its
 corner says the hotkey, faintly (F10, 249)."""
 LOCKED_ALPHA = 0.55
@@ -1026,6 +1028,22 @@ def locked_text(keys: str) -> str:
     return pc_or_mac(
         _tr("Locked - unlock on Home or from the tray"),
         _tr("Locked - unlock on Home or from the menu bar"),
+    )
+
+
+def first_locked_text(keys: str) -> str:
+    """What the first lock on Linux says (polyglotic-hq 546, 570): how to
+    unlock again, at more length - the lock in the corner, where resting
+    the mouse offers Unlock, and the hotkey where it works; or Home, which
+    the app launcher always opens (some Linux desktops have no tray)."""
+    if keys:
+        return _tr(
+            "Locked: clicks now pass through. To unlock, press {keys} or rest the"
+            " mouse on the lock in this corner"
+        ).format(keys=keys)
+    return _tr(
+        "Locked: clicks now pass through. To unlock, rest the mouse on the lock"
+        " in this corner, or use Home"
     )
 
 
@@ -3656,8 +3674,10 @@ class CaptionWindow(QWidget):
         self.introduce()  # shown where it now is (DECISIONS.md #56)
         self.changed.emit()
 
-    def set_locked(self, locked: bool) -> None:
-        """Locked: clicks pass through; no band, no hover, no resizing."""
+    def set_locked(self, locked: bool, at_length: bool = False) -> None:
+        """Locked: clicks pass through; no band, no hover, no resizing.
+        `at_length`: it says how to unlock at more length (the first lock on
+        Linux, 570)."""
         if locked == self.locked:
             return
         self.locked = locked
@@ -3670,7 +3690,10 @@ class CaptionWindow(QWidget):
             self._let_go_of_word()
             self._show_band(False)
             self.go_live()
-            self.show_notice(locked_text(self.unlock_keys), LOCKED_SEC)
+            if at_length:
+                self.show_notice(first_locked_text(self.unlock_keys), FIRST_LOCKED_SEC)
+            else:
+                self.show_notice(locked_text(self.unlock_keys), LOCKED_SEC)
         self.unlock_spot.watch(locked and self.isVisible())
         self._show_set_up()  # not over a locked window: clicks pass through it
         if self.nudge is not None:  # clicks pass through a locked window

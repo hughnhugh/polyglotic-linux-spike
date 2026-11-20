@@ -181,6 +181,8 @@ class CaptionWindows(QObject):
     lock_wanted = Signal()
     unlock_wanted = Signal()
     """A locked window's Unlock, where the mouse rested on its lock (398)."""
+    unlock_told = Signal()
+    """The first lock on Linux said at length how to unlock (570)."""
     hide_wanted = Signal()
     stop_wanted = Signal(str)
     report_wanted = Signal()
@@ -302,6 +304,9 @@ class CaptionWindows(QObject):
         self.labels: dict[SourceId, SourceLabel] = {}
         self.you = "You"
         self.locked = False
+        self.tell_how_to_unlock = False
+        """The next lock says at length how to unlock (`unlock_told`): the
+        first on Linux (polyglotic-hq 570)."""
         self.unlock_keys = "Ctrl+Alt+L"
         """The hotkey that unlocks, as it is now ("" if another app has it)."""
         self.unlock_spot = False
@@ -1154,11 +1159,15 @@ class CaptionWindows(QObject):
             window.show_notice(text)
 
     def set_locked(self, locked: bool) -> None:
+        at_length = locked and not self.locked and self.tell_how_to_unlock
         self.locked = locked
         if locked and self.card is not None:
             self.card.close_card()
         for window in self.windows.values():
-            window.set_locked(locked)
+            window.set_locked(locked, at_length)
+        if at_length:
+            self.tell_how_to_unlock = False
+            self.unlock_told.emit()
         if self.joined_window is not None:
             self.joined_window.set_locked(locked)
 

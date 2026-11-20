@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Vergrendeld: klikken gaan nu door naar wat eronder ligt. Ontgrendel met {keys} of door de muis even op het slot in deze hoek te laten rusten</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Vergrendeld: klikken gaan nu door naar wat eronder ligt. Ontgrendel door de muis even op het slot in deze hoek te laten rusten, of via Start</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Vergrendelen – klikken gaan door naar wat eronder ligt, Ctrl+Alt+L</translation>
     </message>

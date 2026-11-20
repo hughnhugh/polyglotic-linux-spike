@@ -24,6 +24,17 @@ look at `platform/macos` running.
 Run by `.github/workflows/macos.yml` on GitHub's macOS machine, which is
 signed in to a desktop session.
 
+`--unlocking` (Linux, polyglotic-hq 570; `.github/workflows/linux.yml`):
+once captions show, the OS's own hotkeys (not swapped) and real input
+through the session's compositor (`tools/linux_input.py`): Ctrl+Alt+Shift+L
+pressed over the full-screen window - it locks where the app says its
+hotkeys work and not where it says they don't; `--lock`, `--pause` and
+`--hide` from a second process, each on and back; on a Wayland desktop the
+locked window's corner, the mouse arriving on it offering Unlock and a
+click there unlocking; the first lock's notice; and the settings popover
+closed by Esc and by a click elsewhere (`unlocking.json`'s facts beside the
+checks, the desktop's pictures of each).
+
 `--real-capture` (Linux, polyglotic-hq 550; `.github/workflows/linux.yml`
 on GitHub's Ubuntu runner): nothing is fed in. The recording is *played*
 through the sound server to its default output, and a second one into the
@@ -53,6 +64,7 @@ import threading
 import time
 import traceback
 from collections.abc import Callable, Generator
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -91,7 +103,7 @@ TONE_HZ = 1000.0
 ONE_APP_SEC = 240.0
 """How long each `--one-app` player plays: the whole tour."""
 """The caption window of everything the PC plays (`--real-capture`)."""
-REAL: dict[str, Any] = {"on": False, "one_app": False, "prefix": ""}
+REAL: dict[str, Any] = {"on": False, "one_app": False, "prefix": "", "unlocking": False}
 """`--real-capture`: the OS's own captures and keyring, and the players."""
 PAGES = ("words", "settings")
 MORE_PAGES = ("learning", "account", "help")
@@ -269,7 +281,7 @@ def adapters(real: Callable[[str], Any], audio: np.ndarray) -> Callable[..., Any
             "system_capture": lambda *_a, **_k: silence(),
             "mic_capture": lambda *_a, **_k: silence(),
             "credentials": lambda _entry: MemoryCredentialStore(TOKEN),
-            "hotkeys": Nothing,
+            "hotkeys": found.hotkeys if REAL["unlocking"] else Nothing,
             "hold_key": HoldKey,
             "foreground_watch": Nothing,
             "on_top": Nothing,
@@ -523,6 +535,157 @@ def finished_lines() -> list[Any]:
     return [ln for ln in found.view.lines if not ln.live] if found is not None else []
 
 
+def second_start(*more: str) -> Any:
+    """`polyglotic --lock` and the like (570): the app started again on
+    the tour's data folder, from source, as a desktop's shortcut starts it."""
+    import subprocess
+
+    return subprocess.Popen(
+        [sys.executable, "-m", "polyglotic_desktop.main", "--data", str(STATE["data"]),
+         *more],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )  # fmt: skip
+
+
+def ended(run: Any) -> bool:
+    return run.poll() is not None
+
+
+def closed(window: Any) -> bool:
+    return window is None or not window.isVisible()
+
+
+def unlocking() -> Step:
+    """Linux's hotkeys, commands, unlock spot, first lock and popover
+    (polyglotic-hq 570), through the compositor's own input."""
+    from tools.linux_input import Input
+
+    desktop = STATE["desktop"]
+    windows = STATE["interface"].windows
+    captions = caption_window()
+    facts: dict[str, Any] = RESULTS["facts"].setdefault("unlocking", {})
+    try:
+        given = Input.make()
+    except Exception as error:  # noqa: BLE001 - said in the results
+        check("real input through the session's compositor", False, repr(error))
+        return
+    working = [k for k, a in desktop.hotkeys.items() if not a.shortcut().isEmpty()]
+    facts["hotkeys_working"] = working
+    facts["lock_keys"] = captions.unlock_keys
+    lock = desktop.lock_windows
+    screen = QGuiApplication.primaryScreen().geometry()
+    away = (screen.left() + 60, screen.bottom() - 60)  # the full-screen window
+    home = hub().window
+
+    # 1. the lock hotkey, over the full-screen window that has the keyboard
+    given.move(*away)
+    given.click(*away)  # the window beneath takes the keyboard back
+    yield pause(1.0)
+    given.press("ctrl", "alt", "shift", "l")
+    yield wait(lock.isChecked, 4, "the lock hotkey")
+    by_key = lock.isChecked()
+    check("Ctrl+Alt+Shift+L locks exactly where the app says it works",
+          by_key == ("L" in working), f"locked={by_key}, working={working}")  # fmt: skip
+    if by_key:
+        facts["first_lock_notice"] = captions.notice.text()
+        yield pause(1.0)
+        picture(captions, "locked-by-hotkey", "Locked by its hotkey, the first lock")
+        yield from desk("locked-by-hotkey", home_hidden=True)
+        given.press("ctrl", "alt", "shift", "l")
+        yield wait(lambda: not lock.isChecked(), 4, "unlocked by the hotkey")
+        check("Ctrl+Alt+Shift+L unlocks again", not lock.isChecked())
+    lock.setChecked(False)
+
+    # 2. --lock, --pause and --hide from a second process, each on and back
+    for command, action in (
+        ("lock", lock),
+        ("pause", desktop.pause),
+        ("hide", desktop.hide_windows),
+    ):
+        for turn in ("on", "back"):
+            before = action.isChecked()
+            run = second_start(f"--{command}")
+            yield wait(partial(ended, run), 25, f"--{command}")
+            yield pause(0.8)
+            said = (run.communicate()[0] or "").strip()[-300:]
+            check(f"--{command} from a second process ({turn})",
+                  run.returncode == 0 and action.isChecked() != before,
+                  f"exit {run.returncode}, {before} -> {action.isChecked()}; {said}")  # fmt: skip
+            if turn == "on" and command != "pause":
+                if command == "lock":
+                    facts["notice_on_a_later_lock"] = captions.notice.text()
+                    picture(captions, "locked-by-command", "Locked by --lock")
+                yield from desk(f"{command}-by-command", home_hidden=True)
+    lock.setChecked(False)
+    desktop.hide_windows.setChecked(False)
+    desktop.pause.setChecked(False)
+    yield pause(1.0)
+
+    # 3. a Wayland desktop: the locked window's corner offers Unlock
+    facts["unlock_spot"] = bool(getattr(windows, "unlock_spot", False))
+    if facts["unlock_spot"]:
+        home.hide()
+        lock.setChecked(True)
+        yield pause(1.5)
+        spot = captions.unlock_spot
+        catcher = spot.catcher
+        check("a locked window's corner takes the mouse",
+              catcher is not None and catcher.isVisible())  # fmt: skip
+        if catcher is not None:
+            corner = catcher.geometry().center()
+            given.move(*away)
+            yield pause(0.8)
+            given.move(corner.x(), corner.y())
+            yield wait(lambda: spot.shown, 4, "Unlock on the corner")
+            check("the mouse arriving on the corner offers Unlock over a Wayland app",
+                  spot.shown)  # fmt: skip
+            yield from desk("unlock-offered")
+            given.move(*away)  # gone, unheard: Unlock goes by itself
+            yield wait(lambda: not spot.shown, 6, "Unlock gone")
+            check("Unlock goes by itself once the mouse has gone", not spot.shown)
+            given.move(corner.x(), corner.y())
+            yield wait(lambda: spot.shown, 4, "Unlock again")
+            if spot.shown and spot.button is not None:
+                at = spot.button.geometry().center()
+                given.click(at.x(), at.y())
+                yield wait(lambda: not lock.isChecked(), 4, "Unlock clicked")
+            check("a click on Unlock unlocks", not lock.isChecked())
+        lock.setChecked(False)
+        home.show()
+        yield pause(1.0)
+
+    # 4. the settings popover: Esc, then a click elsewhere
+    home.hide()
+    yield pause(1.0)
+    managed = os.environ.get("LINUX_SESSION_SCREEN") in ("gnome", "kde")
+    facts["window_manager"] = managed  # a bare X server has none to move the keyboard
+    for how in ("esc", "click") if managed else ("esc",):
+        middle = captions.mapToGlobal(captions.rect().center())
+        given.move(middle.x(), middle.y())  # its strip shows
+        yield pause(1.0)
+        button = captions.buttons["settings"]
+        at = button.mapToGlobal(button.rect().center())
+        given.click(at.x(), at.y())
+        yield wait(lambda: captions.popover is not None and captions.popover.isVisible(),
+                   4, "the settings popover")  # fmt: skip
+        popover = captions.popover
+        opened = popover is not None and popover.isVisible()
+        if how == "esc" and opened:
+            picture(popover, "popover-open", "The settings popover")
+            yield from desk("popover-open")
+        if how == "esc":
+            given.press("esc")
+        else:
+            given.click(*away)
+        yield wait(partial(closed, popover), 4, f"closed by {how}")
+        check(f"the settings popover closes on {'Esc' if how == 'esc' else 'a click elsewhere'}",
+              opened and popover is not None and not popover.isVisible(),
+              f"opened={opened}")  # fmt: skip
+    home.show()
+    yield pause(1.0)
+    (OUT / "unlocking.json").write_text(json.dumps(facts, indent=1), encoding="utf-8")
+
+
 def a_word(window: Any) -> QPointF | None:
     """A word drawn on the caption window, found as a mouse would."""
     for y in range(6, window.height() - 4, 4):
@@ -618,6 +781,8 @@ def tour() -> Step:
     picture(captions, "caption-window", "A caption window with captions")
     yield from desk("captions-and-home")
     yield from desk("captions", home_hidden=True)
+    if REAL["unlocking"]:
+        yield from unlocking()
 
     spot = a_word(captions) if captions is not None else None
     if check("a word on the caption window to look up", spot is not None) and spot:
@@ -858,6 +1023,12 @@ def main(argv: list[str] | None = None) -> int:
         " playing a tone",
     )
     parser.add_argument(
+        "--unlocking",
+        action="store_true",
+        help="Linux (570): the hotkeys, the commands, the unlock spot, the first"
+        " lock and the popover, through the compositor's own input",
+    )
+    parser.add_argument(
         "--credentials",
         default="Polyglotic/tour-550",
         help="with --real-capture: the keyring's entry for the tour's token",
@@ -865,10 +1036,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     REAL["on"] = args.real_capture
     REAL["one_app"] = args.real_capture and args.one_app
+    REAL["unlocking"] = args.unlocking
     REAL["prefix"] = "one-app-" if REAL["one_app"] else ""
+    if args.unlocking:
+        REAL["prefix"] = "unlocking-"
     OUT = args.out
     OUT.mkdir(parents=True, exist_ok=True)
     data = OUT / "data"
+    STATE["data"] = data
     seed_settings(data)
     sample = sample_file("zh")
     if sample is None:

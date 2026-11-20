@@ -442,6 +442,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, press {keys} or rest the mouse on the lock in this corner</source>
+        <translation type="unfinished">Закреплено: щелчки теперь проходят насквозь. Чтобы открепить, нажмите {keys} или задержите мышь на замке в этом углу</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Locked: clicks now pass through. To unlock, rest the mouse on the lock in this corner, or use Home</source>
+        <translation type="unfinished">Закреплено: щелчки теперь проходят насквозь. Чтобы открепить, задержите мышь на замке в этом углу или используйте Главную</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Lock - clicks pass through to what&apos;s underneath, Ctrl+Alt+L</source>
         <translation type="unfinished">Закрепить — щелчки проходят к тому, что под окном, Ctrl+Alt+L</translation>
     </message>
