@@ -1,6 +1,6 @@
 # Linux, proved on GitHub's own Ubuntu runners (polyglotic-hq 546, 550):
 # only on the public Linux copy (a snapshot of a branch, pushed to a
-# `linux-copy*` branch of hughnhugh/polyglotic-linux-spike by 550's
+# `linux-copy` branch of hughnhugh/polyglotic-linux-spike by 550's
 # mirror550.sh), where GitHub's runners are free - never in this private
 # repo, whose runners are the PC's: every job checks the repo is public.
 #
@@ -24,7 +24,7 @@ name: Linux
 on:
   workflow_dispatch:
   push:
-    branches: ["linux-copy", "linux-copy-*"]
+    branches: ["linux-copy"]
 
 permissions:
   contents: read

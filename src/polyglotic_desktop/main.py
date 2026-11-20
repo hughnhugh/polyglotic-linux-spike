@@ -5487,8 +5487,14 @@ def app_capture_line(
     """The log's line on capturing apps one by one (decision 0076):
     Windows' build, whether it was tried, and whether it worked or why not
     - Windows' code, never an app's name. Content-free: it says what the
-    first Windows 10 tester's PC did."""
-    start = f"capturing apps one by one: Windows build {build}, "
+    first Windows 10 tester's PC did. Without a Windows build (a Mac,
+    Linux) it names none: on Linux one app alone isn't there yet (550)."""
+    if not build:
+        start = "capturing apps one by one: "
+        if support is AppCaptureSupport.NO:
+            return start + "not on this OS yet"
+    else:
+        start = f"capturing apps one by one: Windows build {build}, "
     if support is AppCaptureSupport.YES:
         return start + "promised"
     if support is AppCaptureSupport.NO:

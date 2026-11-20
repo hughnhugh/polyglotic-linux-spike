@@ -473,13 +473,23 @@ def a_word(window: Any) -> QPointF | None:
     return None
 
 
-def desk(name: str) -> Step:
+def desk(name: str, home_hidden: bool = False) -> Step:
     """The desktop's own picture of its screen at this moment, where the
     run has a window manager that takes one (POLYGLOTIC_DESK_PICTURES: a
     folder `tools/linux_desktop_pictures.py serve` answers, 550) - asked
-    for, and waited for up to 40 s; never a failed check."""
+    for, and waited for up to 40 s; never a failed check. `home_hidden`:
+    with the main window hidden meanwhile, so what's beneath the caption
+    windows - a full-screen window, focused again - is what shows."""
     folder = os.environ.get("POLYGLOTIC_DESK_PICTURES")
     if not folder:
+        return
+    if home_hidden:
+        home = hub().window
+        home.hide()
+        yield pause(2.0)
+        yield from desk(name)
+        home.show()
+        yield pause(1.0)
         return
     asked = Path(folder)
     (asked / f"{name}.want").write_text("", encoding="utf-8")
@@ -531,7 +541,8 @@ def tour() -> Step:
           f"{len(finished_lines())} finished")  # fmt: skip
     captions = caption_window()
     picture(captions, "caption-window", "A caption window with captions")
-    yield from desk("captions")
+    yield from desk("captions-and-home")
+    yield from desk("captions", home_hidden=True)
 
     spot = a_word(captions) if captions is not None else None
     if check("a word on the caption window to look up", spot is not None) and spot:
@@ -540,7 +551,7 @@ def tour() -> Step:
         yield wait(lambda: card() is not None and card().isVisible(), 10, "the card")
         yield pause(1.5)
         picture(card(), "card", "The lookup card")
-        yield from desk("card")
+        yield from desk("card", home_hidden=True)
         if card() is not None:
             QTest.keyClick(card(), Qt.Key.Key_Escape)
             card().hide()

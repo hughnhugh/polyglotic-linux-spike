@@ -307,3 +307,12 @@ def test_on_linux_homes_note_names_linux_not_windows(
     monkeypatch.setattr(home_module, "on_linux", lambda: True)
     view.follow(Picker(captioned=(SYSTEM_ROW,), whole_system=True, per_app=False))
     assert built.everything_note.text() == LINUX_NOTE
+
+
+def test_the_logs_line_names_no_windows_build_where_there_is_none() -> None:
+    """Linux (and a Mac) has no Windows build: the line said "Windows build ,
+    not tried (Windows before version 2004)" on Linux's first run (550)."""
+    assert app_capture_line(NO, "", False) == (
+        "capturing apps one by one: not on this OS yet"
+    )
+    assert app_capture_line(YES, "", True) == "capturing apps one by one: promised"

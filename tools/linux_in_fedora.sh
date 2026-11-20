@@ -40,10 +40,11 @@ dnf -y -q install --skip-unavailable "${common[@]}" "${more[@]}" > /tmp/dnf.log 
   || { tail -30 /tmp/dnf.log; exit 1; }
 {
   . /etc/os-release; echo "$PRETTY_NAME, kernel $(uname -r)"
-  rpm -q mutter kwin xorg-x11-server-Xwayland pipewire wireplumber gnome-keyring 2>/dev/null | grep -v "not installed"
+  # rpm -q fails for the desktop not installed here: said, not a failure
+  rpm -q mutter kwin kf6-kwallet xorg-x11-server-Xwayland pipewire wireplumber gnome-keyring     2>/dev/null | grep -v "not installed" || true
 } | tee /out/versions.txt
 export UV_PROJECT_ENVIRONMENT=/tmp/venv UV_PYTHON=3.12.15 UV_PYTHON_PREFERENCE=only-managed
-uv sync --locked -q
+uv sync --locked > /out/uv-sync.log 2>&1 || { tail -30 /out/uv-sync.log; exit 1; }
 # KDE's own keyring: does it take the app's plain session? (550) - in a
 # session of its own, without gnome-keyring; nobody answers its password box
 if [ "$desktop" = kde ]; then
