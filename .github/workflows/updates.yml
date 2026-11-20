@@ -30,6 +30,10 @@ jobs:
       - name: libxcb-cursor0 and linkage on a clean ubuntu:24.04
         if: always()
         run: docker run --rm -e GITHUB_ACTIONS -v "$PWD:/w" -w /w ubuntu:24.04 bash updates/linkage_in_2404.sh
+      - name: vpk inside a bare ubuntu:22.04
+        if: always()
+        continue-on-error: true
+        run: docker run --rm -e GITHUB_ACTIONS -v "$PWD:/w" -w /w ubuntu:22.04 bash updates/vpk_in_2204.sh
       - name: Fedora (linkage only)
         if: always()
         continue-on-error: true

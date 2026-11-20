@@ -12,7 +12,7 @@ exec > >(tee -a "$log") 2>&1
 b=/w/build/1.0.0/toy547
 grep -E '^PRETTY_NAME=' /etc/os-release
 apt-get update -qq
-apt-get install -y -qq --no-install-recommends xvfb xauth curl ca-certificates apt-file > /dev/null
+apt-get install -y -qq --no-install-recommends xvfb xauth curl ca-certificates apt-file fonts-dejavu-core > /dev/null
 echo "== libxcb-cursor0 here? $(dpkg -s libxcb-cursor0 > /dev/null 2>&1 && echo yes || echo no)"
 
 echo "== Ubuntu 24.04 desktop's manifest"
@@ -26,7 +26,7 @@ done
 
 echo "== sonames the bundle needs that this container (with Xvfb) lacks"
 find "$b" -type f \( -name '*.so*' -o -name toy547 \) -print0 \
-  | xargs -0 -n 50 ldd 2>/dev/null | grep 'not found' | awk '{print $1}' | sort -u > /tmp/missing
+  | LD_LIBRARY_PATH="$b/_internal" xargs -0 -n 50 ldd 2>/dev/null | grep 'not found' | awk '{print $1}' | sort -u > /tmp/missing
 cat /tmp/missing
 apt-file update > /dev/null 2>&1
 : > /tmp/pkgs
@@ -43,7 +43,7 @@ sort -u /tmp/pkgs | xargs -r apt-get install -y -qq --no-install-recommends > /d
 echo "libxcb-cursor0 here? $(dpkg -s libxcb-cursor0 > /dev/null 2>&1 && echo yes || echo no)"
 echo "still missing:"
 find "$b" -type f \( -name '*.so*' -o -name toy547 \) -print0 \
-  | xargs -0 -n 50 ldd 2>/dev/null | grep 'not found' | awk '{print $1}' | sort -u
+  | LD_LIBRARY_PATH="$b/_internal" xargs -0 -n 50 ldd 2>/dev/null | grep 'not found' | awk '{print $1}' | sort -u
 
 Xvfb :98 -screen 0 1024x768x24 > /dev/null 2>&1 &
 sleep 2

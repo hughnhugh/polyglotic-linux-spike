@@ -4,7 +4,8 @@ Runs Velopack's hooks first, notes where it runs from (the AppImage, its
 mount and the mount's type, the processes that started it) as one JSON line
 in a marker file, then either:
 - `--update FEED`: looks in the local folder FEED, downloads and applies the
-  update, restarting into it (Velopack's own apply-and-restart); or
+  update, restarting into it (Velopack's own apply-and-restart);
+- `--check FEED`: only looks; or
 - shows a small Qt window for about a second and quits.
 """
 
@@ -86,7 +87,7 @@ def manager(feed: str) -> velopack.UpdateManager:
             AllowVersionDowngrade=False, MaximumDeltasBeforeFallback=10, ExplicitChannel=None))
 
 
-def update(feed: str) -> int:
+def update(feed: str, check_only: bool = False) -> int:
     try:
         um = manager(feed)
         try:
@@ -99,6 +100,8 @@ def update(feed: str) -> int:
             note("no-update")
             return 0
         note("found", info=repr(info)[:600])
+        if check_only:
+            return 0
         um.download_updates(info)
         note("downloaded")
         note("applying")
@@ -113,6 +116,7 @@ def update(feed: str) -> int:
 
 def window() -> int:
     from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QFontDatabase, QFontInfo
     from PySide6.QtWidgets import QApplication, QLabel
 
     app = QApplication(sys.argv)
@@ -121,7 +125,12 @@ def window() -> int:
     label.show()
     QTimer.singleShot(1200, app.quit)
     app.exec()
-    note("window", platform=app.platformName())
+    note(
+        "window",
+        platform=app.platformName(),
+        font=QFontInfo(app.font()).family(),
+        font_families=len(QFontDatabase.families()),
+    )
     return 0
 
 
@@ -142,6 +151,8 @@ def main() -> int:
     args = sys.argv[1:]
     if "--update" in args:
         return update(args[args.index("--update") + 1])
+    if "--check" in args:
+        return update(args[args.index("--check") + 1], check_only=True)
     return window()
 
 
