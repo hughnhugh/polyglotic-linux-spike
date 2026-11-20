@@ -57,7 +57,10 @@ env:
         running = []
         for part, args in enumerate(parts):
             name = f"junit-{shard}" if flat else f"junit-{shard}-{part}"
-            report = [f"--junitxml=out/{name}.xml", "-o", "junit_family=xunit1",
+            # each process its own temporary folder: side by side, pytest's
+            # shared numbered one lost a test's file to another's clean-up (565)
+            base = os.path.join(os.environ.get("RUNNER_TEMP", "."), f"pytest-{shard}-{part}")
+            report = [f"--basetemp={base}", f"--junitxml=out/{name}.xml", "-o", "junit_family=xunit1",
                       "-o", "junit_logging=all", "-o", "junit_log_passing_tests=False"]
             command = [shutil.which("pytest") or "pytest", "-p", "no:cacheprovider", *report,
                        *plan["common"], *args]
