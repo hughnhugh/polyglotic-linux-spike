@@ -12,3 +12,4 @@ code=$?
 kill "$beneath" 2>/dev/null
 cat "$out/probe.json" 2>/dev/null || tail -40 "$out/probe.out"
 exit $code
+# run 2
