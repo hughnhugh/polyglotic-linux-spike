@@ -11,7 +11,7 @@ mkdir -p /w/out /w/build
 exec > >(tee -a "$log") 2>&1
 echo "== the build image"
 grep -E '^(PRETTY_NAME|VERSION_ID)=' /etc/os-release
-ldd --version | head -1
+ldd --version | sed -n 1p
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends ca-certificates curl binutils python3-pip \
   libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
