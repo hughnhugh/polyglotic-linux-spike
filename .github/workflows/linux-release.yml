@@ -4,7 +4,8 @@
 # public Linux copy (a snapshot pushed to hughnhugh/polyglotic-linux-spike),
 # where GitHub's runners are free: every job checks the repo is public. The
 # release script (polyglotic-hq's publish-alpha.sh, `linux-check`) starts it
-# by hand on a snapshot of what's being released, waits, and stops on red.
+# by pushing a snapshot of what's being released to a `linux-release-X.Y.Z`
+# branch - X.Y.Z the version it's built as - waits, and stops on red.
 #
 # - build: the app built and packed in ubuntu:22.04 as two versions, 0.0.1
 #   and VERSION, from one build (tools/package/linux_build.sh), kept a day as
@@ -42,7 +43,7 @@ on:
         description: The version the build is stamped and packed as (the second of the two)
         default: "0.0.2"
   push:
-    branches: ["linux-copy-574*"]
+    branches: ["linux-copy-574*", "linux-release-*"]
 
 permissions:
   contents: read
@@ -56,7 +57,6 @@ defaults:
     shell: bash  # -e and pipefail: a red step under a tee is red
 
 env:
-  VERSION: ${{ inputs.version || '0.0.2' }}
   CHANNEL: linux-x64-alpha
   UV_PYTHON: "3.12.15"
   UV_PYTHON_PREFERENCE: only-managed
@@ -69,7 +69,22 @@ jobs:
     timeout-minutes: 60
     env:
       OUT: build/linux
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
+      - name: The version - asked for by hand, or the release branch's (linux-release-X.Y.Z), or 0.0.2
+        id: version
+        env:
+          ASKED: ${{ inputs.version }}
+        run: |
+          v="$ASKED"
+          case "$GITHUB_REF_NAME" in linux-release-*) v="${v:-${GITHUB_REF_NAME#linux-release-}}" ;; esac
+          v="${v:-0.0.2}"
+          case "$v" in *[!0-9.]*|"") echo "not a version: $v"; exit 1 ;; esac
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          echo "Built as $v (and 0.0.1, to update from)" >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -120,6 +135,7 @@ jobs:
     timeout-minutes: 45
     env:
       OUT: out/package
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -270,6 +286,7 @@ jobs:
     env:
       OUT: ${{ github.workspace }}/out
       POLYGLOTIC_LINUX_DESKTOP: "1"
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
