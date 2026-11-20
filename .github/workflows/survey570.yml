@@ -1,0 +1,67 @@
+# 570: the desktops' own shortcuts and portals, read from their packages
+# (polyglotic-hq 570, a one-off survey; only on the public Linux copy).
+name: Survey 570
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: ${{ matrix.name }}
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu2404
+            image: ""
+          - name: ubuntu2604
+            image: ubuntu:26.04
+          - name: debian13
+            image: debian:13
+          - name: fedora45
+            image: fedora:45
+          - name: arch
+            image: archlinux:latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read the defaults
+        run: |
+          if [ -z "${{ matrix.image }}" ]; then
+            bash probe570/shortcuts.sh ${{ matrix.name }} out
+          else
+            docker run --rm -v "$PWD:/w" -w /w ${{ matrix.image }} bash probe570/shortcuts.sh ${{ matrix.name }} /w/out
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: survey570-${{ matrix.name }}
+          path: out
+          retention-days: 1
+
+  kde:
+    name: KWin's own shortcuts (Fedora 45, Plasma 6)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: KWin, headless, and kglobalaccel's list
+        run: |
+          sudo modprobe vgem && sudo modprobe vkms
+          docker run --rm --device /dev/dri -v "$PWD:/w" -w /w fedora:45 bash probe570/kde_live.sh /w/out
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: survey570-kde
+          path: out
+          retention-days: 1
