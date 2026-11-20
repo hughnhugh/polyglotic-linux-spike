@@ -29,12 +29,14 @@ if [ -z "${IN_SESSION_571:-}" ]; then
   apt-get update -qq > /dev/null
   apt-get install -y -qq --no-install-recommends \
     ca-certificates xvfb xdotool dbus dbus-bin dbus-daemon \
-    ibus ibus-libpinyin ibus-anthy ibus-mozc mozc-server \
+    ibus ibus-libpinyin ibus-mozc mozc-server \
     fcitx5 fcitx5-chinese-addons fcitx5-modules \
     libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
     libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
     libegl1 libgl1 libfontconfig1 libdbus-1-3 libglib2.0-0t64 fonts-noto-core fonts-noto-cjk \
     > "$out/apt.log" 2>&1 || { tail -20 "$out/apt.log"; exit 1; }
+  # Anthy, where the archive has it (24.04's doesn't): Mozc is Ubuntu's own
+  apt-get install -y -qq --no-install-recommends ibus-anthy >> "$out/apt.log" 2>&1 || true
   dbus-uuidgen --ensure=/etc/machine-id
   dpkg-query -W -f='${Package} ${Version}\n' ibus ibus-libpinyin ibus-anthy ibus-mozc \
     fcitx5 fcitx5-chinese-addons xdotool | tee "$out/versions.txt"
@@ -103,6 +105,8 @@ PROFILE
   # app doesn't carry - a finding, not this run's failure
   QT_IM_MODULE=fcitx uv run --no-sync python -m tools.linux_typing_check \
     "$out/fcitx5-own-plugin" fcitx5-own-plugin || true
+  # and with IBus's plugin named after Fcitx's, Qt trying each in turn
+  QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" uv run --no-sync python -m tools.linux_typing_check     "$out/fcitx5-fallback" fcitx5-fallback || true
   ;;
 *) echo "ibus or fcitx5"; code=2 ;;
 esac

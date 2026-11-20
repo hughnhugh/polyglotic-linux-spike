@@ -4,7 +4,7 @@ runner, on X11, inside a session where an input method framework runs -
 IBus with a pinyin and a Japanese engine, or Fcitx5 with pinyin - and Qt
 reads it through its input method plugin (`QT_IM_MODULE`).
 
-    python -m tools.linux_typing_check OUT ibus|ibus-unnamed|fcitx5|fcitx5-own-plugin
+    python -m tools.linux_typing_check OUT ibus|ibus-unnamed|fcitx5|fcitx5-own-plugin|fcitx5-fallback
 
 Shows the app's Words page, as the UI lab builds it (made-up words), in a
 real window; puts the keyboard in its search box; sets the engine; and
@@ -18,6 +18,8 @@ keyboard does - then reads what the box holds:
   its IBus frontend;
 - `fcitx5-own-plugin`: the same with `QT_IM_MODULE=fcitx`, as Kubuntu sets
   it: what a learner there gets without the app's help;
+- `fcitx5-fallback`: Kubuntu's setting with IBus's plugin named after it
+  (`QT_IM_MODULES="fcitx;ibus"`, Qt 6.7's list of plugins to try);
 - `ibus-unnamed`: IBus's pinyin with no `QT_IM_MODULE` at all, as a session
   that names none: what Qt picks by itself.
 
@@ -88,7 +90,7 @@ CASES: dict[str, tuple[Case, ...]] = {
         ),
     ),
 }
-CASES["fcitx5-own-plugin"] = CASES["fcitx5"]
+CASES["fcitx5-own-plugin"] = CASES["fcitx5-fallback"] = CASES["fcitx5"]
 CASES["ibus-unnamed"] = CASES["ibus"][:1]
 
 RESULTS: dict[str, Any] = {"checks": [], "facts": {}, "pictures": []}

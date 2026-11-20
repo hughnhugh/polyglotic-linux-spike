@@ -63,6 +63,7 @@ jobs:
         if: ${{ always() }}
         run: |
           for found in "$OUT"/*-session/*/checks.json; do
+            [ -f "$found" ] || continue
             echo "### $found" | tee -a "$GITHUB_STEP_SUMMARY"
             python3 -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'], ensure_ascii=False)[:1500])" "$found" | tee -a "$GITHUB_STEP_SUMMARY"
           done
