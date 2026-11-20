@@ -5,7 +5,7 @@
 - **Decided by:** Claude (polyglotic-hq 570, 546's slice 3), from runs on
   GitHub's runners; Ctrl+Alt+Shift agreed by Claude (the coordinator) on
   2026-11-20. Reversible inside `platform/linux/hotkeys.py` and
-  `ui/app.py`'s one line.
+  `core.listening.hotkeys.OWN_MODIFIERS`.
 
 ## Situation
 
@@ -42,11 +42,14 @@ and KDE have the GlobalShortcuts portal; GNOME 46 doesn't.
   desktop's own keyboard settings (polyglotic-hq 570's second pull
   request). The GlobalShortcuts portal for GNOME 48+ is its own step
   (polyglotic-hq 570's report).
-- **Linux's keys are Ctrl+Alt+Shift with L, P and H**: one set for every
-  desktop, free on all seven checked. The menus, Help and the caption
-  windows write them so (`hotkeys_here`).
-- `X11Hotkeys` takes a kept combination too ("ctrl+alt+j", "f9"), for the
-  hotkeys the learner sets (polyglotic-hq 567).
+- **Linux's own keys are Ctrl+Alt+Shift with the letter** (L, P, H and
+  567's Back to live, J): one set for every desktop, free on all seven
+  checked (`core.listening.hotkeys.OWN_MODIFIERS[Platform.LINUX]`, told by
+  `os_words.platform`). Help and the caption windows write them so
+  (`hotkeys_here`); the learner can change each in Settings > Hotkeys
+  (567, decision 0273).
+- `X11Hotkeys` grabs the combinations as the settings keep them
+  ("ctrl+alt+shift+l", "f9").
 
 ## Why
 
@@ -69,6 +72,6 @@ and KDE have the GlobalShortcuts portal; GNOME 46 doesn't.
 
 ## How we'd reverse it
 
-`LINUX_MODIFIERS` and `ui/app.py`'s Linux line (and `hotkeys_here`'s Linux
-case) for the keys; `grab_works_here` for where the grab is used; a
+`OWN_MODIFIERS[Platform.LINUX]` (and `hotkeys_here`'s Linux case) for
+the keys; `grab_works_here` for where the grab is used; a
 `portal.py` beside `hotkeys.py` for the portal. An hour or two each.

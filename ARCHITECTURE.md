@@ -156,6 +156,7 @@ src/polyglotic_desktop/
       capture.py       everything the PC plays (the default or chosen output's monitor, by name) and the mic (never an output's monitor: no microphone then), following the server's changes and reconnecting; one app at a time not yet (`app_capture_support` no)
       devices.py       outputs and mics by the server's names, and its defaults; how many outputs play
       on_top.py        the caption windows, popovers and cards above everything as override-redirect windows (`ui_next.above_all`), their order kept by hand: the windows given, then the app's other override-redirect windows above them
+      hotkeys.py       the hotkeys: X11's key grab (libxcb by ctypes, a connection of its own) of the kept combinations, where the session hands an X11 app every key (an Xorg session, Plasma 6); none on GNOME's Wayland session (decision 0276)
       not_yet.py       what the first Linux build hasn't got, each saying so through its port: one app at a time, hotkeys, dictation, Esc and clicks read, the sample aloud
   connection/        talks to the server: WebSocket, handshake, speech out, captions in
     protocol.py        protocol v1's messages as pydantic models; the speech frame (decision 0011)
@@ -235,7 +236,7 @@ src/polyglotic_desktop/
     preset_popover.py  the bar's preset chip's dropdown (556): Preset (one), Show (one), Add (several), Customise presets…; a SettingsPopover, so it never takes the focus
     presets_card.py    Settings > Presets: the presets to use, New preset, and the one in use to rename, reset or delete, with what it changes in words (556)
     caption_set_up.py  the first caption window on a PC asks its three language choices in it, once, never blocking: the settings popover's rows over the window, Start captions (465, decision 0217)
-    unlock_spot.py     a locked caption window's Unlock: resting the mouse on its corner's lock for about a second shows a button there that takes the click the locked window passes through (polyglotic-hq 398)
+    unlock_spot.py     a locked caption window's Unlock: resting the mouse on its corner's lock for about a second shows a button there that takes the click the locked window passes through (polyglotic-hq 398); on a Wayland desktop its corner is a window of its own that keeps the mouse, Unlock shown as the mouse arrives, for 3 s (decision 0277)
     joined_window.py   W1j, the joined window: the apps' caption windows as its columns, side by side, equal widths or as the dividers were dragged (284); one place, lock, notice line and fade for the whole window (109's 2a, 10.6)
     caption_windows.py the caption windows, one per app captioned (at most 3): captions to each, their choices saved, what they ask of the session; joined and separated
     caption_selection.py a caption window's selection (358, decision 0150): the captions as shown, the place under the mouse, where the held words are drawn; kept until a click elsewhere or Esc, copied by a right-click or Ctrl+C, never taking the keyboard

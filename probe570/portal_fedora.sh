@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 570: GNOME Shell 51, headless, in fedora:45 - the GlobalShortcuts portal
-# as an app that isn't a Flatpak reaches it (probe570/portal.py). Run 4: GLib finds an app only if its Exec is there; the portals' own logs.
+# as an app that isn't a Flatpak reaches it (probe570/portal.py). Run 5 (GTK told Wayland, the shell given longer): GLib finds an app only if its Exec is there; the portals' own logs.
 set -uo pipefail
 out="$(realpath -m "${1:?OUT}")"
 if [ -z "${IN_FEDORA_570:-}" ]; then
@@ -9,7 +9,7 @@ if [ -z "${IN_FEDORA_570:-}" ]; then
     -v "$root:/w" -v "$out:/out" -v "$(command -v uv):/usr/local/bin/uv:ro" -w /w fedora:45 \
     bash /w/probe570/portal_fedora.sh /out
 fi
-dnf -y -q install --skip-unavailable gnome-shell mutter xdg-desktop-portal xdg-desktop-portal-gnome \
+dnf -y -q install --skip-unavailable gnome-shell mutter gtk4 adwaita-icon-theme gsettings-desktop-schemas xdg-desktop-portal xdg-desktop-portal-gnome \
   xorg-x11-server-Xwayland pipewire wireplumber pipewire-gstreamer gstreamer1 gstreamer1-plugins-base \
   gstreamer1-plugins-good dbus-daemon dbus-tools mesa-dri-drivers mesa-libEGL mesa-libGL \
   xcb-util-cursor xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil libxkbcommon-x11 \
@@ -36,7 +36,8 @@ dbus-run-session -- bash -c '
   for _ in $(seq 60); do [ -S "$XDG_RUNTIME_DIR/wayland-570" ] && break; sleep 0.5; done
   sleep 6
   # the portals started by hand, saying what they do (run 4)
-  G_MESSAGES_DEBUG=all /usr/libexec/xdg-desktop-portal-gnome --verbose > /out/xdp-gnome.log 2>&1 &
+  sleep 10
+  GDK_BACKEND=wayland G_MESSAGES_DEBUG=all /usr/libexec/xdg-desktop-portal-gnome --verbose > /out/xdp-gnome.log 2>&1 &
   sleep 2
   G_MESSAGES_DEBUG=all /usr/libexec/xdg-desktop-portal --verbose > /out/xdp.log 2>&1 &
   sleep 3
