@@ -4,13 +4,20 @@ another process - the app's own widgets, found by their names, with nothing
 of the tour inside the app. Qt serves AT-SPI when the app is started with
 `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`.
 
-    /usr/bin/python3 tools/linux_atspi_press.py NAME [NAME...]
+    /usr/bin/python3 tools/linux_atspi_press.py STEP [STEP...]
 
-Each NAME is pressed in turn: the first button (or menu item, or page tab)
-of the app named Polyglotic whose accessible name is NAME. Says what it
-pressed, one JSON line each; exits 1 if a name wasn't found. A press that
-opens something modal (a file dialog) gets no answer until it closes: that
-counts as pressed.
+Each STEP is pressed in turn, in the app named Polyglotic: the button (or
+menu item, or tab) whose accessible name is the STEP's - one on screen
+first, else any. A STEP may be:
+- `A || B`: whichever of the names is on screen (a window folds a button
+  into a "More" menu when it's narrow);
+- `menu:NAME`: a menu's item only;
+- `?STEP`: pressed only if it's on screen within a few seconds; no fail
+  if it isn't.
+
+Says what it pressed, one JSON line a step; exits 1 if a step that isn't
+`?` found nothing. A press that opens something modal (a menu, a file
+dialog) gets no answer until it closes: that counts as pressed.
 
 The system's Python with the distribution's pyatspi (`python3-pyatspi`), not
 the app's environment: GitHub's runners only (`tools/linux_packed_tour.py`).
@@ -23,7 +30,15 @@ import sys
 import time
 from typing import Any
 
-PRESSABLE = {"push button", "toggle button", "menu item", "page tab", "list item"}
+PRESSABLE = {
+    "push button",
+    "button",  # newer AT-SPI's name for it (Fedora 45's at-spi2-core)
+    "toggle button",
+    "radio button",
+    "menu item",
+    "page tab",
+    "list item",
+}
 VERBS = ("press", "click", "activate", "toggle")
 
 
@@ -34,44 +49,68 @@ def apps(atspi: Any) -> list[Any]:
     ]
 
 
-def find(node: Any, name: str, depth: int = 0) -> Any:
+def found(
+    atspi: Any, node: Any, names: list[str], roles: set[str], depth: int = 0
+) -> list[tuple[Any, bool]]:
+    """Every node under `node` named one of `names` in one of `roles`, with
+    whether it's on screen."""
     if node is None or depth > 60:
-        return None
+        return []
+    out: list[tuple[Any, bool]] = []
     try:
-        if (node.name or "") == name and node.getRoleName() in PRESSABLE:
-            return node
+        if (node.name or "") in names and node.getRoleName() in roles:
+            showing = node.getState().contains(atspi.STATE_SHOWING)
+            out.append((node, bool(showing)))
         for child in node:
-            found = find(child, name, depth + 1)
-            if found is not None:
-                return found
+            out += found(atspi, child, names, roles, depth + 1)
     except Exception:  # noqa: BLE001 - a node gone while it was read
-        return None
-    return None
+        return out
+    return out
 
 
-def press(atspi: Any, name: str, seconds: float = 30.0) -> dict[str, Any]:
-    end = time.monotonic() + seconds
+def press(atspi: Any, step: str) -> dict[str, Any]:
+    optional = step.startswith("?")
+    step = step.lstrip("?")
+    roles = PRESSABLE
+    if step.startswith("menu:"):
+        roles, step = {"menu item"}, step[len("menu:") :]
+    names = [n.strip() for n in step.split("||")]
+    end = time.monotonic() + (8.0 if optional else 30.0)
     while time.monotonic() < end:
-        for app in apps(atspi):
-            node = find(app, name)
-            if node is None:
-                continue
+        nodes = [m for a in apps(atspi) for m in found(atspi, a, names, roles)]
+        shown = [n for n, showing in nodes if showing]
+        node = shown[0] if shown else (nodes[0][0] if nodes and not optional else None)
+        if node is not None:
             action = node.queryAction()
-            names = [action.getName(i) for i in range(action.nActions)]
-            which = next((i for i, n in enumerate(names) if n.lower() in VERBS), 0)
+            verbs = [action.getName(i) for i in range(action.nActions)]
+            which = next((i for i, v in enumerate(verbs) if v.lower() in VERBS), 0)
             answered = True
             try:
                 action.doAction(which)
             except Exception:  # noqa: BLE001 - modal: no answer until it closes
                 answered = False
             return {
-                "pressed": name,
+                "pressed": node.name,
                 "role": node.getRoleName(),
-                "action": names[which] if names else None,
+                "on_screen": bool(shown),
                 "answered": answered,
             }
         time.sleep(1)
-    return {"pressed": None, "wanted": name, "apps": [a.name for a in apps(atspi)]}
+    seen = sorted({n.getRoleName() for a in apps(atspi) for n in walk(a)})[:40]
+    return {"pressed": None, "wanted": step, "optional": optional, "roles_seen": seen}
+
+
+def walk(node: Any, depth: int = 0) -> list[Any]:
+    """Every node under `node` (for saying what roles there were)."""
+    if node is None or depth > 60:
+        return []
+    out = [node]
+    try:
+        for child in node:
+            out += walk(child, depth + 1)
+    except Exception:  # noqa: BLE001 - a node gone while it was read
+        return out
+    return out
 
 
 def main() -> int:
@@ -79,10 +118,10 @@ def main() -> int:
         sys.exit("574: this runs only on GitHub's Linux runners")
     atspi = importlib.import_module("pyatspi")
     failed = False
-    for name in sys.argv[1:]:
-        said = press(atspi, name)
+    for step in sys.argv[1:]:
+        said = press(atspi, step)
         print(json.dumps(said, ensure_ascii=False), flush=True)
-        failed = failed or said.get("pressed") is None
+        failed = failed or (said["pressed"] is None and not said.get("optional"))
         time.sleep(2)
     return 1 if failed else 0
 

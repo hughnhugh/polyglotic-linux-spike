@@ -328,6 +328,19 @@ def x_windows() -> list[dict[str, Any]]:
     return list(reversed(found))
 
 
+def window_class(number: str) -> str:
+    """An X window's WM_CLASS: whose program drew it (the app's is
+    Polyglotic; GTK's portal's, xdg-desktop-portal-gtk)."""
+    said = subprocess.run(
+        ["xprop", "-id", number, "WM_CLASS"],
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    ).stdout
+    return said.partition("=")[2].strip()
+
+
 def caption_window(windows: list[dict[str, Any]]) -> dict[str, Any] | None:
     shown = [w for w in windows if w["shown"] and w["name"].endswith(" captions")]
     return shown[-1] if shown else None
@@ -709,14 +722,18 @@ def the_dialogs(
     press = Path(__file__).with_name("linux_atspi_press.py")
     try:
         for name, buttons, title in (
-            (
+            (  # a narrow transcript window folds Save into its "More" menu
                 "save-transcript",
-                ["Transcript", "Save transcript as…"],
+                [
+                    "Transcript",
+                    "Save transcript as… || More: Copy all, Save transcript as…",
+                    "?menu:Save transcript as…",
+                ],
                 "Save transcript",
             ),
             (
                 "anki-export",
-                ["Words", "Anki deck file (.apkg)"],
+                ["?Words", "Anki deck file (.apkg)"],
                 "Export words as an Anki deck file",
             ),
         ):
@@ -739,13 +756,22 @@ def the_dialogs(
                 wanted = f'"{title}"'
                 asked = wait(lambda: wanted in said() and "SaveFile" in said(), 30)  # noqa: B023
                 time.sleep(3)  # drawn
-                qts_own = [w for w in x_windows() if w["shown"] and w["name"] == title]
+                drawn = {
+                    w["id"]: window_class(w["id"])
+                    for w in x_windows()
+                    if w["shown"] and w["name"] == title
+                }
+                RESULTS["facts"][f"{name}_dialog_windows"] = drawn
                 check(
                     f"{title}: the desktop's own dialog (the portal's SaveFile)",
                     asked,
                     (pressed.stdout + pressed.stderr)[-300:],
                 )
-                check(f"{title}: not Qt's own dialog in the app", not qts_own, qts_own)
+                check(
+                    f"{title}: drawn by the portal's process, not the app",
+                    not any("polyglotic" in c.lower() for c in drawn.values()),
+                    drawn or "a Wayland window (not in X's list)",
+                )
                 pictures.take(f"{name}-dialog")
             finally:
                 packed.end()

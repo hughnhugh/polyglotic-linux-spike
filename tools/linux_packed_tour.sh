@@ -75,16 +75,15 @@ if [ -n "${IN_FEDORA_574:-}" ] && [ -z "${IN_SESSION_574:-}" ]; then  # once: no
     dbus-daemon dbus-tools dbus-x11 mesa-dri-drivers mesa-libEGL mesa-libGL libglvnd-egl xcb-util-cursor \
     xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil libxkbcommon-x11 \
     libwayland-client libwayland-cursor libwayland-egl fontconfig google-noto-sans-fonts \
-    google-noto-sans-cjk-vf-fonts findutils procps-ng glib2 desktop-file-utils xwininfo \
+    google-noto-sans-cjk-vf-fonts findutils procps-ng glib2 desktop-file-utils xwininfo xprop \
     fuse3 fuse3-libs openssl ca-certificates xdg-desktop-portal xdg-desktop-portal-gtk \
-    at-spi2-core python3-pyatspi gsettings-desktop-schemas libcap > /tmp/dnf.log 2>&1 \
+    at-spi2-core python3-pyatspi gsettings-desktop-schemas > /tmp/dnf.log 2>&1 \
     || { tail -30 /tmp/dnf.log; exit 1; }
   echo "574: $(date +%T) Fedora's packages in"
   rpm -q mutter kwin plasma-workspace fuse3 gnome-keyring xdg-desktop-portal-kde 2>/dev/null | grep -v "not installed" | tee "$here/versions.txt"
-  # gnome-keyring-daemon drops the capabilities its file was given, and in
-  # a container that fails ("error dropping process capabilities", run
-  # 44740277748) - a desktop's own install keeps them; here, none to drop
-  setcap -r "$(command -v gnome-keyring-daemon)" 2> /dev/null || true
+  # (gnome-keyring-daemon aborts here: "error dropping process
+  # capabilities" - so Fedora's tours keep the token in the app's own file,
+  # and the Secret Service is Ubuntu's tours' (runs 44740277748, 44741788128))
   cp /out/tls/root.crt /etc/pki/ca-trust/source/anchors/polyglotic-574-stand-in.crt
   update-ca-trust
   export UV_PROJECT_ENVIRONMENT=/tmp/venv UV_PYTHON=3.12.15 UV_PYTHON_PREFERENCE=only-managed
@@ -149,6 +148,12 @@ ubuntu)  # Ubuntu's GNOME: the shell itself, headless, with Ubuntu's AppIndicato
   auth="$(ls "$XDG_RUNTIME_DIR"/.mutter-Xwaylandauth.* 2>/dev/null | head -1 || true)"
   [ -n "$auth" ] && export XAUTHORITY="$auth"
   echo "GNOME Shell: $(gnome-shell --version 2>&1 | head -1)" >> "$here/versions.txt"
+  # the shell starts in its Overview, which hides the windows' own places
+  # (run 44741788128): out of it, as a session is once its learner starts
+  sleep 3
+  gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
+    --method org.freedesktop.DBus.Properties.Set org.gnome.Shell OverviewActive '<false>' \
+    > "$here/overview.log" 2>&1 || true
   tray=yes scheme=light dialogs=(--dialogs)
   ;;
 esac
