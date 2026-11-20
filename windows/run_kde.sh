@@ -22,30 +22,29 @@ if [ -z "${IN_SESSION_547:-}" ]; then
   export XDG_RUNTIME_DIR=/tmp/xdg; mkdir -p -m 700 "$XDG_RUNTIME_DIR"
   export KWIN_SCREENSHOT_NO_PERMISSION_CHECKS=1 KWIN_WAYLAND_NO_PERMISSION_CHECKS=1
   export QT_LOGGING_RULES="kwin_scripting.debug=true;js.debug=true;qml.debug=true;kwin_xwl.debug=true"
-  export IN_SESSION_547=1 OUT_547=/out
+  export IN_SESSION_547=1 OUT_547=/out QT_FORCE_STDERR_LOGGING=1
   {
     echo "os: $(. /etc/os-release; echo "$PRETTY_NAME")"
     echo "kwin: $(rpm -q kwin)"
     echo "xwayland: $(rpm -q xorg-x11-server-Xwayland)"
     echo "pyside6: $(/venv/bin/python -c 'import PySide6; print(PySide6.__version__)')"
   } | tee /out/versions.txt
-  # No GPU on the runner: first Mesa's software OpenGL, then KWin's QPainter compositing.
-  status=1
-  for mode in software qpainter; do
-    export KWIN_LOG="/out/kwin-$mode.log"
-    if [ "$mode" = software ]; then export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe; else export KWIN_COMPOSE=Q; fi
-    echo "kwin mode: $mode" | tee -a /out/versions.txt
-    status=0
-    timeout 540 dbus-run-session -- kwin_wayland --virtual --xwayland --no-lockscreen --no-global-shortcuts       --width=1280 --height=720 --socket=wayland-547 --exit-with-session=/w/windows/run_kde.sh       > "$KWIN_LOG" 2>&1 || status=$?
-    echo "kwin ($mode) ended: $status"
-    grep -v '^\s*$' "$KWIN_LOG" | grep -v -E 'STACK547|js:' | tail -12 || true
-    [ -f /out/results.json ] && break
-  done
-  exit "$status"
+  exec dbus-run-session -- bash /w/windows/run_kde.sh /out
 fi
-# here inside KWin's session: KWin set DISPLAY, WAYLAND_DISPLAY and XAUTHORITY
+# inside the session's D-Bus: KWin in the background (its --exit-with-session
+# never started the session program here: XWayland starts on demand, 547 run 5)
+export KWIN_LOG=/out/kwin.log
+kwin_wayland --virtual --xwayland --width=1280 --height=720 --socket=wayland-547 > "$KWIN_LOG" 2>&1 &
+kw=$!
+trap 'kill "$kw" 2>/dev/null || true' EXIT
+for _ in $(seq 60); do [ -S "$XDG_RUNTIME_DIR/wayland-547" ] && break; sleep 0.5; done
+[ -S "$XDG_RUNTIME_DIR/wayland-547" ] || { echo "KWin didn't start"; tail -20 "$KWIN_LOG"; exit 1; }
+export WAYLAND_DISPLAY=wayland-547 DISPLAY=:0
+auth="$(ls "$XDG_RUNTIME_DIR"/xauth_* 2>/dev/null | head -1 || true)"
+[ -n "$auth" ] && export XAUTHORITY="$auth"
 echo "DISPLAY=${DISPLAY:-} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-} XAUTHORITY=${XAUTHORITY:-none}" >> "$OUT_547/versions.txt"
 sleep 2
 xdpyinfo 2>&1 | grep -E 'vendor string|version number|dimensions' >> "$OUT_547/versions.txt" || true
 cd /w/windows
-timeout 420 /venv/bin/python -u harness.py kde "$OUT_547" > "$OUT_547/harness.log" 2>&1
+timeout 480 /venv/bin/python -u harness.py kde "$OUT_547" 2>&1 | tee "$OUT_547/harness.log" | grep -E "^---|^\|" || true
+echo "kwin log: $(wc -l < "$KWIN_LOG") lines"; grep -c STACK547 "$KWIN_LOG" || true
