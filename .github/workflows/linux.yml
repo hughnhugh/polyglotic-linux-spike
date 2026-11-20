@@ -162,6 +162,7 @@ jobs:
           path: |
             ${{ env.OUT }}/versions.txt
             ${{ env.OUT }}/keyring-*.json
+            ${{ env.OUT }}/one-app-isolation.json
             ${{ env.OUT }}/tour/*.png
             ${{ env.OUT }}/tour/checks.json
             ${{ env.OUT }}/tour/data/logs/*.log

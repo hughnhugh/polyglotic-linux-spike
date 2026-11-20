@@ -5,6 +5,7 @@ monitor, everything else's - and how it follows the sound server's
 changes, through a stand-in server. The real one is `linux_desktop`:
 PipeWire's pulse server on GitHub's Ubuntu runner (`linux.yml`)."""
 
+import json
 import os
 import shutil
 import struct
@@ -330,6 +331,42 @@ def test_stop_ends_the_thread_and_closes_the_connection() -> None:
     system.stop()
     assert server.recordings[0].closed and server.closed == 1
     assert system.capturing is None
+
+
+class CheckedLibrary:
+    """libpulse's calls a record stream makes, each argument checked as
+    ctypes checks it against the call's declared types (`pulse._SIGNATURES`)
+    - so a call ctypes would refuse fails here too, on any OS."""
+
+    def __init__(self) -> None:
+        self.called: list[str] = []
+
+    def __getattr__(self, name: str) -> Callable[..., object]:
+        _result, arguments = pulse._SIGNATURES[name]
+
+        def call(*given: object) -> object:
+            for kind, value in zip(arguments, given, strict=True):
+                if hasattr(kind, "from_param"):
+                    kind.from_param(value)  # TypeError, as ctypes would raise
+            self.called.append(name)
+            return {"pa_stream_new": 1, "pa_stream_get_state": 3}.get(name, 0)
+
+        return call
+
+
+def test_a_record_stream_closes_without_an_error() -> None:
+    """Closing took the callbacks away with None, which ctypes refuses for
+    a callback's type: closing raised, the stream was never let go, and the
+    capture's thread ended with "Capture stopped: ArgumentError" - at a new
+    default output, or as an app's stream ended (561's first runs)."""
+    lib = CheckedLibrary()
+    recording = pulse.Recording(lib, 1, "alsa_output.speakers.monitor")
+    recording.close()
+    assert lib.called[-3:] == [
+        "pa_stream_set_read_callback",
+        "pa_stream_set_state_callback",
+        "pa_stream_unref",
+    ]
 
 
 # --- the device lists ---------------------------------------------------------
@@ -690,6 +727,22 @@ def test_the_real_server_names_its_defaults_and_devices() -> None:
 
 
 @pytest.mark.linux_desktop
+def test_a_real_record_stream_closes_and_its_capture_goes_on() -> None:
+    """A record stream on the real server closes without an error (561)."""
+    server = pulse.PulseServer("Polyglotic tests")
+    try:
+        output = server.server_info().output
+        monitor = next(s.monitor for s in server.sinks() if s.name == output)
+        assert monitor
+        recording = server.record(monitor)
+        server.run(0.2)
+        recording.close()
+        assert server.alive
+    finally:
+        server.close()
+
+
+@pytest.mark.linux_desktop
 def test_everything_the_pc_plays_is_heard_through_the_real_server() -> None:
     """A tone played on the default output comes back through the system
     capture as 16kHz float32, loud, about as long as it played."""
@@ -792,13 +845,18 @@ def test_one_app_is_heard_alone_through_the_real_server() -> None:
     others = np.frombuffer(b"".join(d for _, d in heard["else"]), "<f4")[-32_000:]
     assert len(alone) == len(others) == 32_000  # two seconds each
     own, leaked = level(alone, 440), level(alone, 1000)
-    print(f"one app: 440 Hz at {own:.1f} dBFS, 1000 Hz at {leaked:.1f}")
-    assert own > -30 and own - leaked > 60
     rest_own, rest_leaked = level(others, 1000), level(others, 440)
-    print(
-        f"everything else: 1000 Hz at {rest_own:.1f} dBFS, 440 Hz at {rest_leaked:.1f}"
-    )
-    assert rest_own > -30 and rest_own - rest_leaked > 60
+    measured = {
+        "one_app_440_dbfs": round(own, 1),
+        "one_app_1000_dbfs": round(leaked, 1),
+        "everything_else_1000_dbfs": round(rest_own, 1),
+        "everything_else_440_dbfs": round(rest_leaked, 1),
+    }
+    if os.environ.get("OUT"):  # kept by linux.yml's artifact
+        found = Path(os.environ["OUT"]) / "one-app-isolation.json"
+        found.write_text(json.dumps(measured, indent=2), encoding="utf-8")
+    assert own > -30 and own - leaked > 60, measured
+    assert rest_own > -30 and rest_own - rest_leaked > 60, measured
 
 
 @pytest.mark.linux_desktop

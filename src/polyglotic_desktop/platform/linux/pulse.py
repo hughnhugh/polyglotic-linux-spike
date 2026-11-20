@@ -404,12 +404,15 @@ class Recording:
 
     def close(self) -> None:
         """Disconnected (while it's being made or recording), its callbacks
-        taken away - nothing calls into Python after this - and let go."""
+        taken away - nothing calls into Python after this - and let go. A
+        callback taken away is a null function pointer (`_READ_CB()`): ctypes
+        refuses None for a callback's type, which made closing raise, the
+        stream never let go and the capture's thread end (561)."""
         if self._stream:
             if self.state in (STREAM_CREATING, STREAM_READY):
                 self._lib.pa_stream_disconnect(self._stream)
-            self._lib.pa_stream_set_read_callback(self._stream, None, None)
-            self._lib.pa_stream_set_state_callback(self._stream, None, None)
+            self._lib.pa_stream_set_read_callback(self._stream, _READ_CB(), None)
+            self._lib.pa_stream_set_state_callback(self._stream, _STREAM_CB(), None)
             self._lib.pa_stream_unref(self._stream)
             self._stream = None
 
