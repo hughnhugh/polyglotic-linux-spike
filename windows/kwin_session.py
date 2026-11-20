@@ -42,7 +42,7 @@ class FakeInput:
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(path)
         self.buf = b""
-        self.next_id = 2
+        self.next_id = 1  # new ids count up from 2
         self.ops = self._opcodes()
         registry = self._new_id()
         self._send(1, 1, struct.pack("<I", registry))  # wl_display.get_registry
