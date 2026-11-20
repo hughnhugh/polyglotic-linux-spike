@@ -39,13 +39,12 @@ OTHER_OSES = (
 )
 NOT_ON_LINUX_YET = (
     "speaker",
-    "start_at_sign_in",
     "typing_permission",
     "mic_permission",
 )
 """The record's pieces Linux has none of: None, so the app leaves them out
-(the word card's voice and starting at sign-in: slices 4-5; Linux asks no
-permission to type or to hear the mic)."""
+(the word card's voice: slice 5; Linux asks no permission to type or to
+hear the mic). Starting at sign-in is an XDG autostart entry (571)."""
 
 
 def test_linux_gets_a_whole_record() -> None:

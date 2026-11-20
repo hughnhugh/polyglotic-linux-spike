@@ -7080,6 +7080,21 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Start at sign-in</source>
+        <translation type="unfinished">Iniciar ao entrar</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Start Polyglotic when you sign in to your computer</source>
+        <translation type="unfinished">Iniciar o Polyglotic quando você entrar no computador</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Ready to caption from the moment you sign in.</source>
+        <translation type="unfinished">Pronto para legendar assim que você entrar.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>About Polyglotic</source>
         <translation type="unfinished">Sobre o Polyglotic</translation>
     </message>

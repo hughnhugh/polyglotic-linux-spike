@@ -7101,6 +7101,21 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Start at sign-in</source>
+        <translation type="unfinished">Запуск під час входу</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Start Polyglotic when you sign in to your computer</source>
+        <translation type="unfinished">Запускати Polyglotic під час входу в комп&apos;ютер</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Ready to caption from the moment you sign in.</source>
+        <translation type="unfinished">Субтитри готові одразу після входу.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>About Polyglotic</source>
         <translation type="unfinished">Про Polyglotic</translation>
     </message>

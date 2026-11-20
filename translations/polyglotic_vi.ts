@@ -7059,6 +7059,21 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Start at sign-in</source>
+        <translation type="unfinished">Khởi động khi đăng nhập</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Start Polyglotic when you sign in to your computer</source>
+        <translation type="unfinished">Khởi động Polyglotic khi bạn đăng nhập vào máy tính</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Ready to caption from the moment you sign in.</source>
+        <translation type="unfinished">Sẵn sàng hiện phụ đề ngay khi bạn đăng nhập.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>About Polyglotic</source>
         <translation type="unfinished">Giới thiệu Polyglotic</translation>
     </message>

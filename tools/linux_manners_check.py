@@ -103,6 +103,11 @@ def with_tray(desktop: Any, window: Any, tray: Any) -> Step:
     menu.hide()
     out = tour.OUT / "tray-dbus.json"
     was = desktop.pause.isChecked()
+    shown = [  # before the tray's click turns Pause captions into Resume
+        a.text().split("\t", 1)[0].replace("&", "")
+        for a in menu.actions()
+        if a.isVisible() and not a.isSeparator()
+    ]
     reader = subprocess.Popen(
         [
             sys.executable,
@@ -120,7 +125,7 @@ def with_tray(desktop: Any, window: Any, tray: Any) -> Step:
     tour.RESULTS["facts"]["tray_dbus"] = {
         k: v for k, v in found.items() if k not in ("layout",)
     }
-    if not found.get("watcher"):  # an X11 tray (XEmbed): Qt's own menu at the click
+    if found.get("watcher") is False:  # an X11 tray (XEmbed): Qt's menu at the click
         yield from at_the_icon(desktop, tray, menu)
         return
     layout = found.get("layout")
@@ -128,11 +133,6 @@ def with_tray(desktop: Any, window: Any, tray: Any) -> Step:
     if not isinstance(layout, dict):
         return
     seen = labels(layout)
-    shown = [
-        a.text().split("\t", 1)[0].replace("&", "")
-        for a in menu.actions()
-        if a.isVisible() and not a.isSeparator()
-    ]
     missing = [text for text in shown if text not in seen]
     check("every item the menu shows is in the tray's", not missing, missing or seen)
     submenus = [a.menu() for a in menu.actions() if a.menu() is not None]
@@ -164,7 +164,8 @@ def at_the_icon(desktop: Any, tray: Any, menu: Any) -> Step:
         rect.height(),
     ]
     xdotool = shutil.which("xdotool")
-    if not check("an X11 tray: the icon is placed", rect.isValid() and xdotool, rect):
+    placed = check("an X11 tray: the icon is placed", rect.isValid() and xdotool, rect)
+    if not placed or xdotool is None:
         return
     at = rect.center()
     subprocess.run(
@@ -312,6 +313,9 @@ def main(argv: list[str] | None = None) -> int:
     tour.OUT.mkdir(parents=True, exist_ok=True)
     data = tour.OUT / "data"
     tour.seed_settings(data)
+    seeded = json.loads((data / "settings.json").read_text(encoding="utf-8"))
+    seeded["window_theme"] = "system"  # Like this PC: the desktop's light or dark
+    (data / "settings.json").write_text(json.dumps(seeded), encoding="utf-8")
     sample = tour.sample_file("zh")
     if sample is None:
         check("the app's FLEURS sample is there", False)

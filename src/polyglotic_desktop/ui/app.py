@@ -441,6 +441,15 @@ class DesktopApp(QObject):
         self._taskbar_check.setInterval(10_000)
         self._taskbar_check.timeout.connect(self._show_tray_state)
         self.pause.toggled.connect(self._show_tray_state)
+        # where the OS's light or dark is read by the app, not Qt (Linux's
+        # portal: `theme.os_mode`), nothing tells Qt it changed: asked again
+        # every 10 s, and followed as Qt's change is (571)
+        self._os_mode = theme.system_theme()
+        self._os_mode_check = QTimer(self)
+        self._os_mode_check.setInterval(10_000)
+        self._os_mode_check.timeout.connect(self._follow_os_mode)
+        if theme.os_mode is not None:
+            self._os_mode_check.start()
         self._apps: dict[SourceId, tuple[str, str]] = {}
 
     # -- source labels ----------------------------------------------------------------
@@ -1022,6 +1031,14 @@ class DesktopApp(QObject):
 
         self._show_tray_state()
 
+    def _follow_os_mode(self) -> None:
+        """The OS's light or dark as `theme.os_mode` reads it, followed when
+        it changes (571)."""
+        mode = theme.system_theme()
+        if mode != self._os_mode:
+            self._os_mode = mode
+            self._system_theme()
+
     def _system_theme(self) -> None:
         """Windows switched between light and dark: followed if the
         learner chose "system"; the tray's icon follows the taskbar."""
@@ -1058,6 +1075,7 @@ class DesktopApp(QObject):
 
     def close(self) -> None:
         self._taskbar_check.stop()
+        self._os_mode_check.stop()
         if self.tray is not None:
             self.tray.hide()
         if self.apps is not None:

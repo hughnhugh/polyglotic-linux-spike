@@ -897,6 +897,10 @@ class OsAdapters:
     """Whether the OS calls the connection metered: a dictionary pack's
     download asks first on one (decision 0122), and an update found waits
     for the learner (polyglotic-hq 345)."""
+    system_mode: Callable[[], str | None] | None = None
+    """The OS's own light or dark ("light", "dark", None: no preference)
+    where Qt doesn't read it: Linux's settings portal (polyglotic-hq 571).
+    None: Qt's (Windows, the Mac). Like this PC follows it (`theme.os_mode`)."""
     translocation: Callable[[], Translocation] | None = None
     """Whether macOS runs the app from a temporary copy it can't update
     itself in, and the move to Applications (polyglotic-hq 433). None where
@@ -1128,24 +1132,31 @@ def linux_adapters() -> OsAdapters:
     windows; light or dark and a metered connection as the desktop says
     them over D-Bus (571); and what the first Linux build doesn't have yet
     saying so through its port (`platform/linux/not_yet`): hotkeys,
-    dictation, the sample played aloud - with no voice for the word card and
-    no start at sign-in, which Home then never offers."""
+    dictation, the sample played aloud - with no voice for the word card;
+    and starting at sign-in as an XDG autostart entry (571)."""
     from polyglotic_desktop.platform.linux import (
         apps,
         capture,
         categories,
         devices,
         hints,
+        menu_entry,
         not_yet,
         on_top,
         one_copy,
         secret_service,
+        startup,
     )
     from polyglotic_desktop.platform.linux import system as linux
 
     def credentials(entry: str | None) -> CredentialStore:
         store = secret_service.SecretServiceStore
         return store(entry) if entry else store()
+
+    def start_at_sign_in(executable: str) -> StartWithWindows:
+        found = startup.XdgAutostart(executable)
+        found.follow()  # while it's on, a moved AppImage still starts (571)
+        return found
 
     return OsAdapters(
         app_list=apps.LinuxAppList,
@@ -1161,14 +1172,17 @@ def linux_adapters() -> OsAdapters:
         hotkeys=not_yet.NoHotkeys,
         sound_out=not_yet.NoSound,
         speaker=None,
-        start_at_sign_in=None,
+        start_at_sign_in=start_at_sign_in,
         copy_lock=one_copy.FileLock,
         let_to_front=one_copy.let_to_front,
         keys=not_yet.no_keys,
         on_top=on_top.LinuxOnTop,
         foreground_watch=not_yet.NoForegroundWatch,
         light_taskbar=hints.light_panel,
-        taskbar_identity=not_yet.same_name,
+        # the menu entry and icon, written by the AppImage itself (561)
+        taskbar_identity=partial(
+            menu_entry.taskbar_identity, icon=icons.ICONS / "polyglotic.svg"
+        ),
         store_package=not_yet.none_found,
         os_name=linux.os_name,
         os_version=linux.os_version,
@@ -1181,6 +1195,7 @@ def linux_adapters() -> OsAdapters:
         type_text=not_yet.type_nothing,
         keyboard_window=not_yet.no_window,
         metered=hints.metered,
+        system_mode=hints.prefers,
         sound_devices=devices.sound_devices,
         common_apps=categories.COMMON_APPS,
         qt_platform="xcb",
@@ -2487,6 +2502,7 @@ class Hub:
         self.settings.transcript_ask_chosen.connect(
             lambda on: desktop.settings.update(transcript_ask_at_quit=on)
         )
+        self.settings.start_at_sign_in_chosen.connect(self._start_at_sign_in)
         self._show_theme()
         desktop.settings.changed.connect(self._show_theme)
         # the app's text size: `main` applied it at start; a change, at once
@@ -3126,6 +3142,22 @@ class Hub:
     def _start_with_windows(self, yes: bool) -> None:
         if yes and self.startup is not None:
             self.startup.set_enabled(True)
+            self.settings.offer_start_at_sign_in(self.startup.enabled())
+
+    def use_startup(self, startup: StartWithWindows) -> None:
+        """Starting at sign-in, where the OS can for this copy: Home may ask
+        after a good session, and Settings > App has its switch, as it is
+        now (polyglotic-hq 571)."""
+        self.startup = startup
+        self.settings.offer_start_at_sign_in(startup.enabled())
+
+    def _start_at_sign_in(self, on: bool) -> None:
+        """Settings' switch: on or off, as the OS then says it is."""
+        if self.startup is None:
+            return
+        self.startup.set_enabled(on)
+        self.desktop.settings.update(start_with_windows_asked=True)  # Home: no need
+        self.settings.offer_start_at_sign_in(self.startup.enabled())
 
     def _closed_without_tray(self) -> None:
         """The window closed where the desktop has no tray (polyglotic-hq
@@ -7297,6 +7329,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         feed = args.updates if args.updates != UPDATES else None
         sys.exit(check_install(args.check_install, args.dictionaries, feed, args.data))
     system = os_adapters()
+    theme.os_mode = system.system_mode  # Like this PC, where Qt can't read it (571)
     if args.check_capture:
         to_capture = {
             "system": lambda: system.system_capture(None),
@@ -7522,7 +7555,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     # the installed app can start with Windows (176) - not the Store's copy
     # yet: its Run value would be the package's private copy (decision 0056)
     if installed() and store_copy is None and system.start_at_sign_in is not None:
-        hub.startup = system.start_at_sign_in(sys.executable)
+        hub.use_startup(system.start_at_sign_in(sys.executable))
     start_parts.done("tray")  # and the last wiring before the window shows
     if not (args.in_tray and desktop.tray is not None):
         desktop.show_window()  # started by Windows: in the tray (176)

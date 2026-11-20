@@ -264,6 +264,9 @@ class SettingsPage(Page):
     """How far back the transcripts' lists go (`TranscriptLength`'s value)."""
     transcript_ask_chosen = Signal(bool)
     """Whether Quit asks to save a long transcript not saved."""
+    start_at_sign_in_chosen = Signal(bool)
+    """Start at sign-in turned on or off (polyglotic-hq 571): `main` writes
+    it where the OS keeps it."""
     interface_language_chosen = Signal(str)
     """An interface language's code ("zh_CN"), or "": like Windows."""
     translation_feedback_wanted = Signal()
@@ -431,6 +434,19 @@ class SettingsPage(Page):
         updates.add(buttons)
         app.addWidget(self._marked(updates, Glyph.UPDATES))
 
+        # starting at sign-in, where the OS can (`offer_start_at_sign_in`):
+        # off by default, the installed app only (polyglotic-hq 571)
+        self.start_card = Card(_tr("Start at sign-in"))
+        self.start_at_sign_in = SwitchRow(
+            _tr("Start Polyglotic when you sign in to your computer"),
+            _tr("Ready to caption from the moment you sign in."),
+            "settings.start_at_sign_in",
+        )
+        self.start_at_sign_in.switch.toggled.connect(self.start_at_sign_in_chosen)
+        self.start_card.add(self.start_at_sign_in)
+        self.start_card.setHidden(True)
+        app.addWidget(self._marked(self.start_card, Glyph.START))
+
         about = Card(_tr("About Polyglotic"))
         about.add(
             label(
@@ -529,6 +545,12 @@ class SettingsPage(Page):
         self.transcript_ask.switch.toggled.connect(self.transcript_ask_chosen)
         card.add(self.transcript_ask)
         return card
+
+    def offer_start_at_sign_in(self, on: bool) -> None:
+        """Start at sign-in offered - the OS can, for this copy - as it is
+        now (`on`), without saying it was chosen (polyglotic-hq 571)."""
+        self.start_card.setHidden(False)
+        self.start_at_sign_in.switch.set_quietly(on)
 
     def show_transcript_length(self, length: str, ask: bool = True) -> None:
         """How far back the transcripts go, and whether Quit asks to save

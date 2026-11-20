@@ -26,6 +26,8 @@ the app's What's new, the website's What's new and the Discord post.
 
 ### New
 
+- Settings > App has a Start at sign-in switch: turn starting Polyglotic
+  with Windows (or at login on a Mac) on or off whenever you like.
 - Word lookups in Korean, with English meanings: download Korean's
   dictionary on Learning. A word is found under its particles and endings
   (학교에서 is 학교, "school"; 먹었는데 is 먹다, "to eat"), and a compound

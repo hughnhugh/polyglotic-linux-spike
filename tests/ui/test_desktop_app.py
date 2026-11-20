@@ -100,8 +100,10 @@ def test_the_tray_menu_opens_above_the_taskbar_wherever_it_is() -> None:
 
 
 def test_a_right_click_on_the_tray_icon_opens_the_menu_on_the_work_area(
-    qapp: QApplication,
+    qapp: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # Windows' and the Mac's: on Linux the tray shows it itself (571)
+    monkeypatch.setattr(ui_app, "DESKTOP_SHOWS_TRAY_MENU", False)
     app = make_app()
     app.tray = QSystemTrayIcon(app)  # offscreen has no tray: as show_tray makes it
     assert app.tray.contextMenu() is None  # Qt's own placement isn't used
@@ -122,6 +124,7 @@ def test_the_tray_menu_is_measured_as_it_will_show(
     the menu is styled for it before it's measured, so its first opening
     is placed by the size it shows at, not the light one's (polyglotic-hq
     146: about 35 x 14 px off)."""
+    monkeypatch.setattr(ui_app, "DESKTOP_SHOWS_TRAY_MENU", False)  # not Linux's (571)
     light = [True]
     app = DesktopApp(MemorySettingsStore(), None, None, light_taskbar=lambda: light[0])
     app.tray = QSystemTrayIcon(app)  # offscreen has no tray: as show_tray makes it

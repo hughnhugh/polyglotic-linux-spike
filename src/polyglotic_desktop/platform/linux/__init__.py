@@ -23,13 +23,16 @@ on Wayland desktops).
 - `devices.py` - the outputs and mics, by the server's names;
 - `hints.py` - light or dark (the settings portal) and a metered
   connection (NetworkManager), as the desktop says them over D-Bus (571);
+- `menu_entry.py` - the app's own menu entry and icon, written by the
+  AppImage at each start (Velopack installs none);
 - `on_top.py` - the caption windows, popovers and card above everything
   as override-redirect windows, their order kept by hand;
 - `not_yet.py` - what the first Linux build doesn't have yet, each saying
   so through its port: hotkeys, dictation, Esc and
-  clicks elsewhere read, the sample played aloud. Starting at sign-in and
-  the word card's voice are None in `main.linux_adapters`: Home never
-  offers them.
+  clicks elsewhere read, the sample played aloud. The word card's voice is
+  None in `main.linux_adapters`: the card never offers it;
+- `startup.py` - starting at sign-in: an XDG autostart entry for the
+  AppImage, off until the learner turns it on (571).
 
 Every module imports on any OS (libpulse and D-Bus load on first use), so
 the logic is tested on Windows and macOS with fakes; what needs Linux

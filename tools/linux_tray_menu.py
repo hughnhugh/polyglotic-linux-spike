@@ -79,9 +79,7 @@ def read(pid: int | None, click: str | None, wait: float = 20.0) -> dict[str, An
         ours = [i for i in items if pid is not None and f"-{pid}-" in i] or items[:1]
         if not ours:
             return found
-        service, _, path = ours[0].partition("/")
-        if not path.startswith("/"):
-            path = "/" + (path or "StatusNotifierItem")
+        service, path = _where(ours[0])
         item = DBusAddress(path, bus_name=service, interface=ITEM)
         for name in ("Id", "Title", "Status", "Menu", "ItemIsMenu"):
             try:
@@ -113,6 +111,18 @@ def read(pid: int | None, click: str | None, wait: float = 20.0) -> dict[str, An
                 )
                 bus.send_and_get_reply(event, timeout=5)
     return found
+
+
+def _where(item: str) -> tuple[str, str]:
+    """A watcher's item as (bus name, object path): KDE's lists
+    `name/path` (or the name alone: `/StatusNotifierItem`), GNOME's
+    AppIndicator extension `name@path`."""
+    if "@" in item:
+        service, _, path = item.partition("@")
+    else:
+        service, _, path = item.partition("/")
+        path = "/" + path if path else ""
+    return service, path or "/StatusNotifierItem"
 
 
 def host(out: Path) -> int:

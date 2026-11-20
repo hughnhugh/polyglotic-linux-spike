@@ -112,6 +112,13 @@ kill "$xvfb" 2> /dev/null
 cp "$shown/logs/polyglotic.log" "$out/started-polyglotic.log" 2> /dev/null
 check "its log says it started, on Linux's channel" "grep -q -E 'Polyglotic [0-9.]+ \(linux-x64-alpha\)' '$out/started-polyglotic.log'"
 check "and no crash" "! grep -q -E 'Traceback|crashed' '$out/started-polyglotic.log' '$out/started.log'"
+# its own menu entry and icon, written at the start (561): Velopack makes none
+entry="${XDG_DATA_HOME:-$HOME/.local/share}/applications/io.polyglotic.Polyglotic.desktop"
+cp "$entry" "$out/" 2> /dev/null
+check "its menu entry is written, starting this AppImage" "grep -qx 'Exec=$app' '$entry' && grep -qx 'TryExec=$app' '$entry'"
+check "with its icon" "[ -s '${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps/io.polyglotic.Polyglotic.svg' ]"
+sudo apt-get install -y -qq --no-install-recommends desktop-file-utils > /dev/null 2>&1
+check "and the entry is valid (desktop-file-validate)" "desktop-file-validate '$entry' > '$out/desktop-file-validate.txt' 2>&1" "($(desktop-file-validate "$entry" 2>&1 | head -3 | tr '\n' ' '))"
 
 say "a second user updates their own copy"
 sudo useradd -m learner2 2> /dev/null || true

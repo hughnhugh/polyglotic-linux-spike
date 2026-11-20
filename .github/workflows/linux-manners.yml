@@ -42,6 +42,9 @@ jobs:
           - desktop: gnome
             name: GNOME (no tray)
             scheme: prefer-dark
+          - desktop: ubuntu
+            name: Ubuntu's GNOME (AppIndicator)
+            scheme: prefer-light
           - desktop: xfce
             name: Xfce
             scheme: prefer-light
@@ -64,13 +67,16 @@ jobs:
         run: |
           sudo apt-get update -q
           more="mutter xwayland"
+          if [ "${{ matrix.desktop }}" = ubuntu ]; then
+            more="gnome-shell gnome-shell-extension-appindicator xwayland"
+          fi
           if [ "${{ matrix.desktop }}" = xfce ]; then
             more="xvfb xfwm4 xfce4-panel xfconf xdotool imagemagick"
           fi
           sudo apt-get install -y -q --no-install-recommends $more \
             pipewire pipewire-pulse pipewire-bin wireplumber libpulse0 pulseaudio-utils \
             dbus-bin dbus-daemon dbus-x11 gnome-keyring libglib2.0-bin \
-            xdg-desktop-portal xdg-desktop-portal-gtk dconf-service dconf-gsettings-backend \
+            xdg-desktop-portal xdg-desktop-portal-gtk dconf-service dconf-gsettings-backend desktop-file-utils \
             libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
             libwayland-client0 libwayland-cursor0 libwayland-egl1 \

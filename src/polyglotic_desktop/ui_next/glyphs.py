@@ -97,6 +97,8 @@ class Glyph(StrEnum):
     """App's Hotkeys: a keyboard."""
     UPDATES = "updates"
     """App's Updates: an arrow down into a tray."""
+    START = "start"
+    """App's Start at sign-in: a power symbol (polyglotic-hq 571)."""
     ABOUT = "about"
     """App's About: an i in a circle."""
 
@@ -321,6 +323,12 @@ def _settings_outline(glyph: Glyph, lines: QPainterPath, dots: QPainterPath) -> 
         lines.lineTo(2.25, 14)
         lines.lineTo(13.75, 14)
         lines.lineTo(13.75, 10.75)
+    elif glyph is Glyph.START:  # a power symbol: a circle open at the top, a line in it
+        ring = QRectF(2.25, 2.75, 11.5, 11.5)
+        lines.arcMoveTo(ring, 120)
+        lines.arcTo(ring, 120, 300)
+        lines.moveTo(8, 1.5)
+        lines.lineTo(8, 7.75)
     elif glyph is Glyph.ABOUT:  # an i in a circle
         lines.addEllipse(QPointF(8, 8), 6, 6)
         lines.moveTo(8, 7.25)
