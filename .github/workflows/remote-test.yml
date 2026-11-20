@@ -149,13 +149,6 @@ jobs:
       run:
         shell: bash
     steps:
-      # A throwaway VM: Defender's real-time scan of every file the tests
-      # write made tests/tools/test_packs.py take 439 s here against 47 on
-      # Linux (565)
-      - name: Defender's real-time scan off
-        continue-on-error: true
-        shell: pwsh
-        run: Set-MpPreference -DisableRealtimeMonitoring $true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
