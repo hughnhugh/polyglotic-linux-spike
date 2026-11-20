@@ -52,10 +52,12 @@ env:
         # a list of parts, each one pytest process, side by side (the
         # machine's 4 CPUs; one pytest uses one)
         parts = plan["shards"][shard]
-        parts = [parts] if parts and isinstance(parts[0], str) else parts
+        flat = bool(parts) and isinstance(parts[0], str)  # one process (remote_test.py before 21:00)
+        parts = [parts] if flat else parts
         running = []
         for part, args in enumerate(parts):
-            report = [f"--junitxml=out/junit-{shard}-{part}.xml", "-o", "junit_family=xunit1",
+            name = f"junit-{shard}" if flat else f"junit-{shard}-{part}"
+            report = [f"--junitxml=out/{name}.xml", "-o", "junit_family=xunit1",
                       "-o", "junit_logging=all", "-o", "junit_log_passing_tests=False"]
             command = [shutil.which("pytest") or "pytest", "-p", "no:cacheprovider", *report,
                        *plan["common"], *args]
