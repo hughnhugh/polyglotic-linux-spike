@@ -20,3 +20,9 @@ dotnet tool install --tool-path /opt/tools vpk --version 1.2.161 > /dev/null
   --channel linux-x64-alpha --outputDir /tmp/out > /tmp/vpk.txt 2>&1
 echo "vpk exit $?"; tail -25 /tmp/vpk.txt | cut -c1-240
 ls -la /tmp/out
+echo "== again with squashfs-tools installed"
+apt-get install -y -qq --no-install-recommends squashfs-tools > /dev/null
+echo "mksquashfs: $(mksquashfs -version 2>&1 | sed -n 1p)"
+/opt/tools/vpk pack --packId Toy547 --packVersion 1.0.0 --packTitle Toy547 --packAuthors Toy547   --packDir /w/build/1.0.0/toy547 --mainExe toy547 --runtime linux-x64   --channel linux-x64-alpha --outputDir /tmp/out > /tmp/vpk.txt 2>&1
+echo "vpk exit $?"; grep -E 'FTL|ERR|WRN|Finished' /tmp/vpk.txt | cut -c1-240
+ls -la /tmp/out

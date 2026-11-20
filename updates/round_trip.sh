@@ -49,6 +49,8 @@ echo "before: $before"
 echo "== run 1.0.0"
 timeout 60 "$app"; echo "exit $?"
 check "1.0.0 ran from the AppImage" "grep -q '\"version\": \"1.0.0\", \"event\": \"window\"' '$TOY547_MARKER'"
+echo "== what the first run added to the desktop (menu entries, icons)"
+ls -la "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor" 2>&1 | head -20
 
 echo "== the feed"
 feed=/tmp/feed547  # readable by every user (a home folder is 750)

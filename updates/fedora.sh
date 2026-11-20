@@ -26,6 +26,10 @@ APPIMAGE_EXTRACT_AND_RUN=1 timeout 60 /tmp/toy.AppImage -platform xcb > /tmp/a.t
 echo "fontconfig complaints: $(grep -c Fontconfig /tmp/a.txt)"; grep -v Fontconfig /tmp/a.txt | grep -v -E 'locale|UTF-8|reconfigure|manual' | cut -c1-200
 echo "== B: the same without the bundled libfontconfig and libfreetype (the system's used)"
 cd /tmp && /tmp/toy.AppImage --appimage-extract > /dev/null && cd - > /dev/null
+echo "== inside the AppImage: the AppDir's top, its .desktop file and AppRun"
+ls -la /tmp/squashfs-root | cut -c1-120
+cat /tmp/squashfs-root/*.desktop 2>/dev/null
+head -c 3000 /tmp/squashfs-root/AppRun 2>/dev/null | cut -c1-160; echo
 find /tmp/squashfs-root -name 'libfontconfig.so*' -o -name 'libfreetype.so*' | tee /dev/stderr | xargs rm -f
 timeout 60 /tmp/squashfs-root/usr/bin/toy547 -platform xcb > /tmp/b.txt 2>&1; echo "exit $?"
 echo "fontconfig complaints: $(grep -c Fontconfig /tmp/b.txt)"; grep -v Fontconfig /tmp/b.txt | grep -v -E 'locale|UTF-8|reconfigure|manual' | cut -c1-200
