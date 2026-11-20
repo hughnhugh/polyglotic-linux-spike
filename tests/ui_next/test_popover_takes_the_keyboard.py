@@ -8,14 +8,15 @@ keyboard closed on both, where a real Qt.Popup and today's popover didn't."""
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 from tests.ui_next.test_caption_window import window  # noqa: F401 - the fixture
 
 from polyglotic_desktop.ui_next import settings_popover
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow
-from polyglotic_desktop.ui_next.settings_popover import SettingsPopover
+from polyglotic_desktop.ui_next.settings_popover import SettingsPopover, beside
+from polyglotic_desktop.ui_next.views.placement import Rect
 
 
 @pytest.fixture
@@ -93,3 +94,37 @@ def test_on_windows_and_a_mac_it_never_takes_the_keyboard(
     told(popover, QEvent.Type.WindowActivate)
     told(popover, QEvent.Type.WindowDeactivate)
     assert popover.isVisible()  # Windows' key state closes it (`keys`)
+
+
+def test_it_stays_clear_of_its_window_where_there_s_room() -> None:
+    """On Linux its caption window is drawn above it (an override-redirect
+    window over an ordinary one): 570's run on GNOME 51 and KDE 6.8 showed
+    the popover's last rows under the window when it was moved in over it."""
+    area = Rect(0, 0, 1920, 1080)
+    own = QRect(480, 690, 960, 300)  # the caption window, low on the screen
+    button = QRect(1340, 695, 36, 30)  # its settings button, in its strip
+    size = (400, 920)  # too tall to fit above the button
+    over = beside(button, size, area)
+    assert QRect(over, QSize(*size)).intersects(own)  # Windows': moved in, over it
+    clear = beside(button, size, area, clear_of=own)
+    assert not QRect(clear, QSize(*size)).intersects(own)
+    assert (
+        clear.x() == own.right() + 1 + settings_popover.GAP
+    )  # beside it, where there's room
+    assert QRect(clear, QSize(*size)).bottom() < area.bottom
+    # a short one goes above its window, as it would anyway
+    short = beside(button, (400, 300), area, clear_of=own)
+    assert QRect(short, QSize(400, 300)).bottom() < own.top()
+    # no room anywhere clear of it: over it, as before
+    full = QRect(0, 0, 1920, 1080)
+    assert beside(button, size, area, clear_of=full) == over
+
+
+def test_opened_on_linux_it_doesnt_cover_its_window(
+    opened: tuple[CaptionWindow, SettingsPopover],
+) -> None:
+    caption, popover = opened
+    own = QRect(caption.mapToGlobal(QPoint(0, 0)), caption.size())
+    room = popover.owner.area_at(popover._anchor)
+    if own.height() + popover.height() + 16 < room.bottom - room.y:
+        assert not popover.frameGeometry().intersects(own)

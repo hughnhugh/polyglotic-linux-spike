@@ -265,7 +265,7 @@ def test_on_a_mac_the_tray_is_the_menu_bars_template(
     from polyglotic_desktop.ui import app as app_module
 
     monkeypatch.setattr(app_module, "on_a_mac", lambda: True)
-    monkeypatch.setattr(app_module, "platform", lambda: Platform.MAC)
+    monkeypatch.setattr(app_module, "platform", lambda: Platform.MAC)  # its keys (567)
     app = DesktopApp(
         MemorySettingsStore({"whole_system": False}),
         None,

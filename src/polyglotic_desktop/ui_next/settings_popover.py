@@ -265,12 +265,19 @@ def app_choice_tip(choice: AppChoice) -> str:
 
 
 def beside(
-    anchor: QRect, size: tuple[int, int], area: Rect, from_left: bool = False
+    anchor: QRect,
+    size: tuple[int, int],
+    area: Rect,
+    from_left: bool = False,
+    clear_of: QRect | None = None,
 ) -> QPoint:
     """Where a popover of `size` goes beside the button at `anchor`: under
     it, its right edge with the button's (`from_left`: its left edge with
     the button's - the language chip's, 465) - or above it when there's no
-    room below; moved in to stay on the work area."""
+    room below; moved in to stay on the work area. `clear_of`: a window it
+    mustn't cover where there's room elsewhere - its own caption window, on
+    Linux, which is drawn above it there (570) - so below or above that
+    window, else beside it."""
     width, height = size
     x = anchor.left() if from_left else anchor.right() + 1 - width
     y = anchor.bottom() + 1 + GAP
@@ -278,7 +285,22 @@ def beside(
         y = anchor.top() - GAP - height
     x = min(max(x, area.x), area.right - width)
     y = min(max(y, area.y), area.bottom - height)
-    return QPoint(x, y)
+    if clear_of is None or not QRect(x, y, width, height).intersects(clear_of):
+        return QPoint(x, y)
+    side_y = min(max(anchor.top(), area.y), area.bottom - height)
+    for at in (
+        QPoint(x, clear_of.bottom() + 1 + GAP),  # below the window
+        QPoint(x, clear_of.top() - GAP - height),  # above it
+        QPoint(clear_of.right() + 1 + GAP, side_y),  # right of it
+        QPoint(clear_of.left() - GAP - width, side_y),  # left of it
+    ):
+        inside = (
+            area.x <= at.x() <= area.right - width
+            and area.y <= at.y() <= area.bottom - height
+        )
+        if inside:
+            return at
+    return QPoint(x, y)  # no room clear of it: over it, as before
 
 
 class _Follows(QObject):
@@ -1015,7 +1037,11 @@ class SettingsPopover(QWidget):
             return
         area = self.owner.area_at(self._anchor)
         size = (self.width(), self.height())
-        self.move(beside(self._anchor, size, area, self.from_left))
+        clear_of = None
+        if self.takes_the_keyboard:  # Linux: its window is drawn above it (570)
+            window = self.owner.window()
+            clear_of = QRect(window.mapToGlobal(QPoint(0, 0)), window.size())
+        self.move(beside(self._anchor, size, area, self.from_left, clear_of))
 
     def hideEvent(self, event: object) -> None:
         self._poll.stop()
