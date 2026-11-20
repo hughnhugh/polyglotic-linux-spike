@@ -274,7 +274,7 @@ jobs:
             parts: mutter xwayland gnome-keyring at-spi2-core python3-pyatspi gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-tools
           - desktop: ubuntu
             name: Ubuntu's GNOME (AppIndicator)
-            parts: gnome-shell gnome-shell-extension-appindicator xwayland gnome-keyring at-spi2-core python3-pyatspi gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-tools
+            parts: gnome-shell gnome-shell-extension-appindicator xwayland gnome-keyring at-spi2-core python3-pyatspi xdotool gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-tools
           - desktop: fedora-gnome
             name: Fedora 45 (GNOME)
             parts: ""

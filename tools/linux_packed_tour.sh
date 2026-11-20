@@ -77,7 +77,7 @@ if [ -n "${IN_FEDORA_574:-}" ] && [ -z "${IN_SESSION_574:-}" ]; then  # once: no
     libwayland-client libwayland-cursor libwayland-egl fontconfig google-noto-sans-fonts \
     google-noto-sans-cjk-vf-fonts findutils procps-ng glib2 desktop-file-utils xwininfo xprop \
     fuse3 fuse3-libs openssl ca-certificates xdg-desktop-portal xdg-desktop-portal-gtk \
-    at-spi2-core python3-pyatspi gsettings-desktop-schemas > /tmp/dnf.log 2>&1 \
+    at-spi2-core python3-pyatspi xdotool gsettings-desktop-schemas > /tmp/dnf.log 2>&1 \
     || { tail -30 /tmp/dnf.log; exit 1; }
   echo "574: $(date +%T) Fedora's packages in"
   rpm -q mutter kwin plasma-workspace fuse3 gnome-keyring xdg-desktop-portal-kde 2>/dev/null | grep -v "not installed" | tee "$here/versions.txt"
@@ -116,10 +116,14 @@ if [ "$desktop" != kde ]; then
   printf '[preferred]\ndefault=gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
 else
   printf '[preferred]\ndefault=kde;gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
-  export XDG_CURRENT_DESKTOP=KDE XDG_SESSION_TYPE=wayland
+  # no screen locker over the tour (run 44746214946: KDE locked its screen)
+  if command -v kwriteconfig6 > /dev/null; then
+    kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false
+    kwriteconfig6 --file kscreenlockerrc --group Daemon --key LockOnResume false
+  fi
 fi
 dbus-update-activation-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR \
-  XDG_CURRENT_DESKTOP XDG_SESSION_TYPE > /dev/null 2>&1 || true
+  > /dev/null 2>&1 || true
 started=()
 tray=no scheme="" pictures=gnome beneath=wayland dialogs=()
 case "$desktop" in

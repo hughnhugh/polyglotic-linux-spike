@@ -757,7 +757,7 @@ def the_dialogs(
                     tray_menu(
                         out / "tray-transcript.json", click="Everything the PC plays"
                     )
-                    wait(
+                    shown = wait(
                         lambda: [
                             w
                             for w in x_windows()
@@ -765,7 +765,22 @@ def the_dialogs(
                         ],
                         20,
                     )
-                    time.sleep(2)
+                    # wide enough that Save is a button of its own, not in
+                    # "More" (FOLD_BELOW): a menu opened over AT-SPI never
+                    # showed its items (run 44746214946)
+                    for window in shown or []:
+                        subprocess.run(
+                            [
+                                "xdotool",
+                                "windowsize",
+                                str(int(window["id"], 16)),
+                                "1200",
+                                "800",
+                            ],
+                            timeout=20,
+                            check=False,
+                        )
+                    time.sleep(3)
                 pressed = subprocess.run(
                     ["/usr/bin/python3", str(press), *buttons],
                     capture_output=True,
