@@ -107,6 +107,19 @@ if [ -z "${IN_SESSION_574:-}" ]; then  # the runner's own session, then here aga
     bash tools/linux_packed_tour.sh "$desktop" "$out" "$appimage"
 fi
 
+# the portal's backend: GTK's, as Ubuntu's desktops have one; KDE's own on
+# KDE - started here, with its log - and GTK's after it if it won't run. Set
+# before the desktop starts: its shell asks the portal first, and the portal
+# keeps the backends it found then (run 44744836219: no file chooser on KDE)
+mkdir -p "$HOME/.config/xdg-desktop-portal"
+if [ "$desktop" != kde ]; then
+  printf '[preferred]\ndefault=gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
+else
+  printf '[preferred]\ndefault=kde;gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
+  export XDG_CURRENT_DESKTOP=KDE XDG_SESSION_TYPE=wayland
+fi
+dbus-update-activation-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR \
+  XDG_CURRENT_DESKTOP XDG_SESSION_TYPE > /dev/null 2>&1 || true
 started=()
 tray=no scheme="" pictures=gnome beneath=wayland dialogs=()
 case "$desktop" in
@@ -160,15 +173,6 @@ esac
 # Save transcript's and the export's dialogs: the app's buttons pressed as a
 # screen reader presses them, through AT-SPI (tools/linux_atspi_press.py)
 [ ${#dialogs[@]} -gt 0 ] && export QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1
-# the portal's backend: GTK's, as Ubuntu's desktops have one; KDE's own on
-# KDE - started here, with its log (run 44743443965: the bus's own start of
-# it gave the portal no file chooser), and GTK's after it if it won't run
-mkdir -p "$HOME/.config/xdg-desktop-portal"
-if [ "$desktop" != kde ]; then
-  printf '[preferred]\ndefault=gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
-else
-  printf '[preferred]\ndefault=kde;gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
-fi
 dbus-update-activation-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP \
   XDG_SESSION_TYPE XDG_RUNTIME_DIR > /dev/null 2>&1 || true
 if [ -n "$scheme" ] && command -v gsettings > /dev/null; then

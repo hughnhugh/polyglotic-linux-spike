@@ -83,7 +83,12 @@ def press(atspi: Any, step: str) -> dict[str, Any]:
         if node is not None:
             action = node.queryAction()
             verbs = [action.getName(i) for i in range(action.nActions)]
-            which = next((i for i, v in enumerate(verbs) if v.lower() in VERBS), 0)
+            # a button with a menu opens it ("ShowMenu"); a press alone
+            # doesn't, for one that pops its menu up at once (run 44744836219)
+            which = next(
+                (i for i, v in enumerate(verbs) if "menu" in v.lower()),
+                next((i for i, v in enumerate(verbs) if v.lower() in VERBS), 0),
+            )
             answered = True
             try:
                 action.doAction(which)
@@ -93,6 +98,7 @@ def press(atspi: Any, step: str) -> dict[str, Any]:
                 "pressed": node.name,
                 "role": node.getRoleName(),
                 "on_screen": bool(shown),
+                "action": verbs[which] if verbs else None,
                 "answered": answered,
             }
         time.sleep(1)
