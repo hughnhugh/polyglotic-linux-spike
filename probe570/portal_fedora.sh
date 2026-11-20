@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 570: GNOME Shell 51, headless, in fedora:45 - the GlobalShortcuts portal
-# as an app that isn't a Flatpak reaches it (probe570/portal.py). Run 2.
+# as an app that isn't a Flatpak reaches it (probe570/portal.py). Run 3: GLib finds an app only if its Exec is there.
 set -uo pipefail
 out="$(realpath -m "${1:?OUT}")"
 if [ -z "${IN_FEDORA_570:-}" ]; then
@@ -24,7 +24,7 @@ export XDG_CURRENT_DESKTOP=GNOME XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=waylan
 mkdir -p "$HOME/.local/share/applications"
 {
   echo "[Desktop Entry]"; echo "Type=Application"; echo "Name=Polyglotic"
-  echo "Exec=polyglotic"; echo "Icon=io.polyglotic.Polyglotic"
+  echo "Exec=/usr/bin/sleep 1"; echo "Icon=io.polyglotic.Polyglotic"
 } > "$HOME/.local/share/applications/io.polyglotic.Polyglotic.desktop"
 dbus-run-session -- bash -c '
   dbus-update-activation-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE \
