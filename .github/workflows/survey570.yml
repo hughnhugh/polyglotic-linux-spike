@@ -4,6 +4,9 @@ name: Survey 570
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["linux-copy-570"]
+    paths: ["probe570/shortcuts.sh", "probe570/kde_*", ".github/workflows/survey570.yml"]
 
 permissions:
   contents: read
