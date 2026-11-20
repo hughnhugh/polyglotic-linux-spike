@@ -49,12 +49,26 @@ env:
     shard = int(os.environ["SHARD"])
     os.makedirs("out", exist_ok=True)
     if "each" not in plan:
-        args = plan["common"] + plan["shards"][shard]
-        report = [f"--junitxml=out/junit-{shard}.xml", "-o", "junit_family=xunit1",
-                  "-o", "junit_logging=all", "-o", "junit_log_passing_tests=False"]
-        command = [shutil.which("pytest") or "pytest", "-p", "no:cacheprovider", *report, *args]
-        print(f"shard {shard}: {len(plan['shards'][shard])} arguments", flush=True)
-        sys.exit(subprocess.call(command))
+        # a list of parts, each one pytest process, side by side (the
+        # machine's 4 CPUs; one pytest uses one)
+        parts = plan["shards"][shard]
+        parts = [parts] if parts and isinstance(parts[0], str) else parts
+        running = []
+        for part, args in enumerate(parts):
+            report = [f"--junitxml=out/junit-{shard}-{part}.xml", "-o", "junit_family=xunit1",
+                      "-o", "junit_logging=all", "-o", "junit_log_passing_tests=False"]
+            command = [shutil.which("pytest") or "pytest", "-p", "no:cacheprovider", *report,
+                       *plan["common"], *args]
+            log = open(f"out/log-{shard}-{part}.txt", "w", encoding="utf-8")
+            running.append((part, len(args), subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT), log))
+        worst = 0
+        for part, count, process, log in running:
+            code = process.wait()
+            log.close()
+            with open(log.name, encoding="utf-8", errors="replace") as said:
+                print(f"::group::part {part} ({count} arguments): exit {code}\n{said.read()[-60000:]}\n::endgroup::", flush=True)
+            worst = worst or code
+        sys.exit(worst)
     cases, failed, began = [], 0, time.time()
     for item in plan["shards"][shard]:
         start = time.time()
