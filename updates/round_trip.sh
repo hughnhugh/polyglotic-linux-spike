@@ -51,10 +51,11 @@ timeout 60 "$app"; echo "exit $?"
 check "1.0.0 ran from the AppImage" "grep -q '\"version\": \"1.0.0\", \"event\": \"window\"' '$TOY547_MARKER'"
 
 echo "== the feed"
-mkdir -p feed && cp releases/* feed/ && ls -la feed
+feed=/tmp/feed547  # readable by every user (a home folder is 750)
+mkdir -p "$feed" && cp releases/* "$feed/" && chmod -R a+rX "$feed" && ls -la "$feed"
 
 echo "== update 1.0.0 -> 1.0.1 in place"
-timeout 120 "$app" --update "$PWD/feed"; echo "exit $?"
+timeout 120 "$app" --update "$feed"; echo "exit $?"
 for _ in $(seq 1 90); do
   grep -q '"version": "1.0.1", "event": "window"' "$TOY547_MARKER" && break
   sleep 1
@@ -123,7 +124,7 @@ mkdir -p "$HOME/Downloads"
 dl="$HOME/Downloads/Toy547-1.0.0-linux-x64-alpha.AppImage"
 cp "$src0" "$dl" && chmod +x "$dl"
 rm -f "$pk"/*.nupkg
-scenario "a versioned name in Downloads" "$dl" "--update $PWD/feed"
+scenario "a versioned name in Downloads" "$dl" "--update $feed"
 
 mkdir -p "$HOME/OtherFs"
 sudo mount -t tmpfs -o "size=300m,uid=$(id -u),gid=$(id -g),mode=755" tmpfs "$HOME/OtherFs"
@@ -131,7 +132,7 @@ echo "packages on: $(df --output=target /var/tmp | tail -1), the AppImage on: $(
 other="$HOME/OtherFs/Toy547.AppImage"
 cp "$src0" "$other" && chmod +x "$other"
 rm -f "$pk"/*.nupkg
-scenario "another filesystem than /var/tmp" "$other" "--update $PWD/feed"
+scenario "another filesystem than /var/tmp" "$other" "--update $feed"
 
 # 4-5. A second learner on the same PC, with no sudo rights
 sudo useradd -m learner2
@@ -140,10 +141,10 @@ echo "learner2's sudo: $(sudo -n -u learner2 sudo -n true 2>&1 | head -1)"
 sudo cp "$src0" /home/learner2/Toy547.AppImage && sudo chown learner2: /home/learner2/Toy547.AppImage && sudo chmod 755 /home/learner2/Toy547.AppImage
 rm -f "$pk"/*.nupkg
 echo "the shared folders now: $(stat -c '%n %U %a' /var/tmp/velopack /var/tmp/velopack/Toy547 "$pk" 2>&1 | tr '\n' ';')"
-scenario "a second user, their own copy (Velopack's folders are the first user's)" /home/learner2/Toy547.AppImage "--update $PWD/feed" learner2
+scenario "a second user, their own copy (Velopack's folders are the first user's)" /home/learner2/Toy547.AppImage "--update $feed" learner2
 
 sudo rm -rf /home/learner2/.cache/toy547
-scenario "a second user, their own copy, packages in their own cache (a locator)" /home/learner2/Toy547.AppImage "--update $PWD/feed --own-packages" learner2
+scenario "a second user, their own copy, packages in their own cache (a locator)" /home/learner2/Toy547.AppImage "--update $feed --own-packages" learner2
 echo "learner2's cache: $(sudo ls -la /home/learner2/.cache/toy547/packages 2>&1 | tail -n +2 | tr '
 ' ';' | cut -c1-300)"
 
@@ -153,19 +154,22 @@ sudo chown root:root /srv/toy547 && sudo chmod 755 /srv/toy547
 sudo cp "$src0" /srv/toy547/Toy547.AppImage && sudo chmod 755 /srv/toy547/Toy547.AppImage
 echo "can learner2 write /srv/toy547? $(sudo -u learner2 test -w /srv/toy547 && echo yes || echo no); pkexec: $(command -v pkexec || echo none)"
 sudo rm -rf /var/tmp/velopack
-scenario "a folder the user can't write, no sudo rights" /srv/toy547/Toy547.AppImage "--update $PWD/feed" learner2
+scenario "a folder the user can't write, no sudo rights" /srv/toy547/Toy547.AppImage "--update $feed" learner2
 
 echo "== which path was denied in the last scenario (strace, extract-and-run, as learner2)"
 sudo rm -rf /var/tmp/velopack
 sudo apt-get install -y -qq strace > /dev/null 2>&1
-sudo -n -u learner2 -H env TOY547_MARKER=/tmp/learner2/m2.jsonl QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1   strace -f -e trace=%file,rename,renameat2 -o /tmp/learner2/trace.txt timeout 60 /srv/toy547/Toy547.AppImage --update "$PWD/feed" < /dev/null > /dev/null 2>&1
+sudo -n -u learner2 -H env TOY547_MARKER=/tmp/learner2/m2.jsonl QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1   strace -f -e trace=%file,rename,renameat2 -o /tmp/learner2/trace.txt timeout 60 /srv/toy547/Toy547.AppImage --update "$feed" < /dev/null > /dev/null 2>&1
 sudo grep -E 'EACCES|EPERM|EROFS' /tmp/learner2/trace.txt | grep -v -E '_internal|\.so|/proc/' | cut -c1-200 | sort -u | head -10
 
 echo "== where the 'staging userId' message comes from (strace, extract-and-run, --check only)"
 sudo apt-get install -y -qq strace > /dev/null 2>&1
 sudo rm -rf /var/tmp/velopack
 mkdir -p /tmp/st && cp "$src0" /tmp/st/Toy547.AppImage && chmod +x /tmp/st/Toy547.AppImage
-APPIMAGE_EXTRACT_AND_RUN=1 strace -f -e trace=%file -o /tmp/st/trace.txt /tmp/st/Toy547.AppImage --check "$PWD/feed" 2>&1 | grep -v '^toy547 {'
+APPIMAGE_EXTRACT_AND_RUN=1 strace -f -e trace=%file -o /tmp/st/trace.txt /tmp/st/Toy547.AppImage --check "$feed" 2>&1 | grep -v '^toy547 {'
+echo '-- the programs it ran'
+grep -o 'execve("[^"]*", \[[^]]*' /tmp/st/trace.txt | cut -c1-160 | sort | uniq -c | sort -rn | head -15
+echo '-- the paths'
 grep -i -E 'beta|stag|userid|/var/tmp/velopack|\.local/share|/velopack' /tmp/st/trace.txt | grep -v -E '_internal|\.so' | cut -c1-200 | sort -u | head -20
 
 cp "$TOY547_MARKER" out/marker.jsonl

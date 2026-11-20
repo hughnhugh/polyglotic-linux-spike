@@ -12,7 +12,7 @@ apt-get install -y -qq --no-install-recommends ca-certificates curl libicu70 > /
 echo "mksquashfs here? $(command -v mksquashfs || echo no)"
 curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
 bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /opt/dotnet > /dev/null
-export PATH="/opt/dotnet:$PATH"
+export PATH="/opt/dotnet:$PATH" DOTNET_ROOT=/opt/dotnet
 echo "dotnet $(dotnet --version)"
 dotnet tool install --tool-path /opt/tools vpk --version 1.2.161 > /dev/null
 /opt/tools/vpk pack --packId Toy547 --packVersion 1.0.0 --packTitle Toy547 --packAuthors Toy547 \
