@@ -81,6 +81,7 @@ check "the app's own check passes (--check-install)" "[ $code = 0 ] && grep -q '
 # not the app's, which PyInstaller's loader put on the path (561)
 check "a program the app starts gets the system's libraries" \
   "grep -q '\"programs_library_path\": \"the system' '$out/check-install.json'"
+check "and none of PyInstaller's loader's own variables"   "grep -q '\"programs_loader_variables\": \[\]' '$out/check-install.json'"
 complaints=$(grep -c -i fontconfig "$out/check-install.log" || true)
 check "fontconfig says nothing" "[ '$complaints' = 0 ]" "($complaints lines)"
 

@@ -96,6 +96,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
+    QListView,
     QPlainTextEdit,
     QPushButton,
     QSizePolicy,
@@ -1136,6 +1137,18 @@ class SettingsPage(Page):
     def lab(self) -> LabPanel:
         self._make("lab")
         return self._lab
+
+    def offer_dictation(self, offered: bool) -> None:
+        """The Dictation section, or none on an OS that has no dictation yet
+        (Linux, until polyglotic-hq 546's slice 8; 574): its tab and its line
+        in the dropdown hidden, and Look shown if it was on."""
+        index = SECTIONS.index("dictation")
+        self.sections.buttons[index].setVisible(offered)
+        view = self.section_picker.view()
+        if isinstance(view, QListView):
+            view.setRowHidden(index, not offered)
+        if not offered and self._current == "dictation":
+            self.show_section("look")
 
     def show_section(self, key: str) -> None:
         """Section `key` (one of `SECTIONS`, or a former name: `FORMER`),

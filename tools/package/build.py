@@ -166,6 +166,8 @@ LINUX = Layout(
         "PySide6/Qt/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so",
         "PySide6/Qt/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so",
         "PySide6/Qt/lib/libQt6DBus.so.6",
+        # the desktop's own file dialogs, through its portal (574, 0280)
+        "PySide6/Qt/plugins/platformthemes/libqxdgdesktopportal.so",
     ),
 )
 LAYOUT = (

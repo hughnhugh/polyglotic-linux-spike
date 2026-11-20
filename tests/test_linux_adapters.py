@@ -60,6 +60,8 @@ def test_linux_gets_a_whole_record() -> None:
             assert piece, field.name
         elif field.name == "qt_platform":  # X11, through XWayland (0258)
             assert piece == "xcb"
+        elif field.name == "dictation":  # none until 546's slice 8 (574)
+            assert piece is False
         else:
             assert callable(piece), field.name
             module = getattr(piece, "__module__", "") or ""
@@ -233,6 +235,26 @@ def test_the_packed_app_leaves_its_library_path_to_itself() -> None:
     env = {"LD_LIBRARY_PATH": "/opt/qt-libs"}  # from source: the developer's own
     system.leave_packed_environment(env)
     assert env == {"LD_LIBRARY_PATH": "/opt/qt-libs"}
+
+
+def test_a_program_the_app_starts_gets_none_of_the_loaders_variables() -> None:
+    """PyInstaller's loader tells a process it starts of itself who its
+    parent is (`_PYI_*`): Velopack's updater, started by the app, starts the
+    new AppImage after an update, which then took itself for this one's
+    child (561's proposal, 574). Neither a desktop's program nor anything
+    started after the start gets them; the app's other variables stay."""
+    loader = {
+        "_PYI_APPLICATION_HOME_DIR": "/tmp/.mount_Poly/usr/bin/_internal",
+        "_PYI_ARCHIVE_FILE": "/tmp/.mount_Poly/usr/bin/Polyglotic",
+        "_PYI_PARENT_PROCESS_LEVEL": "1",
+    }
+    env = system.outside_environment({**loader, "HOME": "/home/learner"})
+    assert env == {"HOME": "/home/learner"}
+    env = {**loader, "HOME": "/home/learner", "PYI_NOT_THE_LOADERS": "kept"}
+    assert system.loader_variables(env) == sorted(loader)
+    system.leave_packed_environment(env)
+    assert env == {"HOME": "/home/learner", "PYI_NOT_THE_LOADERS": "kept"}
+    assert system.loader_variables(env) == []
 
 
 def test_the_start_leaves_the_packed_environment_on_linux_only() -> None:

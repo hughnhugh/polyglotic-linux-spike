@@ -130,6 +130,9 @@ jobs:
           name: appimage-${{ github.run_id }}
           path: appimage
 
+      - name: The parts' folder, the runner's own (the containers write as root)
+        run: mkdir -p "$OUT/updates" "$OUT/fedora-update"
+
       - name: (1, 2) Linkage and the app's own check on a clean Ubuntu 24.04
         if: ${{ !cancelled() }}
         run: docker run --rm -e GITHUB_ACTIONS -v "$PWD:/w" -w /w ubuntu:24.04 bash tools/package/linux_linkage.sh "appimage/Polyglotic-$VERSION.AppImage" "$OUT/linkage-ubuntu-24.04"
@@ -251,17 +254,17 @@ jobs:
         include:
           - desktop: gnome
             name: Ubuntu 24.04 (GNOME)
-            parts: mutter xwayland
+            parts: mutter xwayland gnome-keyring gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-tools
           - desktop: ubuntu
             name: Ubuntu's GNOME (AppIndicator)
-            parts: gnome-shell gnome-shell-extension-appindicator xwayland
+            parts: gnome-shell gnome-shell-extension-appindicator xwayland gnome-keyring xdotool gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-tools
           - desktop: fedora-gnome
             name: Fedora 45 (GNOME)
             parts: ""
           - desktop: kde
             name: KDE Plasma 6 (Fedora 45)
             parts: ""
-          - desktop: xfce
+          - desktop: xfce  # no gnome-keyring installed: no Secret Service at all
             name: Xfce (no keyring)
             parts: xvfb xfwm4 xfce4-panel xfconf imagemagick
     env:
@@ -283,7 +286,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends ${{ matrix.parts }} \
             pipewire pipewire-pulse pipewire-bin wireplumber libpulse0 pulseaudio-utils \
-            dbus-bin dbus-daemon dbus-x11 gnome-keyring libglib2.0-bin x11-utils openssl \
+            dbus-bin dbus-daemon dbus-x11 libglib2.0-bin x11-utils openssl \
             xdg-desktop-portal xdg-desktop-portal-gtk dconf-service dconf-gsettings-backend \
             desktop-file-utils fuse3 \
             libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
@@ -327,6 +330,7 @@ jobs:
             ${{ env.OUT }}/${{ matrix.desktop }}/*.log
             ${{ env.OUT }}/${{ matrix.desktop }}/*.txt
             ${{ env.OUT }}/${{ matrix.desktop }}/*.desktop
+            ${{ env.OUT }}/${{ matrix.desktop }}/portal-calls.txt
             ${{ env.OUT }}/${{ matrix.desktop }}/desk/*.png
             ${{ env.OUT }}/${{ matrix.desktop }}/desk/*.failed
             ${{ env.OUT }}/${{ matrix.desktop }}/one-app/*.json

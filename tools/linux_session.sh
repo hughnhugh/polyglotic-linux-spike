@@ -95,7 +95,7 @@ esac
 if [ "${LINUX_SESSION_KEYRING:-gnome}" != none ]; then
   password="$(head -c 18 /dev/urandom | base64)"
   keyrings="$(mktemp -d)"
-  eval "$(printf '%s' "$password" | XDG_DATA_HOME="$keyrings" gnome-keyring-daemon --unlock --components=secrets)"
+  eval "$(printf '%s' "$password" | XDG_DATA_HOME="$keyrings" gnome-keyring-daemon --unlock --components=secrets 2> "$out/keyring.log")"
   unset password
   export GNOME_KEYRING_CONTROL
 fi

@@ -18,7 +18,7 @@ from PySide6.QtGui import (
     QKeyEvent,
     QKeySequence,
 )
-from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QListView, QPushButton, QWidget
 from tests.ui_next.test_lock_says_how_to_unlock import LOCK_KEYS
 
 from polyglotic_desktop.core.learning.highlights import WordIntroductions
@@ -495,6 +495,33 @@ def pc(monkeypatch: pytest.MonkeyPatch) -> None:
     """The key's words and the box as on a PC, whatever this machine is
     (a Mac's: `test_dictation_key_on_a_mac`)."""
     monkeypatch.setattr(os_words, "on_a_mac", lambda: False)
+
+
+def test_settings_and_help_offer_no_dictation_where_the_os_has_none(
+    qapp: QApplication,
+) -> None:
+    """Linux has no dictation until polyglotic-hq 546's slice 8 (574): the
+    Dictation tab and its line in the dropdown go, a page on it moves to
+    Look, and Help's topic goes; the other sections stay."""
+    page, _keys = settings_page()
+    page.show_section("dictation")
+    page.offer_dictation(False)
+    index = SECTIONS.index("dictation")
+    assert page.sections.buttons[index].isHidden()
+    view = page.section_picker.view()
+    assert isinstance(view, QListView) and view.isRowHidden(index)
+    assert page._current == "look"
+    others = [b for i, b in enumerate(page.sections.buttons) if i != index]
+    assert not any(b.isHidden() for b in others)
+    page.offer_dictation(True)
+    assert not page.sections.buttons[index].isHidden()
+    assert not view.isRowHidden(index)
+    help_page = HelpPage(lambda: facts_with(True))
+    try:
+        help_page.offer_dictation(False)
+        assert help_page.dictation.isHidden()
+    finally:
+        shiboken6.delete(help_page)
 
 
 def test_settings_turn_dictation_on_choose_its_key_and_language(

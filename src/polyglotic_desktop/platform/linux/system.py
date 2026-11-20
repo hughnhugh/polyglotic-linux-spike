@@ -152,10 +152,28 @@ def outside_environment(environ: Mapping[str, str] | None = None) -> dict[str, s
         env["LD_LIBRARY_PATH"] = env.pop("LD_LIBRARY_PATH_ORIG")
     elif getattr(sys, "frozen", False):
         env.pop("LD_LIBRARY_PATH", None)
+    for name in loader_variables(env):
+        del env[name]
     return env
 
 
 LIBRARY_PATHS = ("LD_LIBRARY_PATH", "LD_LIBRARY_PATH_ORIG")
+LOADER = "_PYI_"
+"""PyInstaller's loader's own variables (`_PYI_APPLICATION_HOME_DIR`,
+`_PYI_ARCHIVE_FILE`, `_PYI_PARENT_PROCESS_LEVEL`...): what it tells a
+process it starts of itself. A program the app starts - Velopack's
+updater, which starts the new AppImage after an update, above all - must
+not have them, or a packed app it starts takes itself for this one's
+child, in a folder that's gone (polyglotic-hq 561, 574; PyInstaller's
+`PYINSTALLER_RESET_ENVIRONMENT` does the same from the child's side)."""
+
+
+def loader_variables(environ: Mapping[str, str] | None = None) -> list[str]:
+    """PyInstaller's loader's variables in `environ` (the process's own by
+    default): none, once the start has left the packed environment."""
+    return sorted(
+        n for n in (os.environ if environ is None else environ) if n.startswith(LOADER)
+    )
 
 
 def leave_packed_environment(environ: MutableMapping[str, str] | None = None) -> None:
@@ -164,11 +182,13 @@ def leave_packed_environment(environ: MutableMapping[str, str] | None = None) ->
     now on: the browser a link opens (Qt starts it through `xdg-open`, with
     this environment), the desktop's own boxes. With the app's folder on
     the library path, the browser loaded the app's copies of the libraries
-    it shares names with (polyglotic-hq 550, 561). The app itself keeps its
-    own: the dynamic loader read the path once, as the process started."""
+    it shares names with (polyglotic-hq 550, 561). PyInstaller's loader's own
+    variables go too (`LOADER`, 574). The app itself keeps its own
+    libraries: the dynamic loader read the path once, as the process
+    started."""
     env = os.environ if environ is None else environ
     outside = outside_environment(env)
-    for name in LIBRARY_PATHS:
+    for name in (*LIBRARY_PATHS, *loader_variables(env)):
         if name in outside:
             env[name] = outside[name]
         else:

@@ -88,6 +88,26 @@ def test_every_item_of_the_menu_is_an_action_a_desktop_can_draw(
         assert not shown or action.isSeparator() or action.text() or action.menu()
 
 
+def test_where_the_os_has_no_dictation_the_tray_offers_none(
+    desktop: DesktopApp,
+) -> None:
+    """571 found Linux's tray offering "Dictation (preview)", whose key the
+    app would then say another program has: until 546's slice 8 neither it
+    nor its languages show there (574); everything else does."""
+    shown = lambda: [
+        a.text().split("	")[0]
+        for a in desktop.tray_menu.actions()
+        if a.isVisible() and not a.isSeparator()
+    ]
+    before = shown()
+    assert any(t.startswith("Dictation") for t in before)
+    desktop.offer_dictation(False)
+    after = shown()
+    assert not any(t.startswith("Dictation") for t in after)
+    assert set(after) == {t for t in before if not t.startswith("Dictation")}
+    assert "Pause captions" in after and "Quit" in after
+
+
 def test_the_box_keeps_running_by_default_and_offers_quit(qapp: QApplication) -> None:
     box = still_running_box(None)
     try:

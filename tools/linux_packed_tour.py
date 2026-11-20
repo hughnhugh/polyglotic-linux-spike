@@ -46,6 +46,7 @@ GitHub's runners only (`.github/workflows/linux-release.yml`).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import io
 import json
 import os
@@ -100,10 +101,12 @@ def wait(predicate: Callable[[], object], seconds: float) -> Any:
 # -- before the app starts: what a returning learner's PC has ----------------------
 
 
-def returning_learner(data: Path, one_app: bool) -> None:
+def returning_learner(data: Path, one_app: bool, keep_session: bool = False) -> None:
     """A learner of Mandarin who agreed to this tester agreement before
     (the app keeps the yes in its outbox: no first-run screen), captioning
-    everything the PC plays and their own speech - or one app (`one_app`)."""
+    everything the PC plays and their own speech - or one app (`one_app`).
+    `keep_session`: their transcripts keep the whole session, so Quit asks
+    to save one first (polyglotic-hq 334)."""
     from polyglotic_desktop.adapters.sqlite_outbox import SqliteOutbox
     from polyglotic_desktop.core.shared.papers import TESTER_AGREEMENT_VERSION
     from polyglotic_desktop.ports.consent import Agreement, ConsentChoice
@@ -138,6 +141,8 @@ def returning_learner(data: Path, one_app: bool) -> None:
             "caption_mic": True,
             "caption_windows": {"windows": {tour.SYSTEM_KEY: heard}, "last": heard},
         }
+    if keep_session:
+        settings |= {"transcript_length": "session", "transcript_ask_at_quit": True}
     (data / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
     now = datetime.now(UTC)
     outbox = SqliteOutbox(data / "outbox.sqlite")
@@ -198,7 +203,17 @@ class Packed:
         self.data = data
         self._log = log.open("wb")
         self.process = subprocess.Popen(
-            [str(app), "--server", server, "--data", str(data), "--credentials", ENTRY],
+            [
+                str(app),
+                "--server",
+                server,
+                "--data",
+                str(data),
+                "--credentials",
+                ENTRY,
+                "--updates",
+                str(data.parent / "no-feed"),
+            ],
             stdout=self._log,
             stderr=subprocess.STDOUT,
             env=env,
@@ -335,7 +350,8 @@ class Pictures:
 def drawn_by_the_app(picture: Path, window: dict[str, Any]) -> tuple[float, str]:
     """How much of `window`'s place in `picture` isn't the full-screen
     window's ground (its gradient at that height): the share of pixels
-    more than 40 apart from it, and the mean colour."""
+    more than 12 apart from it in any channel, and the mean colour. Not
+    drawn there, the ground is all there is (the picture is lossless)."""
     from PySide6.QtGui import QImage
 
     image = QImage(str(picture))
@@ -354,7 +370,7 @@ def drawn_by_the_app(picture: Path, window: dict[str, Any]) -> tuple[float, str]
             rgb = (colour.red(), colour.green(), colour.blue())
             total += 1
             sums = [s + c for s, c in zip(sums, rgb, strict=True)]
-            if max(abs(c - g) for c, g in zip(rgb, ground, strict=True)) > 40:
+            if max(abs(c - g) for c, g in zip(rgb, ground, strict=True)) > 12:
                 differ += 1
     if not total:
         return 0.0, "the window is off the picture"
@@ -407,7 +423,7 @@ def labels(menu: dict[str, Any]) -> list[str]:
                 found.append(item["label"])
             walk(item.get("children", []))
 
-    walk(menu.get("items", menu.get("children", [])))
+    walk(menu.get("layout", {}).get("children", []))
     return found
 
 
@@ -454,7 +470,7 @@ def everything_and_mic(
     players.play(clip, None)  # everything the PC plays
     players.play(spoken, os.environ.get("POLYGLOTIC_MIC_SINK"))  # the learner's own
     data = out / "data"
-    returning_learner(data, one_app=False)
+    returning_learner(data, one_app=False, keep_session=args.dialogs)
     packed = Packed(app, server.url, data, out / "app.log")
     try:
         hello = wait(lambda: server.hellos, 120)
@@ -495,6 +511,11 @@ def everything_and_mic(
         captions = caption_window(windows)
         check("the caption window shows", captions, captions)
         picture = pictures.take("captions-and-home")
+        check(
+            "the desktop's own picture of its screen",
+            picture is not None,
+            RESULTS["facts"].get("pictures_failed", {}),
+        )
         if captions is not None:
             check(
                 "the caption window is override-redirect (above every window)",
@@ -516,21 +537,11 @@ def everything_and_mic(
                 share, said_colour = drawn_by_the_app(picture, captions)
                 check(
                     "over the full-screen window, the caption window is what's drawn",
-                    share > 0.05,
+                    share > 0.3,
                     f"{round(share * 100, 1)} % of its place not the window beneath; {said_colour}",
                 )
-        if args.scheme and picture is not None:
-            home = home_window(windows)
-            light = luminance(picture, home) if home is not None else None
-            RESULTS["facts"]["home_luminance"] = light
-            wanted = (
-                (lambda v: v < 0.4) if args.scheme == "dark" else (lambda v: v > 0.6)
-            )
-            check(
-                f"Home follows the desktop's {args.scheme} scheme",
-                light is not None and wanted(light),
-                f"luminance {light}",
-            )
+        if args.scheme:
+            home_in_its_scheme(args.scheme, pictures)
         entry = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
         entry = entry / "applications" / MENU_ENTRY
         written = entry.read_text(encoding="utf-8") if entry.exists() else ""
@@ -553,7 +564,7 @@ def everything_and_mic(
                 valid.stdout + valid.stderr,
             )
         if args.tray == "yes":
-            the_tray(out, packed, server)
+            the_tray(out, packed, server, pictures, args.dialogs)
         players.stop()
     finally:
         packed.end()
@@ -567,7 +578,33 @@ def everything_and_mic(
         )
 
 
-def the_tray(out: Path, packed: Packed, server: Any) -> None:
+def home_in_its_scheme(scheme: str, pictures: Pictures) -> None:
+    """Home, dark or light as the desktop prefers (the settings portal's
+    `color-scheme`, 571): its mean luminance in the desktop's picture, with
+    the full-screen window beneath ended first (`POLYGLOTIC_BENEATH_PID`) -
+    the window manager keeps a focused full-screen window above a new one.
+    The screen behind is black, so a dark Home must still be lighter than
+    that: a Home not drawn reads as no scheme at all."""
+    beneath = os.environ.get("POLYGLOTIC_BENEATH_PID", "")
+    if beneath.isdigit() and sys.platform != "win32":
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(int(beneath), signal.SIGTERM)
+        time.sleep(3)
+    picture = pictures.take("home")
+    home = home_window(x_windows())
+    light = luminance(picture, home) if picture and home else None
+    RESULTS["facts"]["home_luminance"] = light
+    RESULTS["facts"]["home_window"] = home
+    if scheme == "dark":
+        ok = light is not None and 0.04 < light < 0.4
+    else:
+        ok = light is not None and light > 0.6
+    check(f"Home follows the desktop's {scheme} scheme", ok, f"luminance {light}")
+
+
+def the_tray(
+    out: Path, packed: Packed, server: Any, pictures: Pictures, dialogs: bool
+) -> None:
     menu = tray_menu(out / "tray.json")
     if not check(
         "the tray's menu is read over D-Bus, as the desktop's tray reads it",
@@ -602,12 +639,83 @@ def the_tray(out: Path, packed: Packed, server: Any) -> None:
         clicked is not None and len(server.speech) - paused_at <= 1,
         RESULTS["facts"]["speech_frames_around_pause"],
     )
+    if dialogs:
+        the_save_dialog(out, pictures)
+        return
     tray_menu(out / "tray-quit.json", click="Quit")
     check(
         "Quit there ends the app",
         wait(lambda: not packed.running(), 30),
         packed.process.poll(),
     )
+
+
+def the_save_dialog(out: Path, pictures: Pictures) -> None:
+    """Save transcript's dialog is the desktop's own (decision 0280): Quit
+    at the tray asks to save the session's transcript first (334), and its
+    Save... - the default, Return - opens Save transcript's dialog
+    (`TranscriptWindow.save_as`: the same `QFileDialog.getSaveFileName` as
+    Words' exports for Anki). The desktop's own is the portal's: the app
+    asks the portal's file chooser for `SaveFile` on the session bus, and
+    the portal's process draws it - never Qt's own dialog in the app."""
+    calls = out / "portal-calls.txt"
+    watch = subprocess.Popen(
+        [
+            "dbus-monitor",
+            "--session",
+            "type='method_call',interface='org.freedesktop.portal.FileChooser'",
+        ],
+        stdout=calls.open("wb"),
+        stderr=subprocess.STDOUT,
+    )
+    said = lambda: calls.read_text(errors="replace")
+    try:
+        time.sleep(2)
+        tray_menu(out / "tray-quit.json", click="Quit")
+        asked = wait(
+            lambda: [
+                w
+                for w in x_windows()
+                if w["shown"] and w["name"] == "Save the transcript?"
+            ],
+            20,
+        )
+        check(
+            "Quit asks to save the session's transcript first",
+            asked,
+            [w["name"] for w in x_windows() if w["shown"]],
+        )
+        if not asked:
+            return
+        pictures.take("quit-asks-to-save")
+        box = asked[-1]
+        subprocess.run(
+            [
+                "xdotool",
+                "windowactivate",
+                "--sync",
+                str(int(box["id"], 16)),
+                "key",
+                "--clearmodifiers",
+                "Return",
+            ],
+            timeout=30,
+            check=False,
+        )
+        portal = wait(lambda: "SaveFile" in said(), 20)
+        time.sleep(3)  # drawn
+        windows = x_windows()
+        qts_own = [w for w in windows if w["shown"] and w["name"] == "Save transcript"]
+        RESULTS["facts"]["after_save"] = [w["name"] for w in windows if w["shown"]]
+        check(
+            "Save transcript opens the desktop's own dialog (the portal's SaveFile)",
+            portal,
+            said()[-400:],
+        )
+        check("not Qt's own dialog in the app", not qts_own, qts_own)
+        pictures.take("save-transcript-dialog")
+    finally:
+        watch.terminate()
 
 
 def one_app(
@@ -683,6 +791,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scheme", choices=["dark", "light", ""], default="")
     parser.add_argument("--tls", nargs=2, metavar=("CERT", "KEY"))
     parser.add_argument("--pictures", type=Path)
+    parser.add_argument(
+        "--dialogs",
+        action="store_true",
+        help="with --tray yes: Save transcript's dialog, from Quit's question",
+    )
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     from tests import fake_server
@@ -707,6 +820,11 @@ def main(argv: list[str] | None = None) -> int:
         tls.load_cert_chain(*args.tls)
     fake_server.caption_for = tour.caption_for
     server = fake_server.FakeServer(tls=tls)
+    # the stand-in's welcome names Windows' channel (the protocol's example),
+    # which the app would follow (run 44736206098): Linux's, as the server
+    # names the channel of the platform the app asked for
+    if "channel" in server.welcome:
+        server.welcome["channel"] = "linux-x64-alpha"
     url = server.url.replace("127.0.0.1", "localhost")
     RESULTS["facts"]["server"] = url
     server.url = url

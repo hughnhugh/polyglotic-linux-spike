@@ -10,10 +10,10 @@
 #
 # DESKTOP  gnome         Ubuntu 24.04's GNOME (mutter 46), no tray; dark
 #          ubuntu        Ubuntu's GNOME: GNOME Shell with Ubuntu's AppIndicator
-#                        extension, its tray; light
+#                        extension, its tray; light; Save transcript's dialog
 #          fedora-gnome  Fedora 45's GNOME (in a fedora:45 container); dark
 #          kde           KDE Plasma 6 (KWin, kded6's watcher, Plasma's shell)
-#                        in fedora:45
+#                        in fedora:45; Save transcript's dialog
 #          xfce          Xfce's window manager and panel on an X screen, and
 #                        no keyring at all (the app keeps its token in a file)
 # OUT      where it goes: OUT/DESKTOP/checks.json, the app's log, pictures
@@ -74,10 +74,10 @@ if [ -n "${IN_FEDORA_574:-}" ] && [ -z "${IN_SESSION_574:-}" ]; then  # once: no
     libwayland-client libwayland-cursor libwayland-egl fontconfig google-noto-sans-fonts \
     google-noto-sans-cjk-vf-fonts findutils procps-ng glib2 desktop-file-utils xwininfo \
     fuse3 fuse3-libs openssl ca-certificates xdg-desktop-portal xdg-desktop-portal-gtk \
-    gsettings-desktop-schemas > /tmp/dnf.log 2>&1 \
+    xdotool gsettings-desktop-schemas > /tmp/dnf.log 2>&1 \
     || { tail -30 /tmp/dnf.log; exit 1; }
   echo "574: $(date +%T) Fedora's packages in"
-  rpm -q mutter kwin plasma-workspace fuse3 2>/dev/null | grep -v "not installed" | tee "$here/versions.txt"
+  rpm -q mutter kwin plasma-workspace fuse3 gnome-keyring xdg-desktop-portal-kde 2>/dev/null | grep -v "not installed" | tee "$here/versions.txt"
   cp /out/tls/root.crt /etc/pki/ca-trust/source/anchors/polyglotic-574-stand-in.crt
   update-ca-trust
   export UV_PROJECT_ENVIRONMENT=/tmp/venv UV_PYTHON=3.12.15 UV_PYTHON_PREFERENCE=only-managed
@@ -102,7 +102,7 @@ if [ -z "${IN_SESSION_574:-}" ]; then  # the runner's own session, then here aga
 fi
 
 started=()
-tray=no scheme="" pictures=gnome beneath=wayland
+tray=no scheme="" pictures=gnome beneath=wayland dialogs=()
 case "$desktop" in
 xfce)
   export XDG_CURRENT_DESKTOP=XFCE XDG_SESSION_TYPE=x11
@@ -118,7 +118,7 @@ kde)
   timeout 1500 kded6 > "$here/kded6.log" 2>&1 & started+=($!)
   sleep 3
   QT_QPA_PLATFORM=wayland timeout 1500 plasmashell > "$here/plasmashell.log" 2>&1 & started+=($!)
-  tray=yes pictures=kde
+  tray=yes pictures=kde dialogs=(--dialogs)
   ;;
 gnome|fedora-gnome)
   export XDG_CURRENT_DESKTOP=GNOME XDG_SESSION_TYPE=wayland
@@ -142,7 +142,7 @@ ubuntu)  # Ubuntu's GNOME: the shell itself, headless, with Ubuntu's AppIndicato
   auth="$(ls "$XDG_RUNTIME_DIR"/.mutter-Xwaylandauth.* 2>/dev/null | head -1 || true)"
   [ -n "$auth" ] && export XAUTHORITY="$auth"
   echo "GNOME Shell: $(gnome-shell --version 2>&1 | head -1)" >> "$here/versions.txt"
-  tray=yes scheme=light
+  tray=yes scheme=light dialogs=(--dialogs)
   ;;
 esac
 # the portal's backend: GTK's, as Ubuntu's desktops have one (KDE: its own)
@@ -163,8 +163,11 @@ if [ "$tray" = yes ]; then  # a host for KDE's watcher where Plasma's shell didn
   sleep 3
 fi
 # a full-screen window, focused, beneath the app: a video or a game
-QT_QPA_PLATFORM=$beneath uv run --no-sync python -m tools.linux_desktop_pictures fullscreen \
+# (its own interpreter, so the tour can end it by its PID before Home's picture)
+py="$(uv run --no-sync python -c 'import sys; print(sys.executable)')"
+QT_QPA_PLATFORM=$beneath "$py" -m tools.linux_desktop_pictures fullscreen \
   > "$here/fullscreen.log" 2>&1 & started+=($!)
+export POLYGLOTIC_BENEATH_PID=$!
 if [ "$pictures" != xfce ]; then
   uv run --no-sync python -m tools.linux_desktop_pictures serve "$here/desk" "$pictures" \
     > "$here/pictures.log" 2>&1 & started+=($!)
@@ -172,7 +175,7 @@ fi
 sleep 5
 timeout 1200 uv run --no-sync python -m tools.linux_packed_tour "$here" --appimage "$appimage" \
   --desktop "$desktop" --tray "$tray" --scheme "$scheme" \
-  --tls "$out/tls/server.crt" "$out/tls/server.key" --pictures "$here/desk"
+  --tls "$out/tls/server.crt" "$out/tls/server.key" --pictures "$here/desk" "${dialogs[@]}"
 code=$?
 touch "$here/desk/stop"
 sleep 1
