@@ -122,6 +122,26 @@ def test_a_mac_names_the_hotkeys_its_own_way(
     assert os_words.hotkeys_here(text) == mac
 
 
+@pytest.mark.parametrize(
+    ("text", "linux"),
+    [
+        (
+            "Lock all (Ctrl+Alt+L); Pause is Ctrl+Alt+P.",
+            "Lock all (Ctrl+Alt+Shift+L); Pause is Ctrl+Alt+Shift+P.",
+        ),
+        ("Drücke Strg+Alt+H.", "Drücke Strg+Alt+Umschalt+H."),  # Qt's German
+        ("Ctrl+Alt+D", "Ctrl+Alt+D"),  # dictation's key: not one of the hotkeys
+        ("Bigger text (Ctrl+wheel)", "Bigger text (Ctrl+wheel)"),  # Ctrl is Ctrl
+    ],
+)
+def test_linux_names_its_own_hotkeys(
+    monkeypatch: pytest.MonkeyPatch, text: str, linux: str
+) -> None:
+    """Ctrl+Alt+Shift on Linux (570), in every language."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert os_words.hotkeys_here(text) == linux
+
+
 def test_no_text_names_windows_hotkeys_on_a_mac(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

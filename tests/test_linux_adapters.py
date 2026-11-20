@@ -61,6 +61,8 @@ def test_linux_gets_a_whole_record() -> None:
             assert piece, field.name
         elif field.name == "qt_platform":  # X11, through XWayland (0258)
             assert piece == "xcb"
+        elif field.name == "unlock_spot":  # a Wayland desktop's (570)
+            assert isinstance(piece, bool)
         else:
             assert callable(piece), field.name
             module = getattr(piece, "__module__", "") or ""
@@ -81,10 +83,8 @@ def test_linux_record_loads_nothing_of_the_other_oses() -> None:
 
 
 def test_what_isnt_there_yet_says_so_through_its_port() -> None:
-    """No hotkeys, no dictation, no sample played aloud (slices 3-8)."""
+    """No dictation, no sample played aloud (slices 5-8)."""
     linux = os_adapters("linux")
-    keys = {"l": lambda: None, "p": lambda: None}
-    assert sorted(linux.hotkeys(keys).start()) == ["l", "p"]  # none working here
     assert linux.hold_key("ctrl+alt+d", print, print, print).start() is False
     assert linux.type_text("hello") is False
     assert linux.keys("escape") is False
@@ -399,3 +399,15 @@ def test_linux_runs_on_x11_whatever_the_session_picks() -> None:
     env = {}
     use_qt_platform(None, env)  # Windows, a Mac: Qt's own choice
     assert env == {}
+
+
+def test_a_locked_windows_corner_takes_the_mouse_only_on_a_wayland_desktop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The X server can't say where the mouse is over a Wayland app's window
+    (547); in an Xorg session it can, anywhere (570)."""
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    assert os_adapters("linux").unlock_spot
+    monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    assert not os_adapters("linux").unlock_spot

@@ -276,3 +276,23 @@ def test_on_a_mac_the_tray_is_the_menu_bars_template(
     # the menus' keys: Control+Command, which Qt writes Meta+Ctrl on a Mac
     assert app.lock_windows.shortcut().toString() == "Meta+Ctrl+L"
     app.close()
+
+
+def test_on_linux_the_menus_name_linuxs_hotkeys(
+    qapp: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ctrl+Alt+Shift with the letter (570): Ctrl+Alt+L locks the screen on
+    KDE, Cinnamon, MATE and Xfce - the menus name what the hotkeys are."""
+    from polyglotic_desktop.ui import app as app_module
+
+    monkeypatch.setattr(app_module, "on_a_mac", lambda: False)
+    monkeypatch.setattr(app_module, "on_linux", lambda: True)
+    app = DesktopApp(
+        MemorySettingsStore({"whole_system": False}),
+        None,
+        None,
+        light_taskbar=lambda: False,
+    )
+    shown = {k: a.shortcut().toString() for k, a in app.hotkeys.items()}
+    assert shown == {k: f"Ctrl+Alt+Shift+{k}" for k in "LPH"}
+    app.close()

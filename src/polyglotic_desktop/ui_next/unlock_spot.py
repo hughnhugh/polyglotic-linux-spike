@@ -17,11 +17,22 @@ there when the window locked (a game holding the cursor still) never
 "comes" to it; and nothing unlocks without a click on the button that
 then shows. Home's Lock all and the tray's menu unlock too, and the
 hotkey where it works.
+
+**Where the OS can't say where the mouse is** (Linux on a Wayland desktop,
+polyglotic-hq 547, 570; DECISIONS #243 item 6): the app is an X11 program
+there, and the X server knows nothing of the mouse while it is over another
+app's window - and a locked window lets it through to that window. So the
+lock's corner, at least `CATCH_AT_LEAST`, keeps taking the mouse itself
+(`catch`): a small window of its own over the corner, drawn as nothing.
+The mouse resting there is seen as anywhere else, and a click there shows
+Unlock at once; the rest of the window still lets every click through.
+Behind a setting (`AppSettings.unlock_spot`, on), so it can go.
 """
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPoint, QRect, Qt, QTimer
+from PySide6.QtCore import QObject, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 
 LOOK_MS = 200
@@ -33,6 +44,11 @@ AROUND = 8
 """How far around the button the mouse can stray before it hides."""
 INSET = 5
 """The button's gap from the window's corner: inside its rounded corner."""
+CATCH_AT_LEAST = (60, 40)
+"""The least of a locked window's corner that keeps taking the mouse
+(`catch`): wide and tall enough to find with a mouse."""
+NOWHERE = QPoint(-1_000_000, -1_000_000)
+"""Where the mouse is while the OS can't say: on nothing of the window's."""
 
 
 def _tr(text: str) -> str:
@@ -70,6 +86,11 @@ class UnlockSpot(QObject):
         """The mouse was seen off the lock since watching began: it can
         come to it."""
         self._looks = 0
+        self.catching = False
+        """The lock's corner takes the mouse itself while it watches
+        (`catch`)."""
+        self.catcher: QWidget | None = None
+        """The corner's own window while it catches: made the first time."""
 
     @property
     def watching(self) -> bool:
@@ -90,15 +111,24 @@ class UnlockSpot(QObject):
             self._timer.stop()
             self._looks = 0
             self._hide()
+        self._place_catcher(self._spot() if on else None)
+
+    def catch(self, on: bool) -> None:
+        """Whether the lock's corner takes the mouse itself while it
+        watches: where the OS can't say where the mouse is over another
+        app (Linux on a Wayland desktop)."""
+        self.catching = on
+        self._place_catcher(self._spot() if self.watching else None)
 
     def look(self) -> None:
         """One look for the mouse (the timer's; a test's own)."""
         spot = self._spot()
+        self._place_catcher(spot)
         if spot is None:
             self._looks = 0
             self._hide()
             return
-        at = self._pointer()
+        at = self._pointer() if self._pointer_known() else NOWHERE
         if self.shown:
             assert self.button is not None
             near = self.button.geometry().adjusted(-AROUND, -AROUND, AROUND, AROUND)
@@ -141,7 +171,63 @@ class UnlockSpot(QObject):
         if self.button is not None:
             self.button.hide()
 
+    def _pointer_known(self) -> bool:
+        """Whether where the mouse is can be read: always, unless the corner
+        catches it - then only while it's on the corner or on Unlock."""
+        if not self.catching:
+            return True
+        on_button = self.shown and self.button is not None and self.button.underMouse()
+        return on_button or (self.catcher is not None and self.catcher.underMouse())
+
+    def _place_catcher(self, spot: QRect | None) -> None:
+        """The corner's own window over `spot`'s corner while it catches,
+        at least `CATCH_AT_LEAST`; hidden otherwise."""
+        if not self.catching or spot is None:
+            if self.catcher is not None:
+                self.catcher.hide()
+            return
+        catcher = self.catcher
+        if catcher is None:
+            catcher = self.catcher = _Catcher(self._window, self._flags)
+            catcher.pressed.connect(self._pressed)
+        width, height = CATCH_AT_LEAST
+        corner = QRect(spot)
+        corner.setLeft(min(spot.left(), spot.right() + 1 - width))
+        corner.setTop(min(spot.top(), spot.bottom() + 1 - height))
+        window = self._window.window()
+        on_screen = QRect(window.mapToGlobal(QPoint(0, 0)), window.size())
+        corner &= on_screen
+        if catcher.geometry() != corner:
+            catcher.setGeometry(corner)
+        if not catcher.isVisible():
+            catcher.show()
+
+    def _pressed(self) -> None:
+        """A click on the corner: Unlock at once - the learner is there."""
+        spot = self._spot()
+        if spot is not None and not self.shown:
+            self._came, self._looks = True, 0
+            self._show(spot)
+
     def _clicked(self) -> None:
         self._hide()
         self._looks = 0
         self._unlock()
+
+
+class _Catcher(QWidget):
+    """A locked window's corner that takes the mouse (`UnlockSpot.catch`):
+    a window of its own, drawn as nothing, never taking the focus."""
+
+    pressed = Signal()
+
+    def __init__(self, window: QWidget, flags: Qt.WindowType) -> None:
+        super().__init__(window)
+        self.setWindowFlags(flags)  # a window of its own: it takes the mouse
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setObjectName("caption_window.unlock_spot")
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        event.accept()
+        self.pressed.emit()

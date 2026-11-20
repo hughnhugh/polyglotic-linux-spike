@@ -227,6 +227,8 @@ def test_hotkeys_lock_pause_and_hide_from_any_thread(qapp: QApplication) -> None
     app = make_app()
     shown = {k: a.shortcut().toString() for k, a in app.hotkeys.items()}
     keys = "Meta+Ctrl+" if sys.platform == "darwin" else "Ctrl+Alt+"  # ⌃⌘ (428)
+    if sys.platform.startswith("linux"):
+        keys = "Ctrl+Alt+Shift+"  # Ctrl+Alt+L locks some desktops' screens (570)
     assert shown == {k: keys + k for k in "LPH"}
     for key in "LPH":
         worker = threading.Thread(target=app.hotkey_pressed.emit, args=(key,))

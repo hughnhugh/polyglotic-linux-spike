@@ -116,6 +116,19 @@ def os_version(
     return " ".join(part for part in parts if part)
 
 
+def wayland_session(environ: Mapping[str, str]) -> bool:
+    """Whether the desktop is a Wayland session (the app's windows then go
+    through XWayland)."""
+    return environ.get("XDG_SESSION_TYPE", "") == "wayland" or bool(
+        environ.get("WAYLAND_DISPLAY")
+    )
+
+
+def desktop_names(environ: Mapping[str, str]) -> list[str]:
+    """`XDG_CURRENT_DESKTOP`'s names, upper case ("UBUNTU", "GNOME")."""
+    return [n.upper() for n in environ.get("XDG_CURRENT_DESKTOP", "").split(":") if n]
+
+
 def light_panel() -> bool:
     """`LightTaskbar` on Linux: dark, until the desktop's own setting is
     read (the settings portal's `color-scheme`: polyglotic-hq 546's slice

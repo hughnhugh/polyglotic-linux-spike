@@ -109,7 +109,7 @@ from polyglotic_desktop.ui.apps_with_sound import AppsWithSound
 from polyglotic_desktop.ui.captions import CaptionFeed
 from polyglotic_desktop.ui.icons import TrayState, menu_bar_icon, tray_icon
 from polyglotic_desktop.ui.learning import LearningTools
-from polyglotic_desktop.ui.os_words import on_a_mac, pc_or_mac
+from polyglotic_desktop.ui.os_words import on_a_mac, on_linux, pc_or_mac
 from polyglotic_desktop.ui.settings import (
     SOURCE_KEY_EVERYTHING_ELSE,
     SOURCE_KEY_MIC,
@@ -403,8 +403,14 @@ class DesktopApp(QObject):
         self.show_delay.toggled.connect(lambda on: self.settings.update(show_delay=on))
         self.settings.changed.connect(self._settings_changed)
         # Ctrl+Alt+ the letter; on a Mac Control+Command (polyglotic-hq 428,
-        # DECISIONS #193), which Qt writes Meta+Ctrl there: "⌃⌘L"
-        hotkey = "Meta+Ctrl+{key}" if on_a_mac() else "Ctrl+Alt+{key}"
+        # DECISIONS #193), which Qt writes Meta+Ctrl there: "⌃⌘L"; on Linux
+        # Ctrl+Alt+Shift, as Ctrl+Alt+L locks the screen on several desktops
+        # (570, `platform.linux.hotkeys.LINUX_MODIFIERS`)
+        hotkey = "Ctrl+Alt+{key}"
+        if on_a_mac():
+            hotkey = "Meta+Ctrl+{key}"
+        elif on_linux():
+            hotkey = "Ctrl+Alt+Shift+{key}"
         for key, action in self.hotkeys.items():
             # shown in menus; the OS's hotkey does the work, from anywhere
             action.setShortcut(QKeySequence(hotkey.format(key=key)))

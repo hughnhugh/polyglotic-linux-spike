@@ -308,6 +308,11 @@ class AppSettings:
     # set. Only languages with a Reset offered (polyglotic-hq 342)
     known_reset: dict[str, dict[str, object]] = field(default_factory=dict)
     locked: bool = False
+    # Linux on a Wayland desktop: a locked caption window's corner keeps taking
+    # the mouse, so resting on its lock offers Unlock over another app's
+    # window (`UnlockSpot.catch`; polyglotic-hq 570, DECISIONS #243 item 6).
+    # Not in Settings: a switch to take it out again if it gets in the way
+    unlock_spot: bool = True
     overlay_geometry: dict[str, list[int]] = field(default_factory=dict)
     # the display: the captions' font and colours, the panel behind them,
     # where the overlays go and how wide (project 054)

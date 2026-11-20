@@ -1,0 +1,468 @@
+"""Linux's system-wide hotkeys (polyglotic-hq 546's slice 3, 570;
+`ports.system.Hotkeys`): lock, pause and hide from wherever the learner is.
+
+**X11's key grab** (`X11Hotkeys`): the X server hands this app each
+combination grabbed on the root window, whatever window has the keyboard.
+- In an Xorg session (Ubuntu's "Ubuntu on Xorg", Mint, Xfce) that is every
+  window.
+- On KDE's Wayland session KWin hands an X11 app the keys typed with Ctrl,
+  Alt or Meta held, whatever app has the keyboard (its "Legacy X11 App
+  Support" default), so a combination grabbed through XWayland works there
+  too.
+- On GNOME's Wayland session only while an X11 window has the keyboard -
+  not over Firefox or a Wayland game - so it isn't offered there: the keys
+  answer "not working here", and the learner binds `polyglotic --lock` and
+  the like in GNOME's keyboard settings (`main`'s arguments; Help says how).
+
+Which one runs is the session's (`for_this_session`). The app is an X11
+program on every desktop (decision 0258), so the grab goes through the
+same X server its windows are on.
+
+**libxcb, by ctypes** (`Xcb`): the library Qt's own X11 plugin uses, on
+every desktop; a connection of its own, so nothing here touches Qt's. A
+grab another program holds fails with `BadAccess`, which libxcb gives back
+for the request itself (no process-wide error handler, as Xlib would
+need): `start` says which keys, and the rest still work. The keys are
+found by what they type ("L"), on the keyboard's first layout; a layout
+with no Latin letters gets the US keyboard's positions. NumLock and Caps
+Lock on or off are grabbed alike. Held down, a combination fires once:
+the X server's repeats (a release and a press at the same moment) are
+let go.
+
+Each combination's binding is called on the hotkeys' own thread; `main`
+hands the call to the interface's thread. Nothing pressed is ever logged.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import ctypes.util
+import logging
+import os
+import select
+import threading
+from collections.abc import Callable, Mapping, Sequence
+from typing import Protocol
+
+from polyglotic_desktop.platform.linux.system import desktop_names, wayland_session
+
+log = logging.getLogger(__name__)
+
+SHIFT, LOCK, CONTROL, MOD1, MOD2, MOD4 = 0x01, 0x02, 0x04, 0x08, 0x10, 0x40
+"""X11's modifier masks: Shift, Caps Lock, Ctrl, Alt (Mod1), NumLock
+(Mod2 on every current keyboard map), Super (Mod4)."""
+CTRL_ALT_SHIFT = CONTROL | MOD1 | SHIFT
+LINUX_MODIFIERS = CTRL_ALT_SHIFT
+"""Linux's hotkeys: Ctrl+Alt+Shift with L, P and H (polyglotic-hq 570's
+survey of each desktop's own defaults): Ctrl+Alt+L locks the screen on
+KDE, Xfce, Cinnamon and MATE, which would take it before the app heard
+it."""
+WATCHED = SHIFT | CONTROL | MOD1 | MOD4
+"""The modifiers a combination is told apart by; Caps Lock and NumLock
+aren't."""
+IGNORED = (0, LOCK, MOD2, LOCK | MOD2)
+"""Caps Lock and NumLock, on or off: each combination is grabbed four times."""
+KEY_PRESS, KEY_RELEASE = 2, 3
+BAD_ACCESS = 10
+"""X11's error for a grab another client holds."""
+US_KEYCODES = {
+    **{key: 8 + code for key, code in zip("QWERTYUIOP", range(16, 26), strict=True)},
+    **{key: 8 + code for key, code in zip("ASDFGHJKL", range(30, 39), strict=True)},
+    **{key: 8 + code for key, code in zip("ZXCVBNM", range(44, 51), strict=True)},
+    **{key: 8 + code for key, code in zip("1234567890", range(2, 12), strict=True)},
+}
+"""Each letter's and digit's X key code where a US keyboard has it (the
+kernel's code plus 8): for a first layout with no Latin letters."""
+
+
+def combination(modifiers: int, key: str) -> str:
+    """A combination as Linux's desktops write it: "Ctrl+Alt+Shift+L"."""
+    names = [
+        name
+        for mask, name in (
+            (CONTROL, "Ctrl"),
+            (MOD1, "Alt"),
+            (SHIFT, "Shift"),
+            (MOD4, "Super"),
+        )
+        if modifiers & mask
+    ]
+    return "+".join([*names, key])
+
+
+def keysyms_for(key: str) -> tuple[int, ...]:
+    """The X keysyms a letter or digit key types: lower and upper case."""
+    return tuple(dict.fromkeys((ord(key.lower()), ord(key.upper()))))
+
+
+def keycode_for(
+    key: str, mapping: Sequence[Sequence[int]], first_keycode: int
+) -> int | None:
+    """The key code that types `key` on the first layout (a keycode's
+    first two keysyms), else on any layout, else where a US keyboard has
+    it. `mapping`: each keycode's keysyms, from `first_keycode` on."""
+    wanted = set(keysyms_for(key))
+    for columns in (slice(0, 2), slice(0, None)):
+        for offset, syms in enumerate(mapping):
+            if wanted.intersection(syms[columns]):
+                return first_keycode + offset
+    return US_KEYCODES.get(key)
+
+
+class Xcb(Protocol):
+    """The X server calls the hotkeys make (`LibXcb`; a fake in tests)."""
+
+    def keyboard(self) -> tuple[int, list[list[int]]]:
+        """The first keycode and each keycode's keysyms from there."""
+        ...
+
+    def grab(self, keycode: int, modifiers: int) -> bool:
+        """Grabs one combination on the root window; False if another
+        program holds it."""
+        ...
+
+    def ungrab(self, keycode: int, modifiers: int) -> None: ...
+
+    def fileno(self) -> int:
+        """The connection's socket, readable when events come."""
+        ...
+
+    def events(self) -> list[tuple[int, int, int, int]]:
+        """The key events waiting: (kind, keycode, modifiers, time)."""
+        ...
+
+    def broken(self) -> bool:
+        """The connection ended (the X server went away)."""
+        ...
+
+    def close(self) -> None: ...
+
+
+class X11Hotkeys:
+    """`Hotkeys` through X11's key grab: each a letter or digit with
+    `modifiers`, its binding called on the hotkeys' own thread."""
+
+    def __init__(
+        self,
+        bindings: Mapping[str, Callable[[], None]],
+        modifiers: int = LINUX_MODIFIERS,
+        connect: Callable[[], Xcb] | None = None,
+    ) -> None:
+        for key in bindings:
+            if len(key) != 1 or not (key.isascii() and key.isupper() or key.isdigit()):
+                raise ValueError(f"not a letter or digit key: {key!r}")
+        self._bindings = dict(bindings)
+        self._modifiers = modifiers
+        self._connect = connect or LibXcb
+        self._xcb: Xcb | None = None
+        self._keycodes: dict[int, str] = {}
+        """Each grabbed key code's key."""
+        self._thread: threading.Thread | None = None
+        self._wake_r, self._wake_w = -1, -1
+        self._down: set[int] = set()
+        self._released: dict[int, int] = {}
+        self.taken: list[str] = []
+        """The keys another program already has (not working here)."""
+
+    def start(self) -> list[str]:
+        """Grabs the hotkeys and starts listening; returns the keys another
+        program already has - all of them if there's no X server to ask."""
+        if self._xcb is not None:
+            raise RuntimeError("already started")
+        try:
+            xcb = self._connect()
+        except OSError:
+            log.exception("X11's hotkeys can't be taken")
+            self.taken = list(self._bindings)
+            return self.taken
+        self._xcb = xcb
+        first, mapping = xcb.keyboard()
+        for key in self._bindings:
+            keycode = keycode_for(key, mapping, first)
+            if keycode is None or not self._grab(xcb, keycode):
+                self.taken.append(key)
+                continue
+            self._keycodes[keycode] = key
+        if self.taken:
+            log.warning(
+                "hotkey(s) already taken by another program: %s",
+                ", ".join(combination(self._modifiers, key) for key in self.taken),
+            )
+        self._wake_r, self._wake_w = os.pipe()
+        self._thread = threading.Thread(target=self._run, name="hotkeys", daemon=True)
+        self._thread.start()
+        return self.taken
+
+    def _grab(self, xcb: Xcb, keycode: int) -> bool:
+        """Every Caps Lock and NumLock variant of one combination, or none."""
+        done: list[int] = []
+        for extra in IGNORED:
+            if not xcb.grab(keycode, self._modifiers | extra):
+                for undo in done:
+                    xcb.ungrab(keycode, undo)
+                return False
+            done.append(self._modifiers | extra)
+        return True
+
+    def stop(self) -> None:
+        """Gives the hotkeys back and ends their thread."""
+        xcb, thread = self._xcb, self._thread
+        if xcb is None:
+            return
+        if thread is not None:
+            os.write(self._wake_w, b"x")
+            thread.join(timeout=5)
+            os.close(self._wake_r)
+            os.close(self._wake_w)
+        if not xcb.broken():
+            for keycode in self._keycodes:
+                for extra in IGNORED:
+                    xcb.ungrab(keycode, self._modifiers | extra)
+        xcb.close()
+        self._keycodes.clear()
+        self._xcb = self._thread = None
+
+    def handle(self, kind: int, keycode: int, modifiers: int, time: int) -> None:
+        """One key event from the X server (the thread's; a test's own): a
+        grabbed combination's first press calls its binding."""
+        key = self._keycodes.get(keycode)
+        if key is None:
+            return
+        if kind == KEY_RELEASE:
+            self._down.discard(keycode)
+            self._released[keycode] = time
+            return
+        if kind != KEY_PRESS or modifiers & WATCHED != self._modifiers & WATCHED:
+            return
+        repeat = keycode in self._down or self._released.get(keycode) == time
+        self._down.add(keycode)
+        if repeat:  # held down: the X server's repeat
+            return
+        try:
+            self._bindings[key]()
+        except Exception:  # a failing action must not end the hotkeys
+            log.exception("a hotkey's action failed")
+
+    def _run(self) -> None:
+        xcb = self._xcb
+        assert xcb is not None
+        while True:
+            ready, _, _ = select.select([xcb.fileno(), self._wake_r], [], [])
+            if self._wake_r in ready:
+                return
+            for event in xcb.events():
+                self.handle(*event)
+            if xcb.broken():
+                log.warning(
+                    "X11's hotkeys stopped: the connection to the X server ended"
+                )
+                return
+
+
+class NoHotkeys:
+    """`Hotkeys` on a desktop that gives this app none (GNOME's Wayland
+    session without the GlobalShortcuts portal): every key answers "not
+    working here", so the interface says how else to lock, pause or hide -
+    and the learner can bind `polyglotic --lock` and the like in the
+    desktop's own keyboard settings."""
+
+    def __init__(self, bindings: Mapping[str, Callable[[], None]]) -> None:
+        self._keys = list(bindings)
+
+    def start(self) -> list[str]:
+        return list(self._keys)
+
+    def stop(self) -> None:
+        pass
+
+
+def grab_works_here(environ: Mapping[str, str]) -> bool:
+    """Whether X11's key grab hears the keys whatever app has the keyboard:
+    an Xorg session, or Plasma 6's Wayland session (KWin hands X11 apps the
+    combinations with Ctrl, Alt or Meta held: `XwaylandEavesdrops`'s
+    default is `Combinations` in Plasma 6, `None` in 5.27 - 570's survey of
+    each one's kwin.kcfg)."""
+    if not wayland_session(environ):
+        return True
+    version = environ.get("KDE_SESSION_VERSION", "")
+    return "KDE" in desktop_names(environ) and version.isdigit() and int(version) >= 6
+
+
+def for_this_session(
+    bindings: Mapping[str, Callable[[], None]],
+    environ: Mapping[str, str] | None = None,
+) -> X11Hotkeys | NoHotkeys:
+    """The hotkeys this session can give: X11's grab where it hears every
+    app, else none."""
+    env = os.environ if environ is None else environ
+    if grab_works_here(env):
+        return X11Hotkeys(bindings)
+    return NoHotkeys(bindings)
+
+
+# --- libxcb, through ctypes ---------------------------------------------------
+
+_u8, _u16, _u32 = ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint32
+
+
+class _Setup(ctypes.Structure):
+    _fields_ = (
+        ("status", _u8), ("pad0", _u8), ("protocol_major_version", _u16),
+        ("protocol_minor_version", _u16), ("length", _u16), ("release_number", _u32),
+        ("resource_id_base", _u32), ("resource_id_mask", _u32),
+        ("motion_buffer_size", _u32), ("vendor_len", _u16),
+        ("maximum_request_length", _u16), ("roots_len", _u8),
+        ("pixmap_formats_len", _u8), ("image_byte_order", _u8),
+        ("bitmap_format_bit_order", _u8), ("bitmap_format_scanline_unit", _u8),
+        ("bitmap_format_scanline_pad", _u8), ("min_keycode", _u8),
+        ("max_keycode", _u8), ("pad1", _u8 * 4),
+    )  # fmt: skip
+
+
+class _ScreenIterator(ctypes.Structure):
+    _fields_ = (
+        ("data", ctypes.c_void_p),
+        ("rem", ctypes.c_int),
+        ("index", ctypes.c_int),
+    )
+
+
+class _Cookie(ctypes.Structure):
+    _fields_ = (("sequence", ctypes.c_uint),)
+
+
+class _MappingReply(ctypes.Structure):
+    _fields_ = (
+        ("response_type", _u8), ("keysyms_per_keycode", _u8), ("sequence", _u16),
+        ("length", _u32), ("pad0", _u8 * 24),
+    )  # fmt: skip
+
+
+class _Error(ctypes.Structure):
+    _fields_ = (("response_type", _u8), ("error_code", _u8), ("sequence", _u16))
+
+
+class _KeyEvent(ctypes.Structure):
+    _fields_ = (
+        ("response_type", _u8), ("detail", _u8), ("sequence", _u16), ("time", _u32),
+        ("root", _u32), ("event", _u32), ("child", _u32), ("root_x", ctypes.c_int16),
+        ("root_y", ctypes.c_int16), ("event_x", ctypes.c_int16),
+        ("event_y", ctypes.c_int16), ("state", _u16), ("same_screen", _u8), ("pad0", _u8),
+    )  # fmt: skip
+
+
+_GRAB_ASYNC = 1
+
+
+class LibXcb:
+    """`Xcb` through the system's libxcb: a connection of its own to the
+    display Qt's windows are on (`DISPLAY`), and its first screen's root
+    window - or the screen `DISPLAY` names."""
+
+    def __init__(self) -> None:
+        lib = ctypes.CDLL("libxcb.so.1")
+        libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6")
+        vp, u8, u16, u32 = ctypes.c_void_p, _u8, _u16, _u32
+        lib.xcb_connect.restype = vp
+        lib.xcb_connect.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_int)]
+        lib.xcb_connection_has_error.restype = ctypes.c_int
+        lib.xcb_connection_has_error.argtypes = [vp]
+        lib.xcb_disconnect.argtypes = [vp]
+        lib.xcb_get_setup.restype = ctypes.POINTER(_Setup)
+        lib.xcb_get_setup.argtypes = [vp]
+        lib.xcb_setup_roots_iterator.restype = _ScreenIterator
+        lib.xcb_setup_roots_iterator.argtypes = [ctypes.POINTER(_Setup)]
+        lib.xcb_screen_next.argtypes = [ctypes.POINTER(_ScreenIterator)]
+        lib.xcb_get_keyboard_mapping.restype = _Cookie
+        lib.xcb_get_keyboard_mapping.argtypes = [vp, u8, u8]
+        lib.xcb_get_keyboard_mapping_reply.restype = ctypes.POINTER(_MappingReply)
+        lib.xcb_get_keyboard_mapping_reply.argtypes = [vp, _Cookie, vp]
+        lib.xcb_get_keyboard_mapping_keysyms.restype = ctypes.POINTER(u32)
+        lib.xcb_get_keyboard_mapping_keysyms.argtypes = [ctypes.POINTER(_MappingReply)]
+        lib.xcb_grab_key_checked.restype = _Cookie
+        lib.xcb_grab_key_checked.argtypes = [vp, u8, u32, u16, u8, u8, u8]
+        lib.xcb_ungrab_key.restype = _Cookie
+        lib.xcb_ungrab_key.argtypes = [vp, u8, u32, u16]
+        lib.xcb_request_check.restype = ctypes.POINTER(_Error)
+        lib.xcb_request_check.argtypes = [vp, _Cookie]
+        lib.xcb_flush.argtypes = [vp]
+        lib.xcb_get_file_descriptor.restype = ctypes.c_int
+        lib.xcb_get_file_descriptor.argtypes = [vp]
+        lib.xcb_poll_for_event.restype = vp
+        lib.xcb_poll_for_event.argtypes = [vp]
+        libc.free.argtypes = [vp]
+        self._lib, self._libc = lib, libc
+        screen = ctypes.c_int(0)
+        conn = lib.xcb_connect(None, ctypes.byref(screen))
+        if not conn or lib.xcb_connection_has_error(conn):
+            if conn:
+                lib.xcb_disconnect(conn)
+            raise OSError("xcb_connect: no X server to take hotkeys from")
+        self._conn = conn
+        setup = lib.xcb_get_setup(conn)
+        self._setup = setup.contents
+        roots = lib.xcb_setup_roots_iterator(setup)
+        for _ in range(screen.value):
+            lib.xcb_screen_next(ctypes.byref(roots))
+        if not roots.data:
+            lib.xcb_disconnect(conn)
+            raise OSError("xcb: no screen")
+        self._root = _u32.from_address(roots.data).value  # xcb_screen_t's first field
+
+    def keyboard(self) -> tuple[int, list[list[int]]]:
+        first, last = self._setup.min_keycode, self._setup.max_keycode
+        count = last - first + 1
+        lib = self._lib
+        reply = lib.xcb_get_keyboard_mapping_reply(
+            self._conn, lib.xcb_get_keyboard_mapping(self._conn, first, count), None
+        )
+        if not reply:
+            return first, []
+        try:
+            per = reply.contents.keysyms_per_keycode
+            syms = lib.xcb_get_keyboard_mapping_keysyms(reply)
+            flat = [syms[i] for i in range(per * count)]
+        finally:
+            self._libc.free(reply)
+        return first, [flat[i * per : (i + 1) * per] for i in range(count)]
+
+    def grab(self, keycode: int, modifiers: int) -> bool:
+        lib = self._lib
+        cookie = lib.xcb_grab_key_checked(
+            self._conn, 1, self._root, modifiers, keycode, _GRAB_ASYNC, _GRAB_ASYNC
+        )
+        error = lib.xcb_request_check(self._conn, cookie)
+        if not error:
+            return True
+        code = error.contents.error_code
+        self._libc.free(error)
+        if code != BAD_ACCESS:
+            log.warning("X11 refused a hotkey (error %d)", code)
+        return False
+
+    def ungrab(self, keycode: int, modifiers: int) -> None:
+        self._lib.xcb_ungrab_key(self._conn, keycode, self._root, modifiers)
+        self._lib.xcb_flush(self._conn)
+
+    def fileno(self) -> int:
+        return int(self._lib.xcb_get_file_descriptor(self._conn))
+
+    def events(self) -> list[tuple[int, int, int, int]]:
+        found: list[tuple[int, int, int, int]] = []
+        while True:
+            event = self._lib.xcb_poll_for_event(self._conn)
+            if not event:
+                return found
+            key = _KeyEvent.from_address(event)
+            kind = key.response_type & 0x7F
+            if kind in (KEY_PRESS, KEY_RELEASE):
+                found.append((kind, key.detail, key.state, key.time))
+            self._libc.free(event)
+
+    def broken(self) -> bool:
+        return bool(self._lib.xcb_connection_has_error(self._conn))
+
+    def close(self) -> None:
+        if self._conn:
+            self._lib.xcb_disconnect(self._conn)
+            self._conn = None

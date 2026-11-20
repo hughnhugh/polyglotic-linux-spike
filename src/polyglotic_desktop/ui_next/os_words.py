@@ -10,7 +10,9 @@ The app's hotkeys are named in the texts as Windows writes them
 does, "⌃⌘L" (polyglotic-hq 428): the symbols are the same in every
 language, so no language drafts them again. Qt's Ctrl is Command on a Mac,
 so a shortcut with Ctrl alone ("Ctrl+C", "Ctrl+wheel") is Command's there:
-"⌘C", "⌘+wheel" (polyglotic-hq 451).
+"⌘C", "⌘+wheel" (polyglotic-hq 451). On Linux the hotkeys are Ctrl+Alt+Shift
+with the letter (570), Shift named as Qt names it there ("Umschalt" beside
+German's "Strg").
 
 `ui` and `ui_next` each have this module (they don't import each other).
 """
@@ -18,7 +20,7 @@ so a shortcut with Ctrl alone ("Ctrl+C", "Ctrl+wheel") is Command's there:
 import re
 import sys
 
-_HOTKEY = re.compile(r"\b(?:Ctrl|Strg)\+Alt\+([LPH])\b")
+_HOTKEY = re.compile(r"\b(Ctrl|Strg)\+Alt\+([LPH])\b")
 """One of the app's hotkeys (`ui.app.DesktopApp.hotkeys`) as a translated
 text names it on Windows."""
 _COMMAND_KEY = re.compile(r"\b(?:Ctrl|Strg)\+(?=[A-Z0-9]\b)")
@@ -47,8 +49,18 @@ def hotkeys_here(text: str) -> str:
     """`text` (already translated) with the app's hotkeys and Ctrl's
     shortcuts as this OS writes them: on a Mac the hotkeys are
     Control+Command, "⌃⌘L", and Ctrl is Command, "⌘C", "⌘+wheel";
-    elsewhere as it is."""
+    on Linux the hotkeys are Ctrl+Alt+Shift (570); elsewhere as it is."""
+    if on_linux():
+        return _HOTKEY.sub(_linux_hotkey, text)
     if not on_a_mac():
         return text
-    text = _HOTKEY.sub(r"⌃⌘\1", text)
+    text = _HOTKEY.sub(r"⌃⌘\2", text)
     return _COMMAND.sub("⌘+", _COMMAND_KEY.sub("⌘", text))
+
+
+def _linux_hotkey(found: re.Match[str]) -> str:
+    """Linux's hotkey for one Windows' names: Shift beside Ctrl+Alt, in the
+    text's own word for Ctrl."""
+    ctrl, key = found[1], found[2]
+    shift = "Umschalt" if ctrl == "Strg" else "Shift"
+    return f"{ctrl}+Alt+{shift}+{key}"

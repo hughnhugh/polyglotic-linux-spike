@@ -210,6 +210,57 @@ def _no_os(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize(
+    ("told", "code"),
+    [
+        (one_copy.Told.DONE, 0),
+        (one_copy.Told.NOT_YET, 1),
+        (one_copy.Told.NO_COPY, 1),
+    ],
+)
+def test_a_command_is_told_to_the_copy_that_runs_and_this_start_ends(
+    monkeypatch: pytest.MonkeyPatch,
+    data: Path,
+    told: one_copy.Told,
+    code: int,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`--lock` (570): asked of the copy for this data folder, whatever the
+    lock says - never run, never shown, nothing opened."""
+    fake = _os(monkeypatch, data, held=False)  # no copy holds it: still not run
+    asked: list[tuple[str, str]] = []
+
+    def tell(name: str, command: str) -> one_copy.Told:
+        asked.append((name, command))
+        return told
+
+    monkeypatch.setattr(one_copy, "tell", tell)
+
+    ended = _exit_code(partial(main.this_copy, ["--data", str(data), "--lock"]))
+
+    assert ended == code
+    assert asked == [(one_copy.copy_name(data, one_copy.user()), "lock")]
+    assert fake.names == []  # the lock isn't taken: this start never runs
+    assert not data.exists()
+    assert ("nothing done" in capsys.readouterr().err) is (code == 1)
+
+
+def test_one_command_at_a_time() -> None:
+    assert main.arguments(["--pause"]).command == "pause"
+    assert main.arguments([]).command is None
+    with pytest.raises(SystemExit):
+        main.arguments(["--lock", "--hide"])
+
+
+def test_each_command_is_a_hotkeys(qapp: QApplication) -> None:
+    from tests.ui.fakes import make_app
+
+    app = make_app()
+    assert set(main.COMMAND_KEYS) == set(one_copy.COMMANDS)
+    assert set(main.COMMAND_KEYS.values()) == set(app.hotkeys)
+    app.close()
+
+
+@pytest.mark.parametrize(
     "hook",
     [
         "--veloapp-install",

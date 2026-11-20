@@ -304,6 +304,8 @@ class CaptionWindows(QObject):
         self.locked = False
         self.unlock_keys = "Ctrl+Alt+L"
         """The hotkey that unlocks, as it is now ("" if another app has it)."""
+        self.unlock_spot = False
+        """A locked window's corner takes the mouse itself (`set_unlock_spot`)."""
         self.app_choices: Callable[[str], list[AppChoice]] = lambda key: []
         """The apps the window of a key can caption instead (`main`'s)."""
         self.hidden = False
@@ -426,6 +428,7 @@ class CaptionWindows(QObject):
         window.set_unstable(self.unstable)
         window.set_connection(*self.connection)
         window.set_unlock_keys(self.unlock_keys)
+        window.unlock_spot.catch(self.unlock_spot)
         window.set_locked(self.locked)
         window.use_say_it(self.say_it)
         window.set_start_like_this(self.stored.start_like_this)
@@ -1158,6 +1161,15 @@ class CaptionWindows(QObject):
             window.set_locked(locked)
         if self.joined_window is not None:
             self.joined_window.set_locked(locked)
+
+    def set_unlock_spot(self, on: bool) -> None:
+        """Whether a locked window's corner keeps taking the mouse, so resting
+        on its lock offers Unlock where the OS can't say where the mouse is
+        over another app (Linux on a Wayland desktop: `UnlockSpot.catch`,
+        polyglotic-hq 570)."""
+        self.unlock_spot = on
+        for window in self.windows.values():
+            window.unlock_spot.catch(on)
 
     def set_unlock_keys(self, keys: str) -> None:
         """The lock's hotkey as it is now ("" if it doesn't work here): what a

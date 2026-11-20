@@ -2,10 +2,10 @@
 3-8, 550, 561): each piece says so through its port, the way the app already
 handles an OS that refuses it, so the interface hides it or explains it.
 
-- `NoHotkeys` - Ctrl+Alt+L, P and H answer "not working here" (slice 3);
 - `NoHoldKey`, `type_nothing`, `no_window` - dictation's key and typing
   (slice 8);
-- `no_keys` - Esc, Backspace and clicks elsewhere aren't read (slice 3);
+- `no_keys` - Esc, Backspace and clicks elsewhere aren't read anywhere
+  (an X11 app can't, over a Wayland app's window);
 - `NoSound` - Home's sample isn't played aloud (slice 5).
 
 The rest of Windows' pieces have no Linux counterpart at all, as on a Mac:
@@ -14,25 +14,11 @@ the store's package, the taskbar's ID, fonts read and windows made ahead
 metered connection (NetworkManager isn't asked yet).
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from polyglotic_desktop.platform.speech_detection import Audio
-
-
-class NoHotkeys:
-    """`Hotkeys`: none taken - every key answers "not working here", so the
-    interface says how else to lock, pause or hide (slice 3)."""
-
-    def __init__(self, keys: Mapping[str, Callable[[], None]]) -> None:
-        self._keys = list(keys)
-
-    def start(self) -> list[str]:
-        return list(self._keys)
-
-    def stop(self) -> None:
-        pass
 
 
 class NoHoldKey:
@@ -59,7 +45,7 @@ def no_window() -> int:
 
 
 def no_keys(_name: str) -> bool:
-    """`KeyState`: nothing read held (slice 3)."""
+    """`KeyState`: nothing read held."""
     return False
 
 

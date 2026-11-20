@@ -900,6 +900,12 @@ class OsAdapters:
     """Whether macOS runs the app from a temporary copy it can't update
     itself in, and the move to Applications (polyglotic-hq 433). None where
     an OS has no such thing (Windows)."""
+    unlock_spot: bool = False
+    """Whether a locked caption window's corner must keep taking the mouse
+    for resting on its lock to offer Unlock (`UnlockSpot.catch`): where the
+    app can't read the mouse over another app's window - Linux on a Wayland
+    desktop, where it's an X11 program (polyglotic-hq 547, 570). False: the
+    mouse is read anywhere (Windows, a Mac, an Xorg session)."""
     qt_platform: str | None = None
     """The Qt platform the app's windows need on this OS, whatever the
     session would pick (`use_qt_platform`): Linux's `xcb` - the app is an
@@ -1124,15 +1130,17 @@ def linux_adapters() -> OsAdapters:
     everything the PC plays and the mic through the sound server
     (libpulse), with the apps playing, the known apps and the sound
     devices; the caption windows above everything as override-redirect
-    windows; and what the first Linux build doesn't have yet saying so
-    through its port (`platform/linux/not_yet`): hotkeys, dictation, the
-    sample played aloud - with no voice for the word card and no start at
-    sign-in, which Home then never offers."""
+    windows; the hotkeys where the session lets an X11 app take them (570);
+    and what the first Linux build doesn't have yet saying so through its
+    port (`platform/linux/not_yet`): dictation, the sample played aloud -
+    with no voice for the word card and no start at sign-in, which Home
+    then never offers."""
     from polyglotic_desktop.platform.linux import (
         apps,
         capture,
         categories,
         devices,
+        hotkeys,
         not_yet,
         on_top,
         one_copy,
@@ -1155,7 +1163,7 @@ def linux_adapters() -> OsAdapters:
         mic_capture=capture.MicCapture,
         outputs_playing=devices.outputs_playing,
         credentials=credentials,
-        hotkeys=not_yet.NoHotkeys,
+        hotkeys=hotkeys.for_this_session,
         sound_out=not_yet.NoSound,
         speaker=None,
         start_at_sign_in=None,
@@ -1180,6 +1188,7 @@ def linux_adapters() -> OsAdapters:
         metered=not_yet.not_metered,
         sound_devices=devices.sound_devices,
         common_apps=categories.COMMON_APPS,
+        unlock_spot=linux.wayland_session(os.environ),
         qt_platform="xcb",
     )
 
@@ -1632,6 +1641,20 @@ def mic_refused_text() -> str:
         " Settings > Privacy & Security > Microphone, then turn on Show my"
         " speech here."
     )
+
+
+def follow_unlock_spot(windows: CaptionWindows, desktop: DesktopApp) -> None:
+    """A locked window's corner keeps taking the mouse while the setting is
+    on (`AppSettings.unlock_spot`; polyglotic-hq 570) - where the OS needs
+    it (`OsAdapters.unlock_spot`)."""
+
+    def follow() -> None:
+        on = desktop.settings.value.unlock_spot
+        if on != windows.unlock_spot:
+            windows.set_unlock_spot(on)
+
+    follow()
+    desktop.settings.changed.connect(follow)
 
 
 def wire_caption_windows(
@@ -7156,6 +7179,21 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="build everything without showing, capturing or connecting;"
         " write what was found to REPORT (JSON) and quit",
     )
+    commands = parser.add_mutually_exclusive_group()
+    for command, does in (
+        ("lock", "lock or unlock the caption windows"),
+        ("pause", "pause or resume captioning"),
+        ("hide", "hide or show the caption windows"),
+    ):
+        commands.add_argument(
+            f"--{command}",
+            dest="command",
+            action="store_const",
+            const=command,
+            help=f"{does} of the copy that runs, as its hotkey does, and end -"
+            " for a shortcut made in the desktop's own keyboard settings",
+        )
+    parser.set_defaults(command=None)
     # GitHub's Mac only (polyglotic-hq 412): refused on Windows
     parser.add_argument("--check-capture", type=Path, help=argparse.SUPPRESS)
     # GitHub's Mac only (polyglotic-hq 428): refused off a Mac
@@ -7199,7 +7237,9 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
     Velopack's start, whose update ends every copy running from the install
     folder, and before anything is opened. None, with nothing held, for an
     installer's hook, `--check-install` (a folder of its own) and an OS
-    with no adapters yet."""
+    with no adapters yet. A start with `--lock`, `--pause` or `--hide`
+    (polyglotic-hq 570) asks the copy that runs to do it and ends: 0 when
+    done, 1 when no copy runs or it isn't ready (`tell_the_copy`)."""
     given = sys.argv[1:] if argv is None else argv
     if any(a.startswith(VELOPACK_HOOK) for a in [*given, *sys.argv[1:]]):
         return None
@@ -7212,6 +7252,8 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
         return None
     data = args.data or system.data_folder()
     name = one_copy.copy_name(data, one_copy.user())
+    if args.command is not None:
+        sys.exit(tell_the_copy(name, args.command))
     lock = system.copy_lock(name)
     asked = partial(one_copy.ask_to_show, name, system.let_to_front)
     started = one_copy.start(lock.take, asked, show=not args.in_tray)
@@ -7224,6 +7266,24 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
     start_interface_language(app, ReadOnlySettings(data / "settings.json"))
     system.show_error("Polyglotic", one_copy.not_answering())
     sys.exit(1)
+
+
+COMMAND_KEYS = {"lock": "L", "pause": "P", "hide": "H"}
+"""Each command a start can give the copy that runs (`--lock`; polyglotic-hq
+570), by the hotkey that does the same (`DesktopApp.hotkeys`)."""
+
+
+def tell_the_copy(name: str, command: str) -> int:
+    """Asks the copy that runs under `name` to do `command`, as its hotkey
+    does, saying on the terminal what came of it: the process's exit code."""
+    told = one_copy.tell(name, command)
+    if told is one_copy.Told.DONE:
+        return 0
+    if told is one_copy.Told.NOT_YET:
+        print("Polyglotic is still starting: nothing done", file=sys.stderr)
+    else:
+        print("Polyglotic isn't running: nothing done", file=sys.stderr)
+    return 1
 
 
 def windows_deleted() -> None:
@@ -7497,6 +7557,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     hub.window.follows_text_size = True  # a change Qt reports restyles it
     if second_starts is not None:  # a second start: the window, as the tray's Open
         second_starts.show_with(desktop.show_window)
+        # or what a hotkey does, from a shortcut of the desktop's own (570)
+        second_starts.do_with(
+            lambda command: desktop.hotkey_pressed.emit(COMMAND_KEYS[command])
+        )
     if notice := start_notice(store.set_aside, windows.taken_off):
         desktop.home_notice.emit(notice)
     # the installed app can start with Windows (176) - not the Store's copy
@@ -8346,6 +8410,8 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     mic_asked = wire_caption_windows(
         windows, desktop, send_settings, system.mic_permission
     )
+    if system.unlock_spot:  # Linux on a Wayland desktop (570): the setting's say
+        follow_unlock_spot(windows, desktop)
     follow_settings(windows, desktop, sources)
     # the mic is captured only while a window shows my speech - with the
     # OS's leave, where it asks (478)
