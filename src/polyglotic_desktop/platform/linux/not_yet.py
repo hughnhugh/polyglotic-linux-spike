@@ -10,8 +10,7 @@ handles an OS that refuses it, so the interface hides it or explains it.
 
 The rest of Windows' pieces have no Linux counterpart at all, as on a Mac:
 the store's package, the taskbar's ID, fonts read and windows made ahead
-(`main` reads False as "not done ahead" and goes on as before), and a
-metered connection (NetworkManager isn't asked yet).
+(`main` reads False as "not done ahead" and goes on as before).
 """
 
 from collections.abc import Callable, Mapping
@@ -106,9 +105,4 @@ def not_done() -> bool:
 
 def not_made(_widget: int) -> bool:
     """`make_native_window`: not made ahead."""
-    return False
-
-
-def not_metered() -> bool:
-    """Whether the connection is metered: NetworkManager isn't asked yet."""
     return False

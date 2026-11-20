@@ -37,7 +37,7 @@ def _item(node: Any) -> dict[str, Any]:
     plain = {key: value[1] for key, value in props.items()}
     return {
         "id": number,
-        "label": str(plain.get("label", "")).split("	", 1)[0].replace("_", ""),
+        "label": str(plain.get("label", "")).split("\t", 1)[0].replace("_", ""),
         "visible": bool(plain.get("visible", True)),
         "enabled": bool(plain.get("enabled", True)),
         "separator": plain.get("type") == "separator",

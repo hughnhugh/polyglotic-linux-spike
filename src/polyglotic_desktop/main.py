@@ -1125,15 +1125,17 @@ def linux_adapters() -> OsAdapters:
     everything the PC plays and the mic through the sound server
     (libpulse), with the apps playing, the known apps and the sound
     devices; the caption windows above everything as override-redirect
-    windows; and what the first Linux build doesn't have yet saying so
-    through its port (`platform/linux/not_yet`): hotkeys, dictation, the
-    sample played aloud - with no voice for the word card and no start at
-    sign-in, which Home then never offers."""
+    windows; light or dark and a metered connection as the desktop says
+    them over D-Bus (571); and what the first Linux build doesn't have yet
+    saying so through its port (`platform/linux/not_yet`): hotkeys,
+    dictation, the sample played aloud - with no voice for the word card and
+    no start at sign-in, which Home then never offers."""
     from polyglotic_desktop.platform.linux import (
         apps,
         capture,
         categories,
         devices,
+        hints,
         not_yet,
         on_top,
         one_copy,
@@ -1165,7 +1167,7 @@ def linux_adapters() -> OsAdapters:
         keys=not_yet.no_keys,
         on_top=on_top.LinuxOnTop,
         foreground_watch=not_yet.NoForegroundWatch,
-        light_taskbar=linux.light_panel,
+        light_taskbar=hints.light_panel,
         taskbar_identity=not_yet.same_name,
         store_package=not_yet.none_found,
         os_name=linux.os_name,
@@ -1178,7 +1180,7 @@ def linux_adapters() -> OsAdapters:
         hold_key=not_yet.NoHoldKey,
         type_text=not_yet.type_nothing,
         keyboard_window=not_yet.no_window,
-        metered=not_yet.not_metered,
+        metered=hints.metered,
         sound_devices=devices.sound_devices,
         common_apps=categories.COMMON_APPS,
         qt_platform="xcb",

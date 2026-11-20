@@ -1,6 +1,5 @@
 """Which Linux this is, where the user's own files live, how long ago the
-process was launched, whether the panel is light, and the box an app shows
-when it can't start (decision 0038: `ports/system.py`'s pieces, and
+process was launched, and the box an app shows when it can't start (decision 0038: `ports/system.py`'s pieces, and
 protocol.md's `os`) - the Mac's `platform/macos/system.py` for Linux
 (polyglotic-hq 546, 550).
 
@@ -114,13 +113,6 @@ def os_version(
         env.get("XDG_SESSION_TYPE", ""),
     ]
     return " ".join(part for part in parts if part)
-
-
-def light_panel() -> bool:
-    """`LightTaskbar` on Linux: dark, until the desktop's own setting is
-    read (the settings portal's `color-scheme`: polyglotic-hq 546's slice
-    4). The tray icon's dark-panel version is the one most desktops need."""
-    return False
 
 
 def seconds_since_launch(

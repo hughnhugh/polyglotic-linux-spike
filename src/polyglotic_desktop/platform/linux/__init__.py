@@ -21,6 +21,8 @@ on Wayland desktops).
   executable), for the app picker; `categories.py` - the known apps by
   their Linux executables, and those listed before they play;
 - `devices.py` - the outputs and mics, by the server's names;
+- `hints.py` - light or dark (the settings portal) and a metered
+  connection (NetworkManager), as the desktop says them over D-Bus (571);
 - `on_top.py` - the caption windows, popovers and card above everything
   as override-redirect windows, their order kept by hand;
 - `not_yet.py` - what the first Linux build doesn't have yet, each saying

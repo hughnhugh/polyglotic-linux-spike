@@ -47,7 +47,8 @@ PAUSE = "Pause captions"
 
 
 def manners(expect_tray: bool, second_start: list[str]) -> Step:
-    yield wait(tour.ready, 120, "Home, signed in")
+    yield from first_questions()
+    yield wait(tour.ready, 60, "Home, signed in")
     desktop = tour.STATE["desktop"]
     window = hub().window
     tray = desktop.tray
@@ -58,10 +59,35 @@ def manners(expect_tray: bool, second_start: list[str]) -> Step:
         "tray_made": tray is not None,
     }
     extra(window, "home", "Home")
+    desk_hints()
     if expect_tray:
         yield from with_tray(desktop, window, tray)
     else:
         yield from without_tray(desktop, window, second_start)
+
+
+def first_questions() -> Step:
+    """The first run's questions, answered as a learner would (as
+    `tools/app_tour.py` answers them)."""
+    for _ in range(5):
+        yield wait(
+            lambda: QApplication.activeModalWidget() or tour.ready(),
+            120,
+            "the first question or the main window",
+        )
+        question = QApplication.activeModalWidget()
+        if question is None:
+            return
+        name = type(question).__name__
+        tour.STATE.setdefault("asked", []).append(name)
+        if name == "ConsentDialog" and getattr(question, "agree", None) is not None:
+            question.agree.setChecked(True)  # type: ignore[attr-defined]
+        if name in ("ConsentDialog", "LevelPicker"):
+            question.accept()  # type: ignore[attr-defined]
+        else:
+            check(f"no {name} on a signed-in start", False)
+            question.close()
+        yield pause(1.0)
 
 
 def with_tray(desktop: Any, window: Any, tray: Any) -> Step:
@@ -161,6 +187,32 @@ def at_the_icon(desktop: Any, tray: Any, menu: Any) -> Step:
     )
     desktop.pause.setChecked(was)
     menu.hide()
+
+
+def desk_hints() -> None:
+    """What the desktop says over D-Bus (light or dark, metered) beside
+    what Qt and the app made of it; with `POLYGLOTIC_COLOR_SCHEME` set (the
+    workflow's gsettings), the portal must say it."""
+    from PySide6.QtGui import QGuiApplication
+
+    from polyglotic_desktop.platform.linux import hints
+    from polyglotic_desktop.ui import theme
+
+    found = {
+        "portal_color_scheme": hints.color_scheme(),
+        "light_panel": hints.light_panel(),
+        "metered": hints.metered(),
+        "qt_color_scheme": QGuiApplication.styleHints().colorScheme().name,
+        "app_mode": theme.current,
+    }
+    tour.RESULTS["facts"]["hints"] = found
+    wanted = os.environ.get("POLYGLOTIC_COLOR_SCHEME", "")
+    expected = {"prefer-light": "light", "prefer-dark": "dark"}.get(wanted)
+    if expected:
+        said = hints.prefers() == expected
+        check("the portal says the desktop's light or dark", said, found)
+        check("the app follows it (Like this PC)", theme.current == expected, found)
+    check("NetworkManager's absence isn't metered", found["metered"] is False, found)
 
 
 def desk_picture(name: str) -> None:

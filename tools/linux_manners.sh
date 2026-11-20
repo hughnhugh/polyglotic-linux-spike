@@ -80,14 +80,24 @@ gnome)
   export XDG_CURRENT_DESKTOP=GNOME XDG_SESSION_TYPE=wayland
   ;;
 esac
+# light or dark as the desktop's settings say it, read by the settings portal
+# (xdg-desktop-portal, started by the bus when asked)
+if command -v gsettings > /dev/null && [ -n "${POLYGLOTIC_COLOR_SCHEME:-}" ]; then
+  gsettings set org.gnome.desktop.interface color-scheme "$POLYGLOTIC_COLOR_SCHEME" \
+    > "$out/gsettings.log" 2>&1 || true
+fi
 sleep 10
 if [ "$tray" = yes ]; then  # a host for KDE's watcher where Plasma's shell didn't start
   uv run --no-sync python -m tools.linux_tray_menu "$out/tray-host.json" --host \
     > "$out/tray-host.log" 2>&1 & started+=($!)
   sleep 3
 fi
+# what the desktop says over D-Bus, asked for real (tests/test_linux_hints.py)
+uv run --no-sync pytest -q -p no:cacheprovider -rs tests/test_linux_hints.py \
+  > "$out/hints-tests.log" 2>&1; tests=$?
 QT_QPA_PLATFORM=xcb uv run --no-sync python -m tools.linux_manners_check "$out/$desktop" \
   --tray "$tray"
 code=$?
+[ "$tests" = 0 ] || code=1
 for pid in "${started[@]}"; do kill "$pid" 2>/dev/null; done
 exit "$code"
