@@ -77,16 +77,20 @@ def script_faces(language: str, system: str = sys.platform) -> list[str]:
 
 
 def _ui_families(traditional: bool, language: str = "") -> list[str]:
-    """Windows' interface font, then the interface language's own script's
-    faces (`script_faces`), then its Chinese (`_chinese`), then another
-    OS's own (`fonts`)."""
+    """Windows' interface font and another OS's own Latin one (`fonts`),
+    then the interface language's own script's faces (`script_faces`), then
+    its Chinese (`_chinese`, and another OS's). Another OS's Latin face
+    comes before the script's, as Segoe UI does on Windows: on Linux a
+    Japanese or Korean interface's Latin letters were in Noto Sans CJK's,
+    and a Hindi one's in Noto Sans Devanagari's, beside Noto Sans
+    (polyglotic-hq 571's fonts check)."""
     chinese, others = _chinese(traditional)
     return [
         "Segoe UI Variable Text",
         "Segoe UI",
+        *fonts.also("latin"),
         *script_faces(language),
         *chinese,
-        *fonts.also("latin"),
         *others,
     ]
 

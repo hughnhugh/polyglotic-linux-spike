@@ -37,4 +37,6 @@ def test_windows_faces_are_as_they_were() -> None:
 def test_on_linux_the_japanese_face_comes_before_the_chinese_one() -> None:
     families = style._ui_families(traditional=False, language="ja")
     assert families.index("Noto Sans CJK JP") < families.index("Noto Sans CJK SC")
+    # its Latin letters in Linux's Latin face, as Windows' are in Segoe UI
+    assert families.index("Noto Sans") < families.index("Noto Sans CJK JP")
     assert "noto sans cjk jp" in style.CHINESE_FACES  # cleared as Chinese ones are

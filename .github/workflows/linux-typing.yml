@@ -9,7 +9,8 @@
 #   typed into its search box through IBus (pinyin; Anthy, else Mozc), then
 #   Chinese through Fcitx5 - the app asking for IBus, which Fcitx5's IBus
 #   frontend answers, and asking for Fcitx's own plugin as Kubuntu does
-#   (tools/linux_typing_session.sh, tools/linux_typing_check.py);
+#   and with no input method named at all (tools/linux_typing_session.sh,
+#   tools/linux_typing_check.py), in a clean ubuntu:24.04 container;
 # - fonts: the interface's words in every language, in the fonts Ubuntu
 #   24.04's desktop and Fedora 45 install, and with only DejaVu (`bare`),
 #   and what carrying Noto's CJK faces would cost (tools/linux_fonts_survey.sh);
@@ -49,35 +50,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: X, the input methods and Qt's libraries
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends \
-            xvfb xdotool dbus-bin dbus-daemon dbus-x11 \
-            ibus ibus-libpinyin ibus-anthy ibus-mozc mozc-server \
-            fcitx5 fcitx5-chinese-addons fcitx5-modules \
-            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
-            libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-noto-core fonts-noto-cjk
-          mkdir -p "$OUT"
-          dpkg-query -W -f='${Package} ${Version}\n' ibus ibus-libpinyin ibus-anthy ibus-mozc \
-            fcitx5 fcitx5-chinese-addons xdotool | tee "$OUT/versions.txt"
-
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: "0.13.5"
-          enable-cache: true
 
-      - name: Install (fails if uv.lock is out of date)
-        run: uv sync --locked
-
-      - name: Typed through IBus
-        if: ${{ !cancelled() }}
-        run: dbus-run-session -- bash tools/linux_typing_session.sh ibus "$OUT/ibus-session"
-
-      - name: Typed through Fcitx5
-        if: ${{ !cancelled() }}
-        run: dbus-run-session -- bash tools/linux_typing_session.sh fcitx5 "$OUT/fcitx5-session"
+      # in a clean ubuntu:24.04 container: Ubuntu's own input methods, as a
+      # learner installs them
+      - name: Typed through IBus and Fcitx5
+        run: bash tools/linux_typing_session.sh "$OUT"
 
       - name: What the typing found
         if: ${{ always() }}
@@ -186,20 +166,10 @@ jobs:
             du -sb "$OUT/dist/Polyglotic" "$OUT"/*.AppImage
           } | tee "$OUT/reports/packed.txt"
 
-      - name: The packed app on X11 with IBus, Qt saying what it loads
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends xvfb dbus-bin dbus-daemon ibus ibus-libpinyin
-          dbus-run-session -- bash -c '
-            export XDG_RUNTIME_DIR="$(mktemp -d)" XDG_DATA_HOME="$(mktemp -d)" XDG_CONFIG_HOME="$(mktemp -d)"
-            Xvfb :96 -screen 0 1600x1000x24 -nolisten tcp & x=$!
-            export DISPLAY=:96; sleep 2
-            ibus-daemon --replace --panel=disable & i=$!; sleep 3
-            QT_IM_MODULE=ibus QT_QPA_PLATFORM=xcb QT_DEBUG_PLUGINS=1 timeout 25 \
-              "$OUT/dist/Polyglotic/Polyglotic" > "$OUT/reports/packed-start.log" 2>&1
-            kill $i $x 2>/dev/null; true'
-          grep -E "platforminputcontexts|inputcontext" "$OUT/reports/packed-start.log" | head -20 | tee "$OUT/reports/packed-plugins.txt"
-          grep -q "libibusplatforminputcontextplugin" "$OUT/reports/packed-plugins.txt"
+      - name: The packed app on X11 with IBus, Qt saying what it loads (a clean Ubuntu 24.04)
+        run: >-
+          docker run --rm -e GITHUB_ACTIONS -v "$PWD:/w" -w /w ubuntu:24.04
+          bash tools/package/linux_input_methods.sh "$OUT/dist/Polyglotic" "$OUT/reports"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
