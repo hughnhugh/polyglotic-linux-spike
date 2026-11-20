@@ -66,7 +66,19 @@ ibus)
   # Mozc on in Hiragana from the start, as a learner who types Japanese
   # sets it (Mozc's own setting; IBus's Mozc starts in direct input)
   mkdir -p "$HOME/.config/mozc"
-  echo "active_on_launch: True" > "$HOME/.config/mozc/ibus_config.textproto"
+  # (the file is Mozc's whole IBus setting: its engine's entry as Mozc
+  # writes it by default, and on at launch instead of off)
+  cat > "$HOME/.config/mozc/ibus_config.textproto" <<'MOZC'
+engines {
+  name : "mozc-jp"
+  longname : "Mozc"
+  layout : "default"
+  layout_variant : ""
+  layout_option : ""
+  rank : 80
+}
+active_on_launch: True
+MOZC
   ibus-daemon --replace --panel=disable --xim > "$out/ibus.log" 2>&1 & started+=($!)
   for _ in $(seq 50); do ibus address > /dev/null 2>&1 && break; sleep 0.2; done
   sleep 2
