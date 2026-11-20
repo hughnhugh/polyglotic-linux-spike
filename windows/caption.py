@@ -149,6 +149,10 @@ def main() -> None:
             win.set_flag(Qt.WindowType.WindowTransparentForInput, False)
         elif line == "spot":
             win.input_spot()
+        elif line == "spotmap":  # the same spot, cut while the window is unmapped
+            win.hide()
+            win.input_spot()
+            win.show()
         elif line == "bypass":
             win.set_flag(Qt.WindowType.X11BypassWindowManagerHint, True)
         elif line == "quit":

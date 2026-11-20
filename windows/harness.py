@@ -145,6 +145,8 @@ def main() -> None:
         ("wlfs-above-locked-then-unlock", "wayland", [], "unlock", "caption"),
         ("wlfs-above-spot", "wayland", ["--unlocked"], "spot", "caption"),
         ("x11fs-above-spot", "x11", ["--unlocked"], "spot", "caption"),
+        ("wlfs-above-spotmap", "wayland", ["--unlocked"], "spotmap", "caption"),
+        ("wlfs-bypass-spotmap", "wayland", ["--bypass", "--unlocked"], "spotmap", "caption"),
     ]
     results = []
     for name, fs_platform, opts, mid, first in scenarios:
@@ -225,14 +227,14 @@ def main() -> None:
                 }
 
             pointer_round("1")
-            if mid in ("lock", "unlock", "spot"):
+            if mid in ("lock", "unlock", "spot", "spotmap"):
                 cap.send(mid)
                 time.sleep(1.2)
                 shot = out / f"{name}-4-after-{mid}.png"
                 session.picture(shot)
                 r["picture_4_after_mid"] = pixels(shot)
                 r["x_stack_4"] = x_stacking()
-                pointer_round("2_after_mid", spot=(mid == "spot"))
+                pointer_round("2_after_mid", spot=mid.startswith("spot"))
             if stacking:
                 r["stack_end"] = stacking(f"{name}-end")
         except Exception as exc:  # noqa: BLE001 - a scenario's failure is a result too
