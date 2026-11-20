@@ -54,6 +54,7 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.core.learning.saved_words import Category, CategoryId
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL
 from polyglotic_desktop.ui_next.languages import learned_name, own_name
 from polyglotic_desktop.ui_next.lookup_card import (
     better_voice_steps,
@@ -177,7 +178,8 @@ class SentenceCard(QWidget):
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.WindowDoesNotAcceptFocus,
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | ABOVE_ALL,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)

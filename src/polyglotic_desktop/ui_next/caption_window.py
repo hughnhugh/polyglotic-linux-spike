@@ -184,6 +184,7 @@ from polyglotic_desktop.core.listening.transcript import as_text
 from polyglotic_desktop.core.shared import EntryId
 from polyglotic_desktop.perf import spans, trace
 from polyglotic_desktop.ui_next import reading_lines, style
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL, set_click_through
 from polyglotic_desktop.ui_next.caption_delay import delay_text
 from polyglotic_desktop.ui_next.caption_layout import (
     LINK_GAP_PX,
@@ -300,6 +301,7 @@ WINDOW_FLAGS = (
     | Qt.WindowType.WindowStaysOnTopHint
     # a click on it never takes the focus from the app underneath
     | Qt.WindowType.WindowDoesNotAcceptFocus
+    | ABOVE_ALL  # Linux: above a focused full-screen window too (550)
 )
 """A caption window's (and a joined window's) window flags."""
 NOTICE_GAP = 8
@@ -3660,10 +3662,7 @@ class CaptionWindow(QWidget):
             return
         self.locked = locked
         if self.isWindow():  # a column passes clicks through with its window
-            visible = self.isVisible()
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, locked)
-            if visible:
-                self.show()  # changing window flags hides it
+            set_click_through(self, locked)  # re-mapped, never live (550)
         if locked:
             self.hovered = False
             self.let_in()

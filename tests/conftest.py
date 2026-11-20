@@ -93,6 +93,9 @@ machine starts from a clean run. The lookup card's: there, a click or hover
 sent to a caption window doesn't reach the card."""
 
 IN_CI = bool(os.environ.get("GITHUB_ACTIONS"))
+LINUX_DESKTOP = "POLYGLOTIC_LINUX_DESKTOP"
+"""Set (to 1) by `.github/workflows/linux.yml` where a sound server and a
+session bus run: only there do `linux_desktop` tests run (550)."""
 
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
@@ -203,7 +206,13 @@ def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     """`windows_only` tests are skipped off Windows (decision 0038): the Linux
-    checks run everything else; `macos_only` tests off macOS (409)."""
+    checks run everything else; `macos_only` tests off macOS (409); and
+    `linux_desktop` tests (a sound server, a session bus: 550) everywhere
+    but a Linux desktop session that says it is one (`LINUX_DESKTOP`)."""
+    if not (sys.platform.startswith("linux") and os.environ.get(LINUX_DESKTOP)):
+        for item in items:
+            if item.get_closest_marker("linux_desktop"):
+                item.add_marker(pytest.mark.skip(reason="a Linux desktop session only"))
     if sys.platform != "darwin":
         for item in items:
             if item.get_closest_marker("macos_only"):

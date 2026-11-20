@@ -59,6 +59,7 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.perf import spans
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.above_all import set_click_through
 from polyglotic_desktop.ui_next.caption_window import (
     BAND_IN_MS,
     BAND_OUT_MS,
@@ -551,10 +552,7 @@ class JoinedWindow(QWidget):
         if locked == self.locked:
             return
         self.locked = locked
-        visible = self.isVisible()
-        self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, locked)
-        if visible:
-            self.show()  # changing window flags hides it
+        set_click_through(self, locked)  # re-mapped, never live (550)
         if locked:
             self._band_in.stop()
             self.show_bands(False)

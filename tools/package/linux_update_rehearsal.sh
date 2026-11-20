@@ -92,6 +92,24 @@ check "in place: the same path, a new file" "[ -x '$app' ] && [ \$(stat -c %i '$
 timeout 300 "$app" --check-install "$out/after.json" --data "$data" > "$out/after.log" 2>&1
 check "the next start is $new and passes its check" "grep -q '\"ok\": true' '$out/after.json' && grep -q '\"installed\": true' '$out/after.json'"
 
+say "the updated AppImage started as a learner starts it, on X11 (Xvfb)"
+sudo apt-get install -y -qq xvfb > /dev/null 2>&1
+Xvfb :93 -screen 0 1280x800x24 > /dev/null 2>&1 &
+xvfb=$!
+sleep 2
+shown=$(mktemp -d)
+DISPLAY=:93 QT_QPA_PLATFORM=xcb "$app" --data "$shown" > "$out/started.log" 2>&1 &
+started=$!
+sleep 25
+check "it is still running 25 s after it started" "kill -0 $started 2> /dev/null"
+kill "$started" 2> /dev/null
+sleep 3
+kill -9 "$started" 2> /dev/null
+kill "$xvfb" 2> /dev/null
+cp "$shown/logs/polyglotic.log" "$out/started-polyglotic.log" 2> /dev/null
+check "its log names the new version" "grep -q 'Polyglotic $new (linux-x64-alpha)' '$out/started-polyglotic.log'"
+check "and no crash" "! grep -q -E 'Traceback|crashed' '$out/started-polyglotic.log' '$out/started.log'"
+
 say "a second user updates their own copy"
 sudo useradd -m learner2 2> /dev/null || true
 sudo -u learner2 mkdir -p /home/learner2/Applications

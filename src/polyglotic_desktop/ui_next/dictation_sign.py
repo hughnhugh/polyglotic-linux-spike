@@ -20,6 +20,7 @@ from PySide6.QtCore import QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QCursor, QGuiApplication, QPainter, QPaintEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL
 from polyglotic_desktop.ui_next.style import px, ui_font
 
 SAID_MS = 2000
@@ -76,7 +77,8 @@ class DictationSign(QWidget):
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.WindowDoesNotAcceptFocus
-            | Qt.WindowType.WindowTransparentForInput,
+            | Qt.WindowType.WindowTransparentForInput
+            | ABOVE_ALL,
         )
         self.setObjectName("DictationSign")
         self.setWindowTitle(_tr("Dictation"))  # never shown; tools name it

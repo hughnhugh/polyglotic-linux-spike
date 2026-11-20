@@ -52,6 +52,11 @@ which bundles the PortAudio library 19.7.0 (MIT-style licence, Ross Bencina
 and Phil Burk; its text in `licenses/PortAudio/LICENSE.txt`). None of these
 is in the Windows app.
 
+On Linux only, the device token is kept in the desktop's keyring through
+jeepney (MIT, Copyright (c) 2017 Thomas Kluyver), which talks D-Bus in
+pure Python. Sound is captured through the system's own libpulse (LGPL-2.1,
+loaded from the PC, never bundled). Neither is in the Windows or Mac app.
+
 ## Velopack
 
 The installer (`Setup.exe`), the updater (`Update.exe`) and the app's

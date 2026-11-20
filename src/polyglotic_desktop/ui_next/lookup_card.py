@@ -115,6 +115,7 @@ from polyglotic_desktop.core.shared import WordStatus
 from polyglotic_desktop.perf import spans
 from polyglotic_desktop.ports.dictionary import DictionaryProblem
 from polyglotic_desktop.ui_next import glyphs, style
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL, set_click_through
 from polyglotic_desktop.ui_next.caption_layout import CJK_FAMILIES, LATIN_FAMILIES
 from polyglotic_desktop.ui_next.caption_marks import STAGE_COLOURS
 from polyglotic_desktop.ui_next.copying import Painted, TextSelection, copy_quietly
@@ -615,7 +616,8 @@ class LookupCard(QWidget):
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.WindowDoesNotAcceptFocus
-            | Qt.WindowType.WindowTransparentForInput,  # until pinned
+            | Qt.WindowType.WindowTransparentForInput  # until pinned
+            | ABOVE_ALL,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -796,11 +798,8 @@ class LookupCard(QWidget):
                 return self.model.entry() if pinned else None
 
             self.act(shown)
-            transparent = not pinned
-            if bool(self.windowFlags() & Qt.WindowType.WindowTransparentForInput) != (
-                transparent
-            ):
-                self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, transparent)
+            # re-mapped, never live (550): shown below once it's drawn
+            set_click_through(self, not pinned, show=False)
             self._render()
             self.show()  # on top already, and never raise_()d: that activates
             self._watch(pinned)

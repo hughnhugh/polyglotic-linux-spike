@@ -80,9 +80,10 @@ def test_macos_record_loads_nothing_of_windows() -> None:
     assert loaded.stdout.split() == []
 
 
-def test_linux_still_has_none() -> None:
-    with pytest.raises(NoOsAdapters, match="platform/linux"):
-        os_adapters("linux")
+def test_another_os_still_has_none() -> None:
+    """Linux has its own since polyglotic-hq 550 (tests/test_linux_adapters.py)."""
+    with pytest.raises(NoOsAdapters, match="freebsd"):
+        os_adapters("freebsd14")
 
 
 @pytest.mark.windows_only

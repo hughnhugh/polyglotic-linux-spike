@@ -344,3 +344,54 @@ def test_packs_go_in_the_installer_only_when_asked(tmp_path: Path) -> None:
         file.close()
     with pytest.raises(FileNotFoundError):
         build.bundle_packs(["es"], built, folder, "0.1.5")
+
+
+def test_a_linux_build_carries_qts_x11_plugin_and_libxcb_cursor(
+    tmp_path: Path, code: list[str]
+) -> None:
+    """polyglotic-hq 550 (547's spike): Qt's X11 plugin can't load without
+    libxcb-cursor, which no desktop is sure to have - the app would exit at
+    once, saying so only to a terminal. Both are needed in the build."""
+    needed = build.needed(build.LINUX)
+    assert "Polyglotic" in needed
+    assert "_internal/PySide6/Qt/plugins/platforms/libqxcb.so" in needed
+    assert "_internal/libxcb-cursor.so.0" in needed
+    folder = tmp_path / "Polyglotic"
+    for need in needed:
+        (folder / need).parent.mkdir(parents=True, exist_ok=True)
+        (folder / need).write_bytes(b"")
+    assert build.problems(folder, build.LINUX) == []
+    (folder / "_internal" / "libxcb-cursor.so.0").unlink()
+    assert build.problems(folder, build.LINUX) == [
+        "missing: _internal/libxcb-cursor.so.0"
+    ]
+
+
+def test_a_linux_build_leaves_fontconfig_and_freetype_to_the_system(
+    tmp_path: Path, code: list[str]
+) -> None:
+    """547: Ubuntu 22.04's fontconfig, bundled, complained 45 times at each
+    start on Fedora; the system's own reads the system's own settings."""
+    folder = tmp_path / "Polyglotic"
+    for need in build.needed(build.LINUX):
+        (folder / need).parent.mkdir(parents=True, exist_ok=True)
+        (folder / need).write_bytes(b"")
+    for name in ("libfontconfig.so.1", "libfreetype.so.6"):
+        (folder / "_internal" / name).write_bytes(b"")
+    assert build.problems(folder, build.LINUX) == [
+        "the system's own, bundled: _internal/libfontconfig.so.1",
+        "the system's own, bundled: _internal/libfreetype.so.6",
+    ]
+    spec = build.SPEC.read_text(encoding="utf-8")
+    assert r'LINUX_SYSTEM = [r"^libfontconfig\.so", r"^libfreetype\.so"]' in spec
+
+
+def test_linux_is_packed_as_one_unversioned_appimage() -> None:
+    """One file, Polyglotic.AppImage, at every version: where the learner
+    keeps it, and anything pointing at it, survive each update."""
+    script = (Path(build.__file__).parent / "pack.sh").read_text(encoding="utf-8")
+    linux = script[script.index("linux-*)") :]
+    linux = linux[: linux.index(";;")]
+    assert "--runtime linux-x64" in linux and "--mainExe Polyglotic " in linux
+    assert '"$outdir/$id.AppImage"' in linux
+    assert "--aumid" not in linux  # Windows' taskbar ID only

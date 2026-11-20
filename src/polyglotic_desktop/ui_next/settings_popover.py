@@ -92,6 +92,7 @@ from PySide6.QtWidgets import (
 from polyglotic_desktop.core.listening.timing import OFFERED_MODES
 from polyglotic_desktop.ports.system import KeyState  # theirs: the OS's
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL
 from polyglotic_desktop.ui_next.controls import (
     INSET,
     SWITCH,
@@ -341,7 +342,8 @@ class SettingsPopover(QWidget):
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.WindowDoesNotAcceptFocus,
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | ABOVE_ALL,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         # on a Mac a tool window hides while the app isn't active - and the

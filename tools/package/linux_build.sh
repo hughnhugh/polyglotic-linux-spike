@@ -20,9 +20,9 @@
 # The dictionaries come built (build/dictionaries: tools.dictionaries.build,
 # the same on every OS). In the image, from Ubuntu's archive: libxcb-cursor0
 # and the xcb libraries Qt's X11 plugin needs, which PyInstaller then
-# bundles (no desktop is sure to have libxcb-cursor0: 547); squashfs-tools
-# and .NET 10 (DOTNET_ROOT) for vpk, at the version .config/dotnet-tools.json
-# pins; uv's own Python at the exact version the Mac's build uses. The
+# bundles (no desktop is sure to have libxcb-cursor0: 547); squashfs-tools,
+# zstd (for the deltas) and .NET 10 (DOTNET_ROOT) for vpk, at the version
+# .config/dotnet-tools.json pins; uv's own Python at the exact version the Mac's build uses. The
 # container's environment is its own (/opt/venv), never the checkout's
 # .venv. Files are left writable by the runner's user.
 set -euo pipefail
@@ -42,7 +42,7 @@ export DEBIAN_FRONTEND=noninteractive
 echo "== the build image: $(grep -E '^PRETTY_NAME=' /etc/os-release), $(ldd --version | sed -n 1p)"
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
-  ca-certificates curl binutils file python3-pip squashfs-tools libicu70 \
+  ca-certificates curl binutils file python3-pip squashfs-tools zstd libicu70 \
   libxcb-cursor0 libxkbcommon0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
   libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxcb-randr0 libxcb-xfixes0 \
   libxcb-xkb1 libxcb-xinerama0 libxcb-sync1 libx11-xcb1 libegl1 libgl1 \
