@@ -26,8 +26,12 @@ def test_japanese_counts_as_typed_in_kana_before_its_conversion() -> None:
 def test_each_mode_types_its_frameworks_pinyin() -> None:
     assert [c.name for c in linux_typing_check.cases("ibus")] == ["pinyin", "japanese"]
     assert [c.name for c in linux_typing_check.cases("ibus-unnamed")] == ["pinyin"]
+    assert [c.name for c in linux_typing_check.cases("fcitx5")] == [
+        "pinyin",
+        "japanese",
+    ]
     fcitx5 = linux_typing_check.cases("fcitx5-kubuntu")
-    assert fcitx5 == linux_typing_check.cases("fcitx5")
+    assert [c.name for c in fcitx5] == ["pinyin"]
     assert fcitx5[0].attempts[0].engine == (("fcitx5-remote", "-s", "pinyin"),)
 
 

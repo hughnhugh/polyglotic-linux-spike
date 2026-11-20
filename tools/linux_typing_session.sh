@@ -37,9 +37,10 @@ if [ -z "${IN_SESSION_571:-}" ]; then
     > "$out/apt.log" 2>&1 || { tail -20 "$out/apt.log"; exit 1; }
   # Anthy, where the archive has it (24.04's doesn't): Mozc is Ubuntu's own
   apt-get install -y -qq --no-install-recommends ibus-anthy >> "$out/apt.log" 2>&1 || true
+  apt-get install -y -qq --no-install-recommends fcitx5-mozc >> "$out/apt.log" 2>&1 || true
   dbus-uuidgen --ensure=/etc/machine-id
   dpkg-query -W -f='${Package} ${Version}\n' ibus ibus-libpinyin ibus-anthy ibus-mozc \
-    fcitx5 fcitx5-chinese-addons xdotool | tee "$out/versions.txt"
+    fcitx5 fcitx5-chinese-addons fcitx5-mozc xdotool | tee "$out/versions.txt"
   export UV_PROJECT_ENVIRONMENT=/tmp/venv
   uv sync --locked > "$out/uv-sync.log" 2>&1 || { tail -20 "$out/uv-sync.log"; exit 1; }
   code=0
@@ -85,6 +86,8 @@ MOZC
   { echo "== $(ibus version 2>&1)"; ibus list-engine 2>&1 | grep -E -i "pinyin|anthy|mozc"; } \
     > "$out/engines.txt" 2>&1
   QT_IM_MODULE=ibus "${check[@]}" "$out/ibus" ibus || code=1
+  { echo "== Mozc's processes after typing"; ps -eo pid,args | grep -i [m]ozc
+    echo "== Mozc's files"; ls -la "$HOME/.config/mozc" "$HOME/.mozc" 2>&1; } > "$out/mozc.txt" 2>&1
   # a session that names no input method: Qt's own pick (compose alone) is
   # a finding; the app's own environment must type
   env -u QT_IM_MODULE -u QT_IM_MODULES "${check[@]}" "$out/ibus-unnamed" ibus-unnamed || true
@@ -104,6 +107,10 @@ Layout=
 
 [Groups/0/Items/1]
 Name=pinyin
+Layout=
+
+[Groups/0/Items/2]
+Name=mozc
 Layout=
 
 [GroupOrder]

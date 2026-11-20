@@ -37,6 +37,16 @@ laid out in the interface's fonts, the UI lab's own checks asked of each):
   named: the language's own script's faces were Windows' names only.
 - **With DejaVu alone** (a minimal install), every Chinese, Japanese,
   Korean, Thai and Hindi string drew boxes.
+- **Typing** (`tools/linux_typing_check.py`: "nihao" and Space pressed
+  into Words' search box through the X server, Ubuntu 24.04's IBus 1.5.29
+  with libpinyin, and Fcitx5 5.1.7 with its pinyin): 你好 with
+  `QT_IM_MODULE=ibus`, through IBus or Fcitx5. But Kubuntu's own
+  `QT_IM_MODULE=fcitx`, and a session that names no input method, left
+  Qt with compose alone: "nihao ". Naming IBus's plugin after Fcitx's
+  (`QT_IM_MODULES="fcitx;ibus"`, Qt 6.7's list) typed 你好 - only while
+  `ibus-daemon` was installed: Qt's IBus plugin gives up without it,
+  unless asked to use the portal's IBus (`IBUS_USE_PORTAL=1`), which
+  Fcitx5 also answers.
 
 ## Decision
 
@@ -55,13 +65,19 @@ laid out in the interface's fonts, the UI lab's own checks asked of each):
   them fails; `tools/package/linux_input_methods.sh` starts the packed app
   with IBus and Qt says it loaded the plugin.
 - **Fcitx5 through its IBus frontend:** the app carries no Fcitx plugin.
+  Before Qt starts on X11 (`main.use_input_methods`,
+  `platform/linux/input_method.py`): Fcitx asked for, IBus's plugin is
+  named after it - through the portal where IBus isn't installed; nothing
+  asked for, IBus's then compose's where IBus is installed; a list
+  already set, or anything else, as asked. With it, Kubuntu's setting and
+  no `ibus-daemon` typed 你好 on the runner.
 
 ## Why
 
-- Every desktop the first version supports (546's section 2: Ubuntu 24.04
-  and 26.04, Fedora's GNOME and KDE, Kubuntu) installs Noto Sans CJK with
-  its desktop, so carried faces would be 25 MB more in every download and
-  every full update, for nobody on a supported desktop.
+- The desktops checked install Noto Sans CJK with the desktop (Ubuntu
+  24.04's, Fedora 45's; Ubuntu 26.04's and Kubuntu's are assumed from
+  their seeds, not checked), so carried faces would be 25 MB more in every
+  download and every full update, for nobody on a supported desktop.
 - Asking each language for its own script's faces is what Windows already
   does (polyglotic-hq 294); on Linux and the Mac the list simply lacked
   their names.
@@ -74,14 +90,19 @@ laid out in the interface's fonts, the UI lab's own checks asked of each):
 - Learners on a desktop without CJK fonts (a minimal Arch or Debian), or
   testers reporting boxes: carry Noto Sans CJK's Regular, or the app's own
   Noto Sans SC (already carried for captions) behind the interface.
-- Fcitx5's IBus frontend failing where Fcitx5 is the default (Kubuntu):
-  carry a Fcitx5 plugin built for PySide6's Qt.
+- Fcitx5's IBus frontend failing on a real Kubuntu (checked only on
+  Ubuntu's Fcitx5 5.1.7 on a runner), or an `IBUS_USE_PORTAL` session
+  where IBus itself runs: carry a Fcitx5 plugin built for PySide6's Qt.
+- A session where `ibus-daemon` is installed but not running and the
+  learner types with dead keys: IBus's plugin named before compose's would
+  take them (not seen; GNOME runs IBus).
 
 ## How we'd reverse it
 
 - Carrying a face: its file in `ui/assets/fonts` or a pack, added at start
   as `caption_faces` adds the caption faces, and its family at the end of
   `fonts.OTHER_OS["linux"]`'s lists. A few lines and a bigger AppImage.
+- Asking as the session asks: delete `use_input_methods` and its call.
 - A Fcitx5 plugin: built in `linux_build.sh` against the wheel's Qt (with
   Qt's private headers for that version, from Qt's own archive), put in
   `platforminputcontexts`, and named in `build.py`'s Linux parts.

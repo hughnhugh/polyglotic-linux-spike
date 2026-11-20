@@ -155,6 +155,7 @@ src/polyglotic_desktop/
       capture.py       everything the PC plays (the default or chosen output's monitor, by name) and the mic (never an output's monitor: no microphone then), following the server's changes and reconnecting; one app at a time not yet (`app_capture_support` no)
       devices.py       outputs and mics by the server's names, and its defaults; how many outputs play
       on_top.py        the caption windows, popovers and cards above everything as override-redirect windows (`ui_next.above_all`), their order kept by hand: the windows given, then the app's other override-redirect windows above them
+      input_method.py  which of Qt's input method plugins to ask for, before Qt starts (`main.use_input_methods`): IBus's after Fcitx's - the app carries no Fcitx plugin, and Fcitx5 answers IBus's clients, as the portal's IBus where IBus isn't installed - and IBus's where the session names none (decision 0279)
       not_yet.py       what the first Linux build hasn't got, each saying so through its port: one app at a time, hotkeys, dictation, Esc and clicks read, the sample aloud
   connection/        talks to the server: WebSocket, handshake, speech out, captions in
     protocol.py        protocol v1's messages as pydantic models; the speech frame (decision 0011)

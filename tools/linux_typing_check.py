@@ -81,6 +81,12 @@ IBUS = (
 )
 FCITX5 = (
     Case("pinyin", "你好", (Attempt((("fcitx5-remote", "-s", "pinyin"),), PINYIN),)),
+    Case(
+        "japanese",
+        "日本語",
+        (Attempt((("fcitx5-remote", "-s", "mozc"),), JAPANESE),),
+        accept_kana=True,
+    ),
 )
 
 
@@ -91,8 +97,10 @@ def cases(mode: str) -> tuple[Case, ...]:
         return IBUS
     if mode.startswith("ibus-"):
         return IBUS[:1]
-    if mode == "fcitx5" or mode.startswith("fcitx5-"):
+    if mode == "fcitx5":
         return FCITX5
+    if mode.startswith("fcitx5-"):
+        return FCITX5[:1]
     raise ValueError(f"571: no cases for {mode!r}")
 
 
