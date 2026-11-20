@@ -79,7 +79,27 @@ def ancestry() -> list[str]:
     return out
 
 
+def own_packages() -> velopack.VelopackLocatorConfig:
+    """Velopack's own paths for this AppImage, but the downloaded packages in
+    this user's cache instead of the shared /var/tmp/velopack/<id>/packages."""
+    appdir = os.environ["APPDIR"]
+    cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "toy547" / "packages"
+    cache.mkdir(parents=True, exist_ok=True)
+    return velopack.VelopackLocatorConfig(
+        RootAppDir=os.environ["APPIMAGE"],
+        UpdateExePath=f"{appdir}/usr/bin/UpdateNix",
+        PackagesDir=str(cache),
+        ManifestPath=f"{appdir}/usr/bin/sq.version",
+        CurrentBinaryDir=f"{appdir}/usr/bin",
+        IsPortable=False,
+    )
+
+
 def manager(feed: str) -> velopack.UpdateManager:
+    if "--own-packages" in sys.argv:
+        locator = own_packages()
+        note("locator", packages=str(locator.PackagesDir))
+        return velopack.UpdateManager(feed, None, locator)
     try:
         return velopack.UpdateManager(feed)
     except TypeError:

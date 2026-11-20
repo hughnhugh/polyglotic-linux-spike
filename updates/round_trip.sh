@@ -142,6 +142,11 @@ rm -f "$pk"/*.nupkg
 echo "the shared folders now: $(stat -c '%n %U %a' /var/tmp/velopack /var/tmp/velopack/Toy547 "$pk" 2>&1 | tr '\n' ';')"
 scenario "a second user, their own copy (Velopack's folders are the first user's)" /home/learner2/Toy547.AppImage "--update $PWD/feed" learner2
 
+sudo rm -rf /home/learner2/.cache/toy547
+scenario "a second user, their own copy, packages in their own cache (a locator)" /home/learner2/Toy547.AppImage "--update $PWD/feed --own-packages" learner2
+echo "learner2's cache: $(sudo ls -la /home/learner2/.cache/toy547/packages 2>&1 | tail -n +2 | tr '
+' ';' | cut -c1-300)"
+
 sudo mkdir -p /srv/toy547
 sudo setfacl -b /srv/toy547 2> /dev/null || true
 sudo chown root:root /srv/toy547 && sudo chmod 755 /srv/toy547
@@ -149,6 +154,12 @@ sudo cp "$src0" /srv/toy547/Toy547.AppImage && sudo chmod 755 /srv/toy547/Toy547
 echo "can learner2 write /srv/toy547? $(sudo -u learner2 test -w /srv/toy547 && echo yes || echo no); pkexec: $(command -v pkexec || echo none)"
 sudo rm -rf /var/tmp/velopack
 scenario "a folder the user can't write, no sudo rights" /srv/toy547/Toy547.AppImage "--update $PWD/feed" learner2
+
+echo "== which path was denied in the last scenario (strace, extract-and-run, as learner2)"
+sudo rm -rf /var/tmp/velopack
+sudo apt-get install -y -qq strace > /dev/null 2>&1
+sudo -n -u learner2 -H env TOY547_MARKER=/tmp/learner2/m2.jsonl QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1   strace -f -e trace=%file,rename,renameat2 -o /tmp/learner2/trace.txt timeout 60 /srv/toy547/Toy547.AppImage --update "$PWD/feed" < /dev/null > /dev/null 2>&1
+sudo grep -E 'EACCES|EPERM|EROFS' /tmp/learner2/trace.txt | grep -v -E '_internal|\.so|/proc/' | cut -c1-200 | sort -u | head -10
 
 echo "== where the 'staging userId' message comes from (strace, extract-and-run, --check only)"
 sudo apt-get install -y -qq strace > /dev/null 2>&1

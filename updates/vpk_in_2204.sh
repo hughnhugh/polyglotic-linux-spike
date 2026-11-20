@@ -17,6 +17,6 @@ echo "dotnet $(dotnet --version)"
 dotnet tool install --tool-path /opt/tools vpk --version 1.2.161 > /dev/null
 /opt/tools/vpk pack --packId Toy547 --packVersion 1.0.0 --packTitle Toy547 --packAuthors Toy547 \
   --packDir /w/build/1.0.0/toy547 --mainExe toy547 --runtime linux-x64 \
-  --channel linux-x64-alpha --outputDir /tmp/out 2>&1 | grep -E 'INF|WRN|ERR|rror' | cut -c1-200
-echo "vpk exit ${PIPESTATUS[0]}"
+  --channel linux-x64-alpha --outputDir /tmp/out > /tmp/vpk.txt 2>&1
+echo "vpk exit $?"; tail -25 /tmp/vpk.txt | cut -c1-240
 ls -la /tmp/out
