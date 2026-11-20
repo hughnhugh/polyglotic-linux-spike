@@ -6,8 +6,12 @@ out="${1:?out}"; mkdir -p "$out"
 dnf -y -q install --skip-unavailable kwin kglobalacceld kscreenlocker plasma-workspace python3-jeepney dbus-daemon \
   dbus-tools mesa-dri-drivers mesa-libEGL xorg-x11-server-Xwayland > /tmp/dnf.log 2>&1 || tail -5 /tmp/dnf.log
 rpm -q kwin kglobalacceld kscreenlocker plasma-workspace > "$out/kde-versions.txt" 2>&1
+rpm -ql kglobalacceld | grep -vE "/(locale|doc)/" >> "$out/kde-versions.txt"
+d="$(rpm -ql kglobalacceld | grep -E "/kglobalacceld$" | head -1)"; echo "daemon: $d" >> "$out/kde-versions.txt"
 XDG_RUNTIME_DIR="$(mktemp -d)"; export XDG_RUNTIME_DIR; chmod 700 "$XDG_RUNTIME_DIR"
 dbus-run-session -- bash -c '
+  [ -n "'"$d"'" ] && QT_QPA_PLATFORM=offscreen "'"$d"'" > "'"$out"'/kglobalacceld.log" 2>&1 &
+  sleep 3
   KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 kwin_wayland --virtual --xwayland --width=1280 --height=800 \
     --socket=wayland-570 > "'"$out"'/kwin.log" 2>&1 & kwin=$!
   sleep 10

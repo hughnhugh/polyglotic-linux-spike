@@ -49,7 +49,7 @@ GSETTINGS_BACKEND=memory gsettings list-recursively 2>/dev/null \
   | grep -iE "<(control|primary|ctrl)><alt>|<alt><(control|primary|ctrl)>" | sort -u
 echo "== Xfce's defaults"
 for f in /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml; do
-  [ -f "$f" ] && grep -iE '<(primary|control)>.*<alt>|<alt>.*<(primary|control)>|<super>' "$f" | sed 's/^ *//'
+  [ -f "$f" ] && sed -e 's/&lt;/</g' -e 's/&gt;/>/g' "$f" | grep -iE '<(primary|control)>.*<alt>|<alt>.*<(primary|control)>|<super>' | sed 's/^ *//'
 done
 echo "== KDE's kglobalaccel files mentioning Ctrl+Alt"
 grep -rhiE "Ctrl\+Alt|Alt\+Ctrl|Meta\+Alt|Meta\+Ctrl" /usr/share/kglobalaccel 2>/dev/null | sort -u | head -40
