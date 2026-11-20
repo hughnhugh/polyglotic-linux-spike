@@ -31,7 +31,8 @@ input the session made the default mic, and the app captions everything
 the PC plays and the mic with the OS's own captures; the device token is
 kept in the OS's own keyring under an entry of the tour's (`--credentials`),
 deleted at the end. With `--one-app` (polyglotic-hq 561) one app is
-captioned alone: the recording played by `pw-play` - the app captioned,
+captioned alone: the recording played by `pw-play` (listed as `pw-cat`, its
+executable) - the app captioned,
 chosen as a learner would on Home - while `paplay`, a second app, plays a
 1 kHz tone; the tour checks the app list names both, the stand-in server
 hears the app's source, and the audio captioned has the recording and not
@@ -79,11 +80,13 @@ not the recording's)."""
 TOKEN = DeviceCredentials("install-410-tour", "pgd_" + "t" * 43)
 """The stand-in server takes any token of the protocol's shape."""
 SYSTEM_KEY = "system"
-ONE_APP = "pw-play"
+ONE_PLAYER, ONE_APP = "pw-play", "pw-cat"
 """`--one-app`: the app captioned alone - PipeWire's own player, whose
-executable and process are only on its client (547)."""
-OTHER_APP = "paplay"
-"""`--one-app`: the app playing something else meanwhile (a tone)."""
+executable and process are only on its client (547). Listed by its
+executable's name: `pw-play` is a link to `pw-cat` (561's first run)."""
+OTHER_PLAYER, OTHER_APP = "paplay", "pacat"
+"""`--one-app`: the app playing something else meanwhile (a tone);
+`paplay` is a link to `pacat`."""
 TONE_HZ = 1000.0
 ONE_APP_SEC = 240.0
 """How long each `--one-app` player plays: the whole tour."""
@@ -887,12 +890,12 @@ def main(argv: list[str] | None = None) -> int:
             long = OUT / "played-zh-long.wav"
             times = int(np.ceil(ONE_APP_SEC * 16_000 / len(audio)))
             soundfile.write(str(long), np.tile(audio, times), 16_000)
-            players.play(long, None, ONE_APP)
+            players.play(long, None, ONE_PLAYER)
             tone = OUT / "other-app-tone.wav"
             seconds = np.arange(int(16_000 * ONE_APP_SEC)) / 16_000
             soundfile.write(str(tone), 0.3 * np.sin(2 * np.pi * TONE_HZ * seconds),
                             16_000)  # fmt: skip
-            players.play(tone, None, OTHER_APP)
+            players.play(tone, None, OTHER_PLAYER)
             STATE["app_list"] = app.os_adapters().app_list()
         else:
             players.play(clip, None)  # everything the PC plays

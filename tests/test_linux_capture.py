@@ -757,9 +757,9 @@ def test_one_app_is_heard_alone_through_the_real_server() -> None:
     pulse_player = play_with("paplay", 8.0, 1000)
     heard: dict[str, list[tuple[float, bytes]]] = {"app": [], "else": []}
     try:
-        app = listed_app("pw-play")
+        app = listed_app("pw-cat")  # pw-play is a link to pw-cat
         assert app.process_id == native.pid and app.playing
-        assert listed_app("paplay").process_id == pulse_player.pid
+        assert listed_app("pacat").process_id == pulse_player.pid  # paplay: pacat
         one = capture.AppCapture(app.process_id, app.name)
         rest = capture.EverythingElseCapture(app.process_id)
         one.start(lambda at, data: heard["app"].append((at, data)))
@@ -790,7 +790,7 @@ def test_one_app_is_heard_alone_through_the_real_server() -> None:
 def test_one_apps_capture_ends_when_the_app_closes() -> None:
     native = play_with("pw-play", 30.0, 440)
     try:
-        app = listed_app("pw-play")
+        app = listed_app("pw-cat")  # pw-play is a link to pw-cat
         one = capture.AppCapture(app.process_id, app.name)
         one.start(lambda _at, _data: None)
         try:
