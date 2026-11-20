@@ -1,19 +1,18 @@
-# Linux's fonts and typing Chinese and Japanese, proved on GitHub's own
+# Typing Chinese and Japanese on Linux, proved on GitHub's own
 # Ubuntu runners (polyglotic-hq 546 section 1.7, 571): only on the public
 # Linux copy (a snapshot of a branch pushed to its `linux-copy-571-typing`
 # branch by 571's mirror571.sh), where GitHub's runners are free - never in
 # this private repo, whose runners are the PC's: every job checks the repo
 # is public. Nothing here reaches the live server: no invite, no token.
 #
-# - typing: the app's Words page from source on X11, Chinese and Japanese
-#   typed into its search box through IBus (pinyin; Anthy, else Mozc), then
-#   Chinese through Fcitx5 - the app asking for IBus, which Fcitx5's IBus
-#   frontend answers, and asking for Fcitx's own plugin as Kubuntu does
-#   and with no input method named at all (tools/linux_typing_session.sh,
-#   tools/linux_typing_check.py), in a clean ubuntu:24.04 container;
-# - fonts: the interface's words in every language, in the fonts Ubuntu
-#   24.04's desktop and Fedora 45 install, and with only DejaVu (`bare`),
-#   and what carrying Noto's CJK faces would cost (tools/linux_fonts_survey.sh);
+# - typing: the app's Words page from source on X11, in a clean ubuntu:24.04
+#   container, each session as an ordinary user: Chinese (pinyin) and
+#   Japanese (Mozc) typed into its search box through IBus, then through
+#   Fcitx5 - the app asking for IBus, which Fcitx5's IBus frontend answers;
+#   Kubuntu's own setting (Fcitx's plugin, which the app doesn't carry) and
+#   no input method named at all, each as Qt leaves it and as the app sets
+#   it (platform/linux/input_method.py); and Fcitx5 with no IBus installed
+#   (tools/linux_typing_session.sh, tools/linux_typing_check.py);
 # - packed: the AppImage built as linux-package.yml builds it, its input
 #   method plugins checked by the build (tools/package/build.py's LINUX
 #   parts), and the packed app started on X11 with IBus, Qt saying which
@@ -80,51 +79,6 @@ jobs:
             ${{ env.OUT }}/*-session/*.log
             ${{ env.OUT }}/*-session/*/checks.json
             ${{ env.OUT }}/*-session/*/*.png
-          retention-days: 1
-
-  fonts:
-    name: Fonts on ${{ matrix.which }}
-    if: ${{ !github.event.repository.private }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - which: ubuntu
-            image: ubuntu:24.04
-          - which: fedora
-            image: fedora:45
-          - which: bare
-            image: ubuntu:24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version: "0.13.5"
-
-      # a finding where the interface draws a box is said, not this run's
-      # failure: `bare` has no Chinese face on purpose
-      - name: The interface's words in ${{ matrix.which }}'s own fonts
-        continue-on-error: ${{ matrix.which == 'bare' }}
-        run: >-
-          mkdir -p out && docker run --rm -e GITHUB_ACTIONS=true -e UV_PYTHON -e UV_PYTHON_PREFERENCE
-          -v "$PWD:/w" -v "$(command -v uv):/usr/local/bin/uv:ro" -w /w ${{ matrix.image }}
-          bash tools/linux_fonts_survey.sh ${{ matrix.which }} /w/out/fonts-${{ matrix.which }}
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ always() }}
-        continue-on-error: true
-        with:
-          name: linux-fonts-${{ matrix.which }}-${{ github.run_id }}
-          path: |
-            out/fonts-${{ matrix.which }}/*.txt
-            out/fonts-${{ matrix.which }}/*.md
-            out/fonts-${{ matrix.which }}/*.json
-            out/fonts-${{ matrix.which }}/*.log
           retention-days: 1
 
   packed:

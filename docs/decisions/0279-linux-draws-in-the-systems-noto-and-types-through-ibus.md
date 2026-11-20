@@ -40,7 +40,8 @@ laid out in the interface's fonts, the UI lab's own checks asked of each):
 - **Typing** (`tools/linux_typing_check.py`: "nihao" and Space pressed
   into Words' search box through the X server, Ubuntu 24.04's IBus 1.5.29
   with libpinyin, and Fcitx5 5.1.7 with its pinyin): 你好 with
-  `QT_IM_MODULE=ibus`, through IBus or Fcitx5. But Kubuntu's own
+  `QT_IM_MODULE=ibus`, through IBus or Fcitx5; and "nihongo", Space and
+  Enter with Mozc 2.28, through either: 日本語. But Kubuntu's own
   `QT_IM_MODULE=fcitx`, and a session that names no input method, left
   Qt with compose alone: "nihao ". Naming IBus's plugin after Fcitx's
   (`QT_IM_MODULES="fcitx;ibus"`, Qt 6.7's list) typed 你好 - only while
