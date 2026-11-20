@@ -161,10 +161,20 @@ class KWin:
                                 "CaptureWorkspace", "a{sv}h", ({"include-cursor": ("b", True)}, w))
         finally:
             os.close(w)
+        import select
+
         data = b""
-        while chunk := os.read(r, 1 << 20):
-            data += chunk
-        os.close(r)
+        try:
+            while True:
+                ready, _, _ = select.select([r], [], [], 10)
+                if not ready:
+                    raise TimeoutError(f"KWin wrote {len(data)} bytes of the picture, then nothing for 10 s")
+                chunk = os.read(r, 1 << 20)
+                if not chunk:
+                    break
+                data += chunk
+        finally:
+            os.close(r)
         m = {k: v[1] for k, v in meta.items()}
         img = QImage(data, m["width"], m["height"], m["stride"], QImage.Format(m["format"]))
         img.copy().save(str(path))

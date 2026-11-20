@@ -21,20 +21,26 @@ if [ -z "${IN_SESSION_547:-}" ]; then
   /venv/bin/pip install -q PySide6-Essentials==6.12.0 jeepney==0.9.0
   export XDG_RUNTIME_DIR=/tmp/xdg; mkdir -p -m 700 "$XDG_RUNTIME_DIR"
   export KWIN_SCREENSHOT_NO_PERMISSION_CHECKS=1 KWIN_WAYLAND_NO_PERMISSION_CHECKS=1
-  export QT_LOGGING_RULES="kwin_scripting.debug=true;js.debug=true;qml.debug=true"
-  export KWIN_LOG=/out/kwin.log IN_SESSION_547=1 OUT_547=/out
+  export QT_LOGGING_RULES="kwin_scripting.debug=true;js.debug=true;qml.debug=true;kwin_xwl.debug=true"
+  export IN_SESSION_547=1 OUT_547=/out
   {
     echo "os: $(. /etc/os-release; echo "$PRETTY_NAME")"
     echo "kwin: $(rpm -q kwin)"
     echo "xwayland: $(rpm -q xorg-x11-server-Xwayland)"
     echo "pyside6: $(/venv/bin/python -c 'import PySide6; print(PySide6.__version__)')"
-    ls /usr/share/plasma-wayland-protocols/ 2>/dev/null | tr '\n' ' '; echo
   } | tee /out/versions.txt
-  status=0
-  timeout 900 dbus-run-session -- kwin_wayland --virtual --xwayland --width=1280 --height=720 \
-    --socket=wayland-547 --exit-with-session=/w/windows/run_kde.sh > "$KWIN_LOG" 2>&1 || status=$?
-  echo "kwin ended: $status"
-  tail -15 "$KWIN_LOG" || true; tail -5 /out/harness.log 2>/dev/null || true
+  # No GPU on the runner: first Mesa's software OpenGL, then KWin's QPainter compositing.
+  status=1
+  for mode in software qpainter; do
+    export KWIN_LOG="/out/kwin-$mode.log"
+    if [ "$mode" = software ]; then export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe; else export KWIN_COMPOSE=Q; fi
+    echo "kwin mode: $mode" | tee -a /out/versions.txt
+    status=0
+    timeout 540 dbus-run-session -- kwin_wayland --virtual --xwayland --no-lockscreen --no-global-shortcuts       --width=1280 --height=720 --socket=wayland-547 --exit-with-session=/w/windows/run_kde.sh       > "$KWIN_LOG" 2>&1 || status=$?
+    echo "kwin ($mode) ended: $status"
+    grep -v '^\s*$' "$KWIN_LOG" | grep -v -E 'STACK547|js:' | tail -12 || true
+    [ -f /out/results.json ] && break
+  done
   exit "$status"
 fi
 # here inside KWin's session: KWin set DISPLAY, WAYLAND_DISPLAY and XAUTHORITY
@@ -42,4 +48,4 @@ echo "DISPLAY=${DISPLAY:-} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-} XAUTHORITY=${XAU
 sleep 2
 xdpyinfo 2>&1 | grep -E 'vendor string|version number|dimensions' >> "$OUT_547/versions.txt" || true
 cd /w/windows
-/venv/bin/python harness.py kde "$OUT_547" > "$OUT_547/harness.log" 2>&1
+timeout 420 /venv/bin/python -u harness.py kde "$OUT_547" > "$OUT_547/harness.log" 2>&1
