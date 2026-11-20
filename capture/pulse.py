@@ -314,7 +314,7 @@ class Pulse:
         f = SUB_CB(cb)
         self.keep.append(f)
         context_set_subscribe_callback(self.ctx, f, None)
-        self.wait_op(context_subscribe(self.ctx, SUB_SINK_INPUT | SUB_SOURCE_OUTPUT, None, None))
+        self.wait_op(context_subscribe(self.ctx, SUB_SINK_INPUT | SUB_SOURCE_OUTPUT, SUCCESS_CB(), None))
 
 
 class Recorder:
