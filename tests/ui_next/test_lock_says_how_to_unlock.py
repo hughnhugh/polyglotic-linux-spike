@@ -30,16 +30,17 @@ LOCK_KEYS = "⌥⌘L" if sys.platform == "darwin" else "Ctrl+Alt+L"
 written ⌥⌘L there (polyglotic-hq 420: the first Mac run of the suite)."""
 APP_LOCK_KEYS = "⌃⌘L" if sys.platform == "darwin" else "Ctrl+Alt+L"
 """The app's own lock hotkey as the OS writes it: on a Mac Control+Command
-(`DesktopApp`, polyglotic-hq 428); on Linux Ctrl+Alt+Shift (570)."""
+(`DesktopApp`, polyglotic-hq 428)."""
 APP_HOTKEYS = (
-    "Meta+Ctrl+L, Meta+Ctrl+P, Meta+Ctrl+H"
+    "Meta+Ctrl+L, Meta+Ctrl+P, Meta+Ctrl+H, Meta+Ctrl+J"
     if sys.platform == "darwin"
-    else "Ctrl+Alt+L, Ctrl+Alt+P, Ctrl+Alt+H"
+    else "Ctrl+Alt+L, Ctrl+Alt+P, Ctrl+Alt+H, Ctrl+Alt+J"
 )
-"""The app's hotkeys as the log names them (Qt's portable text)."""
-if sys.platform.startswith("linux"):
+"""The app's hotkeys as the log names them (Qt's portable text): those
+with a key - Back to live's too (polyglotic-hq 567)."""
+if sys.platform.startswith("linux"):  # Ctrl+Alt+Shift there (570)
     APP_LOCK_KEYS = "Ctrl+Alt+Shift+L"
-    APP_HOTKEYS = "Ctrl+Alt+Shift+L, Ctrl+Alt+Shift+P, Ctrl+Alt+Shift+H"
+    APP_HOTKEYS = ", ".join(f"Ctrl+Alt+Shift+{key}" for key in "LPHJ")
 LOCKED_SAID = pc_or_mac(
     "Locked - unlock on Home or from the tray",
     "Locked - unlock on Home or from the menu bar",
@@ -106,7 +107,7 @@ def test_the_windows_say_the_app_s_hotkey_and_none_once_taken(
     desktop, windows = wired
     (window,) = windows.windows.values()
     assert window.unlock_keys == APP_LOCK_KEYS
-    desktop.hotkeys_not_working(["L"])  # another app has it
+    desktop.hotkeys_not_working(["lock"])  # another app has it
     assert window.unlock_keys == ""
     desktop.lock_windows.setChecked(True)
     assert window.notice.text() == LOCKED_SAID

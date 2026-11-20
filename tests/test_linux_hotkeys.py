@@ -88,12 +88,13 @@ class FakeX:
         os.close(self.write_fd)
 
 
-def started(
-    x: FakeX, calls: list[str], modifiers: int = CTRL_ALT_SHIFT
-) -> tuple[X11Hotkeys, list[str]]:
+LPH = {"ctrl+alt+shift+l": "L", "ctrl+alt+shift+p": "P", "ctrl+alt+shift+h": "H"}
+"""Linux's own Lock, Pause and Hide (decision 0276), as the settings keep them."""
+
+
+def started(x: FakeX, calls: list[str]) -> tuple[X11Hotkeys, list[str]]:
     keys = X11Hotkeys(
-        {k: (lambda k=k: calls.append(k)) for k in "LPH"},  # type: ignore[misc]
-        modifiers=modifiers,
+        {kept: (lambda k=k: calls.append(k)) for kept, k in LPH.items()},  # type: ignore[misc]
         connect=lambda: x,
     )
     return keys, keys.start()
@@ -131,7 +132,7 @@ def test_a_key_another_program_holds_is_taken_and_none_of_it_kept() -> None:
     x = FakeX(held={(P_CODE, CTRL_ALT_SHIFT | MOD2)})
     keys, taken = started(x, [])
     try:
-        assert taken == ["P"]
+        assert taken == ["ctrl+alt+shift+p"]
         assert not any(code == P_CODE for code, _ in x.grabbed)
         assert (L_CODE, CTRL_ALT_SHIFT) in x.grabbed
     finally:
@@ -163,9 +164,9 @@ def test_a_press_calls_its_binding_once_however_long_its_held() -> None:
 
 
 def test_a_combination_with_other_modifiers_isnt_ours() -> None:
-    keys = X11Hotkeys({"L": lambda: calls.append("L")}, connect=FakeX)
+    keys = X11Hotkeys({"ctrl+alt+shift+l": lambda: calls.append("L")}, connect=FakeX)
     calls: list[str] = []
-    keys._grabbed[L_CODE, CTRL_ALT_SHIFT] = "L"  # as `start` grabs it
+    keys._grabbed[L_CODE, CTRL_ALT_SHIFT] = "ctrl+alt+shift+l"  # as `start` grabs it
     keys.handle(KEY_PRESS, L_CODE, CONTROL | MOD1, 1)  # Ctrl+Alt+L, no Shift
     keys.handle(KEY_PRESS, P_CODE, CTRL_ALT_SHIFT, 2)  # a key not grabbed
     assert calls == []
@@ -178,8 +179,16 @@ def test_a_failing_action_doesnt_end_the_hotkeys() -> None:
         raise RuntimeError("an action's own bug")
 
     calls: list[str] = []
-    keys = X11Hotkeys({"L": fails, "P": lambda: calls.append("P")}, connect=FakeX)
-    keys._grabbed.update({(L_CODE, CTRL_ALT_SHIFT): "L", (P_CODE, CTRL_ALT_SHIFT): "P"})
+    keys = X11Hotkeys(
+        {"ctrl+alt+shift+l": fails, "ctrl+alt+shift+p": lambda: calls.append("P")},
+        connect=FakeX,
+    )
+    keys._grabbed.update(
+        {
+            (L_CODE, CTRL_ALT_SHIFT): "ctrl+alt+shift+l",
+            (P_CODE, CTRL_ALT_SHIFT): "ctrl+alt+shift+p",
+        }
+    )
     keys.handle(KEY_PRESS, L_CODE, CTRL_ALT_SHIFT, 1)
     keys.handle(KEY_PRESS, P_CODE, CTRL_ALT_SHIFT, 2)
     assert calls == ["P"]
@@ -189,13 +198,21 @@ def test_no_x_server_is_every_key_not_working_here() -> None:
     def refuse() -> FakeX:
         raise OSError("no X server")
 
-    keys = X11Hotkeys({"L": print, "H": print}, connect=refuse)
-    assert keys.start() == ["L", "H"]
+    keys = X11Hotkeys({"ctrl+alt+shift+l": print, "f9": print}, connect=refuse)
+    assert keys.start() == ["ctrl+alt+shift+l", "f9"]
     keys.stop()  # nothing to give back
 
 
-def test_keys_must_be_one_letter_or_digit_or_a_kept_combination() -> None:
-    for wrong in ("l", "ctrl", "ctrl+alt", "right_ctrl", "alt+ctrl+l", "ctrl+alt+lock"):
+def test_keys_must_be_kept_combinations() -> None:
+    for wrong in (
+        "L",
+        "l",
+        "ctrl",
+        "ctrl+alt",
+        "right_ctrl",
+        "alt+ctrl+l",
+        "ctrl+alt+lock",
+    ):
         with pytest.raises(ValueError):
             X11Hotkeys({wrong: print})
 
@@ -203,8 +220,7 @@ def test_keys_must_be_one_letter_or_digit_or_a_kept_combination() -> None:
 @needs_select
 def test_a_kept_combination_is_grabbed_as_it_says() -> None:
     """The hotkeys the learner sets (polyglotic-hq 567): "ctrl+alt+j", "f9",
-    "shift+win+p" - each its own modifiers; a letter beside them still
-    takes Linux's own."""
+    "shift+win+p" - each its own modifiers, beside Linux's own."""
     x = FakeX()
     f9_code = 8 + 67  # the kernel's KEY_F9
     x.mapping[1][f9_code - 8] = [hotkeys.NAMED_KEYSYMS["f9"], 0]
@@ -214,7 +230,7 @@ def test_a_kept_combination_is_grabbed_as_it_says() -> None:
             "ctrl+alt+j": lambda: calls.append("live"),
             "f9": lambda: calls.append("f9"),
             "shift+win+p": lambda: calls.append("win"),
-            "L": lambda: calls.append("L"),
+            "ctrl+alt+shift+l": lambda: calls.append("L"),
         },
         connect=lambda: x,
     )
@@ -295,8 +311,8 @@ def test_combinations_are_written_as_linuxs_desktops_write_them() -> None:
 def test_the_grab_is_used_where_it_hears_every_app(
     environ: dict[str, str], grabbed: bool
 ) -> None:
-    keys = for_this_session({"L": print}, environ)
+    keys = for_this_session({"ctrl+alt+shift+l": print}, environ)
     assert isinstance(keys, X11Hotkeys) is grabbed
     if not grabbed:
         assert isinstance(keys, NoHotkeys)
-        assert keys.start() == ["L"]  # not working here: Home and Help say so
+        assert keys.start() == ["ctrl+alt+shift+l"]  # not working here: Help says so

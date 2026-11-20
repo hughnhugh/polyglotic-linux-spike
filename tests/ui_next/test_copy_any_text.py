@@ -70,7 +70,7 @@ def in_add_row(found: QLabel) -> bool:
 
 
 def pages() -> list[QWidget]:
-    settings, _keys = settings_page()
+    settings = settings_page()
     # every section shown once: a caption section's cards are made when it
     # first is (polyglotic-hq 544)
     for section in (*SECTIONS, "captions", "learning", "app"):

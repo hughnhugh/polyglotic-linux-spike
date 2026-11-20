@@ -42,7 +42,7 @@ class Rig:
     def __init__(self) -> None:
         self.home, _ = home(Picker())
         self.desktop = DesktopApp(MemorySettingsStore(), None, FakeAppList())
-        self.settings, _keys = settings_page()
+        self.settings = settings_page()
         self.restarts = 0
         self.anyway = 0
         self.shown = UpdateShown(

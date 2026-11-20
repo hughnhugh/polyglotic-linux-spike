@@ -352,7 +352,6 @@ def test_home_and_settings_show_one_state(qapp: QApplication) -> None:
     MADE.append(home)
     settings = SettingsPage(
         [("margin", "Margin")],
-        {},
         QAction("Tell us"),
         look=LookView(CaptionLook()),
         timing=TimingView(Timing()),

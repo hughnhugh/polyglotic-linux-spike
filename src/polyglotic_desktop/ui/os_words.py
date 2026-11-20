@@ -10,15 +10,20 @@ both; Windows' text is unchanged.
 
 import sys
 
+from polyglotic_desktop.core.listening.hotkeys import Platform
+
 
 def on_a_mac() -> bool:
     return sys.platform == "darwin"
 
 
-def on_linux() -> bool:
-    """Linux (polyglotic-hq 550): the PC's words, with Linux's own hotkeys
-    (570)."""
-    return sys.platform.startswith("linux")
+def platform() -> Platform:
+    """The platform whose keys the app's own hotkeys follow (polyglotic-hq
+    567): the one place each interface tells core which OS it is - Linux's
+    own since 570."""
+    if on_a_mac():
+        return Platform.MAC
+    return Platform.LINUX if sys.platform.startswith("linux") else Platform.WINDOWS
 
 
 def pc_or_mac(pc: str, mac: str) -> str:

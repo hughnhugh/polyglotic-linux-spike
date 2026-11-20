@@ -55,7 +55,7 @@ Holds caption text: never log it. Not thread-safe - one thread (the UI's).
 
 import itertools
 from collections import OrderedDict, deque
-from collections.abc import Callable, Collection, Iterable
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
@@ -161,6 +161,20 @@ def is_cjk(char: str) -> bool:
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def newest_finished(captions: Sequence[Caption]) -> Caption | None:
+    """The newest finished caption - the one the "Copy the newest caption"
+    hotkey copies (polyglotic-hq 567) - or None."""
+    return next((c for c in reversed(captions) if not c.live), None)
+
+
+def copied_text(caption: Caption) -> str:
+    """A caption as it's copied: what was said, then its translation into
+    each language it has one in, a line each."""
+    languages = dict.fromkeys(lang for c in caption.clauses for lang in c.translations)
+    lines = [caption.original, *(caption.translation(x) for x in languages)]
+    return "\n".join(lines)
 
 
 class CaptionHistory:

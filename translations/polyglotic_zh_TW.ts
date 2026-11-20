@@ -197,6 +197,11 @@
     <name>CaptionWindow</name>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Back to the newest captions</source>
+        <translation type="unfinished">回到最新的字幕</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Quiet view on or off: captions in quiet grey and gold, only your chosen words in blue, no underlines - point at a word to see its partner</source>
         <translation type="unfinished">安靜檢視開關：字幕為安靜的灰色和金色，只有你選的詞是藍色，沒有底線——指向一個詞即可看到它的對應詞</translation>
     </message>
@@ -523,11 +528,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
-        <source>Back to the newest captions</source>
-        <translation type="unfinished">回到最新的字幕</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Word links</source>
         <translation type="unfinished">詞語對應</translation>
     </message>
@@ -723,6 +723,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Presets: conversation, video, learning - and what each shows</source>
+        <translation type="unfinished">預設集：對話、影片、學習，以及各自顯示的內容</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Stop captioning {app}</source>
         <translation type="unfinished">停止給 {app} 加字幕</translation>
     </message>
@@ -757,6 +762,24 @@
         <translation type="unfinished">
             <numerusform>已複製 %Ln 則字幕</numerusform>
         </translation>
+    </message>
+</context>
+<context>
+    <name>CaptionWindows</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/main.py"/>
+        <source>Copied the newest caption</source>
+        <translation type="unfinished">已複製最新一條字幕</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_windows.py"/>
+        <source>Subtitles: along the bottom of the screen</source>
+        <translation type="unfinished">底部字幕：顯示在螢幕底部</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_windows.py"/>
+        <source>Back where you put it</source>
+        <translation type="unfinished">回到我放的位置</translation>
     </message>
 </context>
 <context>
@@ -1701,6 +1724,12 @@
         <source>Press a key or combination… (Esc: stop)</source>
         <translation type="unfinished">請按下一個鍵或組合鍵…（Esc：停止）</translation>
     </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/dictation_key.py"/>
+        <source>No key</source>
+        <extracomment>a hotkey with no key: it does nothing until one is chosen</extracomment>
+        <translation type="unfinished">無按鍵</translation>
+    </message>
 </context>
 <context>
     <name>DictationSign</name>
@@ -2525,8 +2554,8 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
-        <source>A caption window never takes the game&apos;s keyboard or mouse: it is never the active window. Put it where it doesn&apos;t cover what you need to see, then Lock all (Ctrl+Alt+L) so clicks go through to the game; Hide all (Ctrl+Alt+H) in a fight. The hotkeys work while the game has focus and can&apos;t be changed yet. A game in exclusive full screen covers every other window: choose its borderless or windowed full screen instead.</source>
-        <translation type="unfinished">字幕視窗絕不會搶佔遊戲的鍵盤或滑鼠：它永遠不會成為活動視窗。把它放在不擋住你要看的內容的地方，然後「全部鎖定」（Ctrl+Alt+L），讓點選直接落到遊戲裡；戰鬥時可以「全部隱藏」（Ctrl+Alt+H）。遊戲在前臺時快速鍵照樣有效，暫時還不能更改。獨佔全螢幕的遊戲會蓋住所有其他視窗：請改用它的無邊框全螢幕或視窗化全螢幕。</translation>
+        <source>A caption window never takes the game&apos;s keyboard or mouse: it is never the active window. Put it where it doesn&apos;t cover what you need to see, then Lock all (Ctrl+Alt+L) so clicks go through to the game; Hide all (Ctrl+Alt+H) in a fight. The hotkeys work while the game has focus; Settings &gt; Hotkeys changes them. A game in exclusive full screen covers every other window: choose its borderless or windowed full screen instead.</source>
+        <translation type="unfinished">字幕視窗絕不會搶佔遊戲的鍵盤或滑鼠：它永遠不會成為活動視窗。把它放在不擋住你要看的內容的地方，然後「全部鎖定」（Ctrl+Alt+L），讓點選直接落到遊戲裡；戰鬥時可以「全部隱藏」（Ctrl+Alt+H）。遊戲在前臺時快速鍵照樣有效；可在「設定 &gt; 快速鍵」中變更。獨佔全螢幕的遊戲會蓋住所有其他視窗：請改用它的無邊框全螢幕或視窗化全螢幕。</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
@@ -3532,6 +3561,159 @@
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Something wrong, or an idea?</source>
         <translation type="unfinished">遇到問題，或者有想法？</translation>
+    </message>
+</context>
+<context>
+    <name>Hotkeys</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui/app.py"/>
+        <source>Back to live</source>
+        <translation type="unfinished">回到最新</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui/app.py"/>
+        <source>Copy the newest caption</source>
+        <translation type="unfinished">複製最新一條字幕</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui/app.py"/>
+        <source>Next preset</source>
+        <translation type="unfinished">下一個預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui/app.py"/>
+        <source>Caption text bigger</source>
+        <translation type="unfinished">字幕文字放大</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui/app.py"/>
+        <source>Caption text smaller</source>
+        <translation type="unfinished">字幕文字縮小</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Dictate</source>
+        <translation type="unfinished">聽寫</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Hold Ctrl, Alt, Shift or Win with a key, or choose an F key.</source>
+        <translation type="unfinished">請按住 Ctrl、Alt、Shift 或 Win 再加一個鍵，或選一個 F 鍵。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Hold ⌘, ⌥, ⇧ or ⌃ with a key, or choose an F key.</source>
+        <translation type="unfinished">請按住 ⌘、⌥、⇧ 或 ⌃ 再加一個鍵，或選一個 F 鍵。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Esc closes things in every program: choose another key.</source>
+        <translation type="unfinished">每個程式都用 Esc 關閉東西：請換一個鍵。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Letting go of Alt opens a program&apos;s menu: hold Ctrl with it too.</source>
+        <translation type="unfinished">放開 Alt 會打開程式的選單：請同時按住 Ctrl。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Clear</source>
+        <translation type="unfinished">清除</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>No key: the hotkey does nothing</source>
+        <translation type="unfinished">無按鍵：這個快速鍵不起作用</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Clear {name}&apos;s key</source>
+        <translation type="unfinished">清除「{name}」的按鍵</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>They work from any program, even a game in front. Click a key, then press the one you want.</source>
+        <translation type="unfinished">在任何程式中都有效，即使遊戲在最前面。點選一個按鍵，再按下你想用的鍵。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>They work from any app, even a game in front. Click a key, then press the one you want.</source>
+        <translation type="unfinished">在任何應用程式中都有效，即使遊戲在最前面。點選一個按鍵，再按下你想用的鍵。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Reset all</source>
+        <translation type="unfinished">全部重設</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Every hotkey back to its own key</source>
+        <translation type="unfinished">所有快速鍵還原為各自的預設鍵</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>{other} has this key too, and only it works.</source>
+        <translation type="unfinished">「{other}」也用了這個鍵，只有它有效。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Another program has this key: choose another.</source>
+        <translation type="unfinished">另一個程式已佔用這個鍵：請換一個。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>{other} has that key: clear it there, or choose another.</source>
+        <translation type="unfinished">「{other}」已佔用這個鍵：請在那裡清除，或換一個。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Held while you speak</source>
+        <translation type="unfinished">說話時按住</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Change in Dictation</source>
+        <translation type="unfinished">在「聽寫」中變更</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Dictate: hold {key} and speak.</source>
+        <translation type="unfinished">聽寫：按住 {key} 說話。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Dictate: off. Turn it on in Dictation.</source>
+        <translation type="unfinished">聽寫：關。請在「聽寫」中開啟。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Search a transcript</source>
+        <translation type="unfinished">搜尋字幕記錄</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Back to live in a transcript</source>
+        <translation type="unfinished">在字幕記錄中回到最新</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Copy what&apos;s selected</source>
+        <translation type="unfinished">複製選取的內容</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Close the search or the lookup</source>
+        <translation type="unfinished">關閉搜尋或查詞卡</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>In a window</source>
+        <translation type="unfinished">在視窗中</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>While a transcript or the lookup has the keyboard.</source>
+        <translation type="unfinished">當字幕記錄或查詞卡在使用鍵盤時。</translation>
     </message>
 </context>
 <context>
@@ -6199,8 +6381,8 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Which words of what was said and its translation mean the same. On hover: point at a word. Underline: matching words share a colour. Arrows: curves join them. The button on a caption window turns this off and on.</source>
-        <translation type="unfinished">說的話和譯文裡哪些詞意思相同。懸停時：指向一個詞。底線：對應的詞用同一種顏色。箭頭：用曲線把它們連起來。字幕視窗上的按鈕可以開關它。</translation>
+        <source>Which words of what was said and its translation mean the same. On hover: point at a word. Underline: matching words share a colour. Arrows: curves join them. A caption window&apos;s preset menu turns them off and on, under Add.</source>
+        <translation type="unfinished">說的話和譯文裡哪些詞意思相同。懸停時：指向一個詞。底線：對應的詞用同一種顏色。箭頭：用曲線把它們連起來。字幕視窗的預設集選單裡，在「加上」下可以開關它。</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
@@ -6703,6 +6885,474 @@
     </message>
 </context>
 <context>
+    <name>Presets</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Everyday</source>
+        <translation type="unfinished">日常</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Conversation</source>
+        <translation type="unfinished">對話</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Video, film &amp; TV</source>
+        <translation type="unfinished">影片、電影和電視</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Learning</source>
+        <translation type="unfinished">學習</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Custom</source>
+        <translation type="unfinished">自訂</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Every helper on: the app&apos;s own setup</source>
+        <translation type="unfinished">所有輔助功能全開：應用程式自己的設定</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Calls and chats: your speech too</source>
+        <translation type="unfinished">通話和聊天：也顯示我說的話</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Subtitles along the bottom, large</source>
+        <translation type="unfinished">底部字幕，大字級</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Each line first, its translation after</source>
+        <translation type="unfinished">每行先出原文，再出譯文</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Your settings from before presets</source>
+        <translation type="unfinished">有預設集之前你的設定</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>One of your own</source>
+        <translation type="unfinished">你自己的預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Both</source>
+        <translation type="unfinished">兩者</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Original only</source>
+        <translation type="unfinished">僅原文</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Translation only</source>
+        <translation type="unfinished">僅譯文</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Preset</source>
+        <translation type="unfinished">預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Show</source>
+        <translation type="unfinished">顯示</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Add</source>
+        <translation type="unfinished">加上</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Word links</source>
+        <translation type="unfinished">詞語對應</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Quiet view</source>
+        <translation type="unfinished">安靜檢視</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Readings</source>
+        <translation type="unfinished">讀音</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Pinyin, Jyutping or a respelling over the words</source>
+        <translation type="unfinished">在詞語上方顯示拼音、粵拼或發音拼寫</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>My speech</source>
+        <translation type="unfinished">我說的話</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>What you say, as “You”, in every window</source>
+        <translation type="unfinished">我說的話，標為「我」，顯示在每個視窗</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Customise presets…</source>
+        <translation type="unfinished">自訂預設集…</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
+        <source>Edit, rename, reset or add presets in Settings</source>
+        <translation type="unfinished">在設定中編輯、重新命名、重設或新增預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Changes here are saved in the preset “{name}”.</source>
+        <translation type="unfinished">這裡的變更會儲存在預設集「{name}」中。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>On</source>
+        <translation type="unfinished">開</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Off</source>
+        <translation type="unfinished">關</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>{percent}%</source>
+        <translation type="unfinished">{percent}%</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Never</source>
+        <translation type="unfinished">從不</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>{seconds} s</source>
+        <translation type="unfinished">{seconds} 秒</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>On hover only</source>
+        <translation type="unfinished">僅懸停時</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Colours</source>
+        <translation type="unfinished">顏色</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>With arrows</source>
+        <translation type="unfinished">用箭頭</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>None</source>
+        <translation type="unfinished">無</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Follow (the translation leads)</source>
+        <translation type="unfinished">跟上內容（以譯文為主）</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Acquisition (each line first)</source>
+        <translation type="unfinished">習得（每行先出原文）</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Both together</source>
+        <translation type="unfinished">兩者一起</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Steady</source>
+        <translation type="unfinished">穩定</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Whole captions</source>
+        <translation type="unfinished">整句字幕</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Instant</source>
+        <translation type="unfinished">即時</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Calm</source>
+        <translation type="unfinished">沉穩</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The default</source>
+        <translation type="unfinished">預設</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>A shadow</source>
+        <translation type="unfinished">陰影</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>An outline</source>
+        <translation type="unfinished">描邊</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The words waiting</source>
+        <translation type="unfinished">等待中的詞</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>All, the newest too</source>
+        <translation type="unfinished">全部，也含最新的詞</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>A few</source>
+        <translation type="unfinished">少量</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Every new word</source>
+        <translation type="unfinished">每個生詞</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Each window&apos;s own</source>
+        <translation type="unfinished">依各視窗設定</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>What was said</source>
+        <translation type="unfinished">說的話</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The translation</source>
+        <translation type="unfinished">譯文</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The language over each caption</source>
+        <translation type="unfinished">每條字幕上方的語言</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The source over each caption</source>
+        <translation type="unfinished">每條字幕上方的來源</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Fade after quiet</source>
+        <translation type="unfinished">安靜後淡出</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Readings only past what you know</source>
+        <translation type="unfinished">只為超出你程度的詞標讀音</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Word introductions</source>
+        <translation type="unfinished">生詞提示</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>How many word introductions</source>
+        <translation type="unfinished">生詞提示數量</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Panel</source>
+        <translation type="unfinished">面板</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>What was said&apos;s colour</source>
+        <translation type="unfinished">原文顏色</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The translation&apos;s colour</source>
+        <translation type="unfinished">譯文顏色</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The panel&apos;s colour</source>
+        <translation type="unfinished">面板顏色</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Around the letters</source>
+        <translation type="unfinished">文字邊緣</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Thickness</source>
+        <translation type="unfinished">粗細</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Contrast</source>
+        <translation type="unfinished">對比度</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Vibrance</source>
+        <translation type="unfinished">鮮豔度</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Caption mode</source>
+        <translation type="unfinished">字幕模式</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Path</source>
+        <translation type="unfinished">路徑</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Translation after</source>
+        <translation type="unfinished">譯文延後</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The newest word shown</source>
+        <translation type="unfinished">顯示最新的詞</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Words ahead</source>
+        <translation type="unfinished">前方的詞</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Two zones</source>
+        <translation type="unfinished">兩個區域</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Subtitles along the bottom</source>
+        <translation type="unfinished">底部字幕</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Subtitles&apos; text size</source>
+        <translation type="unfinished">底部字幕字級</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Subtitles&apos; width</source>
+        <translation type="unfinished">底部字幕寬度</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Presets</source>
+        <translation type="unfinished">預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Pick how captions work for what you&apos;re doing - here or from a caption window&apos;s bar. Whatever you change while one is in use is saved in it.</source>
+        <translation type="unfinished">依照你正在做的事選擇字幕的運作方式：在這裡選，或在字幕視窗的工具列上選。使用某個預設集時，你做的任何變更都會儲存在其中。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>New preset</source>
+        <translation type="unfinished">新增預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>A copy of the preset in use, to make your own</source>
+        <translation type="unfinished">複製目前使用的預設集，做成你自己的</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>My preset</source>
+        <translation type="unfinished">我的預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>In use</source>
+        <translation type="unfinished">使用中</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Use</source>
+        <translation type="unfinished">使用</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Use {name}</source>
+        <translation type="unfinished">使用「{name}」</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>The preset in use</source>
+        <translation type="unfinished">目前使用的預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Its name</source>
+        <translation type="unfinished">名稱</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>What it changes</source>
+        <translation type="unfinished">變更的內容</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Reset to its defaults</source>
+        <translation type="unfinished">還原預設值</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Delete</source>
+        <translation type="unfinished">刪除</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>What it changes from the app&apos;s defaults</source>
+        <translation type="unfinished">與應用程式預設設定相比的變更</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>What it changes from Everyday</source>
+        <translation type="unfinished">與「日常」相比的變更</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Nothing yet.</source>
+        <translation type="unfinished">尚無。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>Back to the app&apos;s defaults</source>
+        <translation type="unfinished">還原為應用程式的預設設定</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
+        <source>What you changed in it goes; its own settings stay</source>
+        <translation type="unfinished">清除你在其中做的變更，保留它自己的設定</translation>
+    </message>
+</context>
+<context>
     <name>ProblemReport</name>
     <message>
         <location filename="../src/polyglotic_desktop/ui/problem_report.py"/>
@@ -6940,19 +7590,24 @@
 <context>
     <name>Settings</name>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Lock all caption windows</source>
         <translation type="unfinished">鎖定所有字幕視窗</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Pause captions</source>
         <translation type="unfinished">暫停字幕</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Hide all caption windows</source>
         <translation type="unfinished">隱藏所有字幕視窗</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
+        <source>Hotkeys</source>
+        <translation type="unfinished">快速鍵</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
@@ -7013,16 +7668,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>A few parts change at the next start.</source>
         <translation type="unfinished">有些部分下次啟動時才會改變。</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>Hotkeys</source>
-        <translation type="unfinished">快速鍵</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>They work from any program, including a game.</source>
-        <translation type="unfinished">在任何程式裡都能用，包括遊戲。</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
@@ -7228,6 +7873,12 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
+        <source>Presets</source>
+        <extracomment>Settings&apos; section of the presets for use cases (conversation, video...)</extracomment>
+        <translation type="unfinished">預設集</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Look</source>
         <translation type="unfinished">字幕外觀</translation>
     </message>
@@ -7301,11 +7952,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Tell us what reads wrong</source>
         <translation type="unfinished">告訴我們哪裡讀起來不對</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>another program has it</source>
-        <translation type="unfinished">已被其他程式佔用</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>

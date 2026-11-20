@@ -104,7 +104,7 @@ def test_a_chinese_window_asks_for_pinyin(qapp: QApplication) -> None:
         window = window_of(qapp, captions=0, spoken_language=spoken)
         try:
             window.links_wanted.connect(lambda on, found: asked.append((on, found)))
-            window.buttons["links"].click()
+            window.controls["links"].trigger()  # the dropdown's (556)
             assert asked[-1] == (True, readings)
         finally:
             window.close()

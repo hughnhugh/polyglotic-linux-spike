@@ -934,7 +934,7 @@ class LookPanel(_LookGroup):
 
 
 class WordLinksPanel(_LookGroup):
-    """Word links' style - the button on a caption window turns them off
+    """Word links' style - a caption window's preset menu turns them off
     and back on to it (249, F9) - their underline, and how many words."""
 
     learning_wanted = Signal()
@@ -966,8 +966,8 @@ class WordLinksPanel(_LookGroup):
             _tr(
                 "Which words of what was said and its translation mean the same. On "
                 "hover: point at a word. Underline: matching words share a colour. "
-                "Arrows: curves join them. The button on a caption window turns "
-                "this off and on."
+                "Arrows: curves join them. A caption window's preset menu turns "
+                "them off and on, under Add."
             ),
             self.word_links,
         )

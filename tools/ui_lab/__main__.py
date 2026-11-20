@@ -52,6 +52,7 @@ from tools.ui_lab import (
     seen,
     text_sizes,
     transcript,
+    use_presets,
 )
 
 COMMANDS = ("approve", "prune", "judge", "seen", "languages", "design")
@@ -64,6 +65,7 @@ def new_states() -> list[lab.State]:
     new += joined_window.STATES + transcript.STATES
     new += panels.STATES + presets.STATES
     new += home.STATES + pages.STATES + qt_parts.STATES + first_run.STATES
+    new += use_presets.STATES
     return new + text_sizes.STATES
 
 

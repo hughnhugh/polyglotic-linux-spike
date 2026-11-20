@@ -229,8 +229,10 @@ def test_hotkeys_lock_pause_and_hide_from_any_thread(qapp: QApplication) -> None
     keys = "Meta+Ctrl+" if sys.platform == "darwin" else "Ctrl+Alt+"  # ⌃⌘ (428)
     if sys.platform.startswith("linux"):
         keys = "Ctrl+Alt+Shift+"  # Ctrl+Alt+L locks some desktops' screens (570)
-    assert shown == {k: keys + k for k in "LPH"}
-    for key in "LPH":
+    # Back to live's too (polyglotic-hq 567); the rest have none until chosen
+    on = {"lock": "L", "pause": "P", "hide": "H", "live": "J"}
+    assert shown == {k: keys + on[k] if k in on else "" for k in app.hotkeys}
+    for key in ("lock", "pause", "hide"):
         worker = threading.Thread(target=app.hotkey_pressed.emit, args=(key,))
         worker.start()
         worker.join()
@@ -240,10 +242,10 @@ def test_hotkeys_lock_pause_and_hide_from_any_thread(qapp: QApplication) -> None
     assert app.lock_windows.isChecked()
     assert app.hide_windows.isChecked()
     assert app.settings.value.locked  # saved, as when clicked
-    app.hotkey_pressed.emit("P")
+    app.hotkey_pressed.emit("pause")
     qapp.processEvents()
     assert not app.pause.isChecked()
-    app.hotkeys_not_working(["H"])  # another app has Ctrl+Alt+H: not shown
+    app.hotkeys_not_working(["hide"])  # another app has Ctrl+Alt+H: not shown
     assert app.hide_windows.shortcut().isEmpty()
     app.close()
 

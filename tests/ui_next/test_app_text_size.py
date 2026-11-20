@@ -133,7 +133,6 @@ def test_settings_app_offers_it_and_shows_it(at_normal: QApplication) -> None:
     panels = Panels(Settings(None), windows)
     page = SettingsPage(
         [("margin", "Margin")],
-        {},
         QAction("Tell us"),
         look=panels.look,
         timing=panels.timing,

@@ -62,6 +62,7 @@ from PySide6.QtGui import (
     QGuiApplication,
     QHideEvent,
     QKeyEvent,
+    QKeySequence,
     QMouseEvent,
     QShowEvent,
 )
@@ -83,6 +84,7 @@ from PySide6.QtWidgets import (
 )
 
 from polyglotic_desktop.core.listening.hidden import Sight
+from polyglotic_desktop.core.listening.hotkeys import OWN_MODIFIERS
 from polyglotic_desktop.core.listening.maintenance import Maintenance
 from polyglotic_desktop.core.listening.unreachable import Unreachable
 from polyglotic_desktop.perf import spans
@@ -109,7 +111,12 @@ from polyglotic_desktop.ui_next.languages import (
     target_languages,
 )
 from polyglotic_desktop.ui_next.lookup_card import dictionary_out
-from polyglotic_desktop.ui_next.os_words import hotkeys_here, on_linux, pc_or_mac
+from polyglotic_desktop.ui_next.os_words import (
+    hotkeys_here,
+    on_linux,
+    pc_or_mac,
+    platform,
+)
 from polyglotic_desktop.ui_next.pack_row import megabytes
 from polyglotic_desktop.ui_next.plan import get_plus_text
 from polyglotic_desktop.ui_next.sound_card import SoundCard
@@ -330,6 +337,16 @@ def hotkey_works(action: QAction) -> bool:
     (`DesktopApp.hotkeys_not_working`, polyglotic-hq 398) - and then
     nothing on Home or Help names it (400)."""
     return not action.shortcut().isEmpty()
+
+
+def own_hotkey(action: QAction, letter: str) -> bool:
+    """`action`'s hotkey works and is still the app's own Ctrl+Alt+`letter`
+    (the platform's: ⌃⌘ on a Mac): the words that name it say that one, so a key the
+    learner chose instead leaves them unsaid (polyglotic-hq 567)."""
+    qt = {"ctrl": "Ctrl", "alt": "Alt", "shift": "Shift", "win": "Meta"}
+    held = [qt[m.value] for m in OWN_MODIFIERS[platform()]]
+    own = QKeySequence("+".join([*held, letter]))  # Qt reads them in any order
+    return hotkey_works(action) and action.shortcut() == own
 
 
 def _bound(text: str, action: QAction) -> QPushButton:
@@ -1639,7 +1656,10 @@ class HomePage(Page):
         """Lock all's and Hide all's tips, the paused line and a hidden
         window's tip name a hotkey only while it works (polyglotic-hq 400:
         398's preview build registers none, and they said "Ctrl+Alt+L")."""
-        pause, lock, hide = (hotkey_works(action) for action in self._hotkeys)
+        pause, lock, hide = (
+            own_hotkey(action, letter)
+            for action, letter in zip(self._hotkeys, "PLH", strict=True)
+        )
         self.lock.setToolTip(hotkeys_here(_tr("Ctrl+Alt+L")) if lock else "")
         self.hide_all.setToolTip(hotkeys_here(_tr("Ctrl+Alt+H")) if hide else "")
         self.state.show_pause_key(pause)

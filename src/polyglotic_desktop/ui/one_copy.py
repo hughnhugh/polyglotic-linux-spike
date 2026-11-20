@@ -57,7 +57,8 @@ ANSWER_MS = 5_000  # a start that connects and says nothing is let go
 GREETING = b"polyglotic"
 SHOW, SHOWN = b"show", b"shown"
 COMMANDS = ("lock", "pause", "hide")
-"""What a start can ask the copy that runs to do, as its hotkey does (570)."""
+"""What a start can ask the copy that runs to do, as its hotkey does (570):
+each the hotkey's name (`core.listening.hotkeys.Hotkey`)."""
 DONE, NOT_YET = b"done", b"not yet"
 TELL_SEC = 2.0
 """How long a start with a command waits for the copy that runs to answer."""

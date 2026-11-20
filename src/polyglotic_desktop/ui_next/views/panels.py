@@ -641,6 +641,15 @@ class LookView(Shared[CaptionLook]):
         if not on:
             self.unlinked = None
 
+    def set_readings_shown(self, on: bool, readings: tuple[str, ...] = ()) -> None:
+        """The preset dropdown's Readings (polyglotic-hq 556): `readings` -
+        the reading lines of the window clicked - on beside those already
+        on, or every reading line off."""
+        lines = tuple(sorted({*self.value.reading_lines, *readings})) if on else ()
+        if on and not lines:
+            return  # nothing in that window has a reading to show
+        self.change(replace(self.value, reading_lines=lines))
+
     def set_link_detail(self, detail: LinkDetail) -> None:
         self.change(replace(self.value, link_detail=detail))
 

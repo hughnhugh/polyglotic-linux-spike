@@ -99,26 +99,26 @@ def test_every_strip_button_says_what_it_does_on_hover(window: CaptionWindow) ->
 def test_moving_to_the_next_button_says_it_at_once_and_a_press_hides_it(
     window: CaptionWindow,
 ) -> None:
-    enter(window.buttons["links"])
+    enter(window.buttons["lock"])
     rest(window)
-    leave(window.buttons["links"])
-    enter(window.buttons["fill"])
+    leave(window.buttons["lock"])
+    enter(window.buttons["stop"])
     assert labels_shown() == []  # the last one went as the mouse left
     rest(window)
-    assert labels_shown() == [window.controls["fill"].toolTip()]
+    assert labels_shown() == [window.controls["stop"].toolTip()]
     press = QMouseEvent(
         QEvent.Type.MouseButtonPress, QPointF(4, 4), QPointF(4, 4),
         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
         Qt.KeyboardModifier.NoModifier,
     )  # fmt: skip
-    QApplication.sendEvent(window.buttons["fill"], press)
+    QApplication.sendEvent(window.buttons["stop"], press)
     assert labels_shown() == []
-    leave(window.buttons["fill"])
+    leave(window.buttons["stop"])
 
 
 def test_from_one_button_to_the_next_while_one_shows(window: CaptionWindow) -> None:
     """Like Qt's tooltips: once one shows, the next is said without the wait."""
-    enter(window.buttons["links"])
+    enter(window.buttons["lock"])
     rest(window)
     enter(window.buttons["settings"])  # its enter before the last one's leave
     assert labels_shown() == [window.controls["settings"].toolTip()]
@@ -126,13 +126,14 @@ def test_from_one_button_to_the_next_while_one_shows(window: CaptionWindow) -> N
 
 
 def test_a_changed_tip_is_the_one_said(window: CaptionWindow) -> None:
-    """Word links with what was said hidden say why they're off."""
-    window.set_look(window.look.__class__(show_original=False))
-    enter(window.buttons["links"])
+    """A button's tip as it is when it's said, changed since it was made
+    (Word links with what was said hidden said why they were off, until
+    their strip button went into the presets' dropdown: polyglotic-hq 556)."""
+    window.controls["stop"].setToolTip("Stop captioning it, said afresh")
+    enter(window.buttons["stop"])
     rest(window)
-    assert labels_shown() == [window.controls["links"].toolTip()]
-    assert "Show the original" in labels_shown()[0]
-    leave(window.buttons["links"])
+    assert labels_shown() == ["Stop captioning it, said afresh"]
+    leave(window.buttons["stop"])
 
 
 def test_the_mic_mark_says_my_speech_is_shown_here(window: CaptionWindow) -> None:

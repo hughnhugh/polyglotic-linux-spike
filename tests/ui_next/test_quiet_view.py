@@ -200,7 +200,7 @@ def test_the_strip_and_the_popover_offer_it(
     shown: CaptionWindows, qapp: QApplication
 ) -> None:
     window = shown.windows["app"]
-    assert "quiet" in window_module.STRIP
+    assert "quiet" not in window_module.STRIP  # the presets' dropdown has it (556)
     assert window.controls["quiet"].isChecked()
     assert window.controls["quiet_curriculum"].isChecked()
     assert not window.controls["quiet_saved"].isChecked()

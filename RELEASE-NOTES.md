@@ -26,6 +26,23 @@ the app's What's new, the website's What's new and the Discord post.
 
 ### New
 
+- Settings > Hotkeys: every hotkey in one place, each one yours to change
+  (click it and press the keys you want), clear or reset. New: Back to
+  live, Ctrl+Alt+J, takes every caption window and transcript back to the
+  newest line from anywhere - its key is on Back to live's tip. Give a key,
+  if you'd like, to copying the newest caption, the next preset, or the
+  captions' text size up and down. A key another program has, or one
+  Windows keeps, is said on its line.
+
+- Presets for what you're doing: Everyday, Conversation, Video, film & TV,
+  and Learning, picked from a caption window's bar. Video puts your
+  captions along the bottom of the screen, large, two lines, like
+  subtitles, and puts the window back where you had it when you pick
+  another. In the same dropdown: show both lines, the original only or
+  the translation only, and add word links, the quiet view, readings or
+  your own speech. Whatever you change while a preset is in use is saved
+  in it. Rename, reset or make your own in Settings > Presets. If you'd
+  changed your settings before, they're kept as your "Custom" preset.
 - Word lookups in Korean, with English meanings: download Korean's
   dictionary on Learning. A word is found under its particles and endings
   (학교에서 is 학교, "school"; 먹었는데 is 먹다, "to eat"), and a compound

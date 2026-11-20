@@ -148,6 +148,7 @@ from polyglotic_desktop.ui_next.caption_marks import Learner
 from polyglotic_desktop.ui_next.caption_selection import word_rects
 from polyglotic_desktop.ui_next.caption_window import (
     Marked,
+    live_tip,
     notice_text,
     timing_name,
     timing_tip,
@@ -1424,6 +1425,7 @@ class TranscriptWindow(QWidget):
         self.pill.setObjectName("transcript_window.back_to_live")
         self.pill.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pill.clicked.connect(self.go_live)
+        self.pill.setToolTip(live_tip(""))
         self.pill.hide()
         self.notice = QLabel(self.list)
         self.notice.setObjectName("transcript_window.notice")
@@ -1714,6 +1716,11 @@ class TranscriptWindow(QWidget):
     def go_live(self) -> None:
         self.transcript.go_live()
         self.refresh()
+
+    def set_live_keys(self, keys: str) -> None:
+        """Back to live's hotkey as the OS writes it ("" none), on its tip
+        (polyglotic-hq 567)."""
+        self.pill.setToolTip(live_tip(keys))
 
     # -- the rail -------------------------------------------------------------------------
 

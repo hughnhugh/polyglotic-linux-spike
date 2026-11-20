@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from polyglotic_desktop.core.listening.hotkeys import Platform
 from polyglotic_desktop.ui import os_words as ui_os_words
 from polyglotic_desktop.ui_next import os_words
 from polyglotic_desktop.ui_next.sound_card import default_name
@@ -137,9 +138,25 @@ def test_a_mac_names_the_hotkeys_its_own_way(
 def test_linux_names_its_own_hotkeys(
     monkeypatch: pytest.MonkeyPatch, text: str, linux: str
 ) -> None:
-    """Ctrl+Alt+Shift on Linux (570), in every language."""
+    """Ctrl+Alt+Shift on Linux (polyglotic-hq 570, decision 0276), in every
+    language."""
     monkeypatch.setattr(sys, "platform", "linux")
+    assert os_words.platform() is Platform.LINUX
     assert os_words.hotkeys_here(text) == linux
+
+
+@pytest.mark.parametrize(
+    ("system", "platform"),
+    [("win32", Platform.WINDOWS), ("darwin", Platform.MAC), ("linux", Platform.LINUX)],
+)
+def test_each_os_tells_core_its_own(
+    monkeypatch: pytest.MonkeyPatch, system: str, platform: Platform
+) -> None:
+    from polyglotic_desktop.ui import os_words as ui_os_words
+
+    monkeypatch.setattr(sys, "platform", system)
+    assert os_words.platform() is platform
+    assert ui_os_words.platform() is platform
 
 
 def test_no_text_names_windows_hotkeys_on_a_mac(

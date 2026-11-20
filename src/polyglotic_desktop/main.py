@@ -21,9 +21,11 @@ then connects them:
   and are applied on the Qt thread without being sent back (`QtExchange`);
   finished days' exposure counts are handed over at start and hourly -
   kept only with their consent;
-- **hotkeys**: Ctrl+Alt+L, P and H (lock, pause, hide) registered with
-  Windows on a thread of their own; each press goes to the interface's
-  thread;
+- **hotkeys**: Ctrl+Alt+L, P, H and J (lock, pause, hide, back to live),
+  or the keys the learner chose in Settings > Hotkeys, and those they gave
+  the rest (polyglotic-hq 567), registered with Windows on a thread of
+  their own - again when a key changes, and let go while Settings listens
+  for one (`AppHotkeys`); each press goes to the interface's thread;
 - **feedback** (project 053): "Report a problem" and "Suggest something"
   open the form - and, if the app hit an error nothing caught last time
   (`CrashLog` leaves `crashed.json` in the data folder), Home offers once
@@ -241,6 +243,7 @@ from polyglotic_desktop.core.listening.captions import (
     mandarin_written,
 )
 from polyglotic_desktop.core.listening.delays import CAPTION_LOG
+from polyglotic_desktop.core.listening.dictation_keys import DictationKey
 from polyglotic_desktop.core.listening.display import (
     READING_LANGUAGES,
     LinkDetail,
@@ -253,6 +256,9 @@ from polyglotic_desktop.core.listening.display import (
     WordLinks,
 )
 from polyglotic_desktop.core.listening.hidden import Sight
+from polyglotic_desktop.core.listening.history import copied_text, newest_finished
+from polyglotic_desktop.core.listening.hotkeys import DICTATE, Hotkey, Platform, clashes
+from polyglotic_desktop.core.listening.hotkeys import keys as hotkey_keys
 from polyglotic_desktop.core.listening.maintenance import (
     SOON,
     Maintenance,
@@ -375,6 +381,7 @@ from polyglotic_desktop.ui import (
     move_to_applications,
     one_copy,
     theme,
+    use_presets,
 )
 from polyglotic_desktop.ui.app import ConnectionState, DesktopApp
 from polyglotic_desktop.ui.apps_with_sound import AppsWithSound
@@ -428,7 +435,7 @@ from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
 from polyglotic_desktop.ui_next.first_window import made_ahead
 from polyglotic_desktop.ui_next.fonts_ahead import FontsAhead
 from polyglotic_desktop.ui_next.help_page import HelpPage as NextHelpPage
-from polyglotic_desktop.ui_next.home import WHATS_NEW_ON_HOME, HomePage, hotkey_works
+from polyglotic_desktop.ui_next.home import WHATS_NEW_ON_HOME, HomePage, own_hotkey
 from polyglotic_desktop.ui_next.known_map_card import MapWords, WordsReader
 from polyglotic_desktop.ui_next.languages import (
     language_name,
@@ -439,13 +446,15 @@ from polyglotic_desktop.ui_next.languages import (
 )
 from polyglotic_desktop.ui_next.learning_page import LearningPage, reset_question
 from polyglotic_desktop.ui_next.main_window import MainWindow as NextMainWindow
-from polyglotic_desktop.ui_next.os_words import on_linux, pc_or_mac
+from polyglotic_desktop.ui_next.os_words import on_linux, pc_or_mac, platform
 from polyglotic_desktop.ui_next.pack_row import (
     failed_notice,
     ready_notice,
     remove_question,
 )
 from polyglotic_desktop.ui_next.plan import plan_text
+from polyglotic_desktop.ui_next.preset_popover import preset_name
+from polyglotic_desktop.ui_next.presets_card import change_words
 from polyglotic_desktop.ui_next.save_folder import SaveFolder
 from polyglotic_desktop.ui_next.selection_reading import SelectionReading
 from polyglotic_desktop.ui_next.settings_page import SettingsPage
@@ -495,6 +504,12 @@ from polyglotic_desktop.ui_next.views.panels import (
 )
 from polyglotic_desktop.ui_next.views.placement import Rect
 from polyglotic_desktop.ui_next.views.plan import PlanLine, PlanShown, plan_line
+from polyglotic_desktop.ui_next.views.preset_menu import (
+    PresetItem,
+    PresetMenu,
+    PresetsView,
+    Show,
+)
 from polyglotic_desktop.ui_next.views.sound import Sound, SoundView
 from polyglotic_desktop.ui_next.views.speech import BetterVoice
 from polyglotic_desktop.ui_next.views.transcript import TranscriptLength
@@ -1130,11 +1145,11 @@ def linux_adapters() -> OsAdapters:
     everything the PC plays and the mic through the sound server
     (libpulse), with the apps playing, the known apps and the sound
     devices; the caption windows above everything as override-redirect
-    windows; the hotkeys where the session lets an X11 app take them (570);
-    and what the first Linux build doesn't have yet saying so through its
-    port (`platform/linux/not_yet`): dictation, the sample played aloud -
-    with no voice for the word card and no start at sign-in, which Home
-    then never offers."""
+    windows; the hotkeys where the session lets an X11 app take them
+    (570, decision 0276); and what the first Linux build doesn't have yet
+    saying so through its port (`platform/linux/not_yet`): dictation, the
+    sample played aloud - with no voice for the word card and no start at
+    sign-in, which Home then never offers."""
     from polyglotic_desktop.platform.linux import (
         apps,
         capture,
@@ -1379,7 +1394,9 @@ def caption_look(value: AppSettings, own: Iterable[str] = ()) -> CaptionLook:
         translation=value.translation_color,
         font=value.caption_font,
         faces=tuple(sorted(value.caption_faces.items())),
-        show_original=value.show_original,
+        # with no translation (a preset's Original only, 556) what was said
+        # always shows: else nothing would
+        show_original=value.show_original or not value.show_translation,
         show_language=value.show_language,
         show_source=value.show_source,
         show_delay=value.show_delay,
@@ -1707,6 +1724,27 @@ def wire_caption_windows(
     desktop.hide_windows.toggled.connect(windows.set_hidden)
     windows.set_locked(desktop.lock_windows.isChecked())
     windows.set_hidden(desktop.hide_windows.isChecked())
+    # what only a hotkey does (polyglotic-hq 567): every window to its newest
+    # caption, as its Back to live does; their text a size up or down; the
+    # newest caption copied, said in every window
+    desktop.go_live.triggered.connect(windows.go_live)
+    live = desktop.go_live  # its hotkey on Back to live's tip, as it is now
+    windows.set_live_keys(shortcut_text(live))
+    live.changed.connect(lambda: windows.set_live_keys(shortcut_text(live)))
+    desktop.text_bigger.triggered.connect(lambda: windows.step_text(1))
+    desktop.text_smaller.triggered.connect(lambda: windows.step_text(-1))
+
+    def copy_newest() -> None:
+        newest = newest_finished(desktop.feed.history.captions)
+        clipboard = QGuiApplication.clipboard()
+        if newest is None or clipboard is None:
+            return
+        clipboard.setText(copied_text(newest))
+        windows.show_notice(
+            QApplication.translate("CaptionWindows", "Copied the newest caption")
+        )
+
+    desktop.copy_caption.triggered.connect(copy_newest)
     windows.stop_wanted.connect(
         lambda key: desktop.settings.update(
             **stop_captioning(desktop.settings.value, key)
@@ -1763,6 +1801,10 @@ def wire_transcripts(transcripts: Transcripts, desktop: DesktopApp) -> None:
         lambda mode: desktop.settings.update(caption_mode_chosen=mode)
     )
     desktop.feed.applied.connect(transcripts.apply)
+    desktop.go_live.triggered.connect(transcripts.go_live)  # its hotkey (567)
+    live = desktop.go_live  # and on Back to live's tip, as it is now
+    transcripts.set_live_keys(shortcut_text(live))
+    live.changed.connect(lambda: transcripts.set_live_keys(shortcut_text(live)))
     desktop.feed.dictionary_ready.connect(transcripts.dictionary_ready)
     desktop.feed.checked.connect(transcripts.use_checked)
     desktop.pause.toggled.connect(transcripts.set_paused)
@@ -1832,6 +1874,60 @@ def follow_settings(
     labels = desktop.source_labels()
     windows.set_labels(labels, labels[MIC].name)
     windows.set_captioned(captioned)
+    follow_presets(windows, value)
+
+
+def follow_presets(windows: CaptionWindows, value: AppSettings) -> None:
+    """The caption windows follow the chosen preset's window settings
+    (polyglotic-hq 556): the original only in every window, or not; and
+    Video's subtitles - every window along the bottom - or each where the
+    learner put it."""
+    windows.set_original_only(not value.show_translation)
+    windows.set_subtitles(
+        (value.subtitle_size, value.subtitle_width) if value.subtitles else None
+    )
+
+
+def preset_menu(value: AppSettings, look: CaptionLook, my_speech: bool) -> PresetMenu:
+    """The presets as the caption windows' dropdown and Settings show
+    them (polyglotic-hq 556): each one's name - the learner's where they
+    renamed it - the chosen one, its Show, and what's added on top: word
+    links or the quiet view and readings as `look` shows them, and my
+    speech in any window (`my_speech`). What it changes, in words."""
+    items = tuple(
+        PresetItem(
+            key,
+            value.preset_names.get(key) or preset_name(key),
+            key not in use_presets.ORDER,  # Custom, or one of the learner's
+        )
+        for key in use_presets.keys(value)
+    )
+    show = (
+        Show.ORIGINAL
+        if not value.show_translation
+        else Show.TRANSLATION
+        if not value.show_original
+        else Show.BOTH
+    )
+    return PresetMenu(
+        items,
+        value.preset,
+        show,
+        links=look.word_links is not WordLinks.OFF,
+        quiet=look.quiet,
+        readings=bool(look.reading_lines),
+        my_speech=my_speech,
+        changes=change_words(use_presets.differences(value, value.preset)),
+        can_add=use_presets.can_add(value),
+    )
+
+
+def lines_changes(show: Show) -> dict[str, object]:
+    """The settings the dropdown's Show changes to `show` (556)."""
+    return {
+        "show_original": show is not Show.TRANSLATION,
+        "show_translation": show is not Show.ORIGINAL,
+    }
 
 
 def traditional_here() -> bool:
@@ -2148,6 +2244,25 @@ class Panels:
         self.downloads = DownloadsView()
         """The downloaded caption faces, as Look's Fonts card shows them
         (`FontDelivery`'s; polyglotic-hq 482)."""
+        self.presets = PresetsView(
+            preset_menu(value, self.look.value, windows.show_mic_anywhere)
+        )
+        """The presets, as Settings > Presets and the windows' dropdown
+        show them (polyglotic-hq 556)."""
+        self.presets.chose = self.choose_preset
+        self.presets.rename = lambda key, name: self._preset_step(
+            use_presets.renamed(self.settings.value, key, name)
+        )
+        self.presets.reset = lambda key: self._preset_step(
+            use_presets.reset(self.settings.value, key)
+        )
+        self.presets.add = lambda name: self._preset_step(
+            use_presets.added(self.settings.value, name)
+        )
+        self.presets.delete = lambda key: self._preset_step(
+            use_presets.removed(self.settings.value, key)
+        )
+        windows.set_presets(self.presets.value)
         self.look_waiting = False
         """A look change waits to be saved."""
         self._look_settles = QTimer(singleShot=True, interval=SETTLE_MS)
@@ -2171,6 +2286,53 @@ class Panels:
             self.look_waiting = False
             changes = look_changes(self.settings.value, self.look.value, self.in_use())
             self.settings.update(**changes)
+
+    # -- presets (polyglotic-hq 556) ----------------------------------------------------
+
+    def choose_preset(self, key: str) -> None:
+        """A preset picked - from a window's dropdown or Settings: its
+        values over the settings, the look's change waiting saved into the
+        one before first, and my speech as it says."""
+        self._preset_step(use_presets.chosen(self._settled(), key))
+
+    def next_preset(self) -> None:
+        """The preset after the chosen one, in the dropdown's order, chosen
+        - and its name said in every window (the hotkey's: polyglotic-hq
+        567)."""
+        order = use_presets.keys(self.settings.value)
+        chosen = self.settings.value.preset
+        at = order.index(chosen) if chosen in order else -1
+        self.choose_preset(order[(at + 1) % len(order)])
+        self.windows.show_notice(self.presets.value.name)
+
+    def _settled(self) -> AppSettings:
+        self.save_look()  # a change waiting belongs to the preset before
+        return self.settings.value
+
+    def _preset_step(self, value: AppSettings) -> None:
+        before = self.settings.value
+        self.settings.change(value)
+        now = self.settings.value
+        if now.preset != before.preset and now.my_speech is not None:
+            self.windows.set_show_mic_everywhere(now.my_speech)
+        if now.subtitles != before.subtitles:  # the windows moved: said briefly
+            self.windows.say_subtitles(now.subtitles)
+
+    def set_lines(self, show: str) -> None:
+        """The dropdown's Show: both, the original only, the translation
+        only - saved in the preset."""
+        self._settled()
+        self.settings.update(**lines_changes(Show(show)))
+
+    def set_my_speech(self, on: bool) -> None:
+        """The dropdown's My speech: in every window or in none - saved in
+        the preset."""
+        self.windows.set_show_mic_everywhere(on)
+        self.settings.update(my_speech=on)
+
+    def set_subtitles(self, size: float, width: float) -> None:
+        """Video's subtitles resized or their text stepped in a window."""
+        self.settings.update(subtitle_size=size, subtitle_width=width)
 
     def _languages_chosen(self, languages: SessionLanguages) -> None:
         """A change in the Languages panel (Settings > Captions > Speech),
@@ -2202,6 +2364,9 @@ class Panels:
         if self.look_waiting:  # the panels' is newer: only the timing's line
             look = replace(self.look.value, preview=look.preview)
         self.look.follow(look)
+        menu = preset_menu(value, look, self.windows.show_mic_anywhere)
+        self.presets.follow(menu)
+        self.windows.set_presets(menu)
 
 
 def _tr_app(text: str) -> str:
@@ -2478,7 +2643,6 @@ class Hub:
         start_parts.done("page_learning_and_account")
         self.settings = SettingsPage(
             [(key, look.name) for key, look in theme.THEMES.items()],
-            desktop.hotkeys,
             desktop.work_with_us,
             interface_language.picker(),
             look=panels.look,
@@ -2486,6 +2650,7 @@ class Hub:
             speech=panels.languages,
             sound=self.sound,
             downloads=panels.downloads,
+            presets=panels.presets,
         )
         app = QApplication.instance()
         running = interface_language.in_use(app) if app else interface_language.ENGLISH
@@ -2497,6 +2662,7 @@ class Hub:
         self.settings.lab_load_wanted.connect(self.open_load)
         self.learning.load.lab_wanted.connect(self.open_lab_load)
         windows.all_settings_wanted.connect(self.open_caption_settings)
+        windows.customise_wanted.connect(self.open_presets)
         self.settings.interface_language_chosen.connect(
             lambda code: desktop.settings.update(interface_language=code or None)
         )
@@ -3098,6 +3264,13 @@ class Hub:
         sections (polyglotic-hq 304)."""
         self.window.go_to("settings")
         self.settings.show_section("look")
+        self.show(picker=False)
+
+    def open_presets(self) -> None:
+        """A caption window's "Customise presets…": the main window in
+        front, on Settings > Presets (polyglotic-hq 556)."""
+        self.window.go_to("settings")
+        self.settings.show_section("presets")
         self.show(picker=False)
 
     def open_dictation_settings(self) -> None:
@@ -4324,6 +4497,16 @@ def new_interface(
     )
     windows.fill_wanted.connect(panels.look.set_filled)  # and its filled lines (372)
     windows.aligned_wanted.connect(panels.look.set_lined_up)  # and parts lined up
+    # the presets' dropdown (polyglotic-hq 556)
+    windows.preset_wanted.connect(panels.choose_preset)
+    desktop.next_preset.triggered.connect(panels.next_preset)  # its hotkey (567)
+    windows.lines_wanted.connect(panels.set_lines)
+    windows.readings_wanted.connect(panels.look.set_readings_shown)
+    windows.my_speech_wanted.connect(panels.set_my_speech)
+    windows.subtitles_changed.connect(panels.set_subtitles)
+    windows.translations_wanted.connect(
+        lambda: desktop.settings.update(show_translation=True)
+    )
     windows.said_colours_wanted.connect(panels.look.set_said_in_link_colours)  # 431
     windows.translation_colours_wanted.connect(
         panels.look.set_translation_in_link_colours
@@ -4600,6 +4783,72 @@ def plan_shown(plan: protocol.PlanState) -> PlanShown:
             until = parse_at(plan.until)
     code = plan.message.code if plan.message is not None else None
     return PlanShown(plan.tier, plan.source, plan.status, until, code)
+
+
+class AppHotkeys:
+    """The app's hotkeys, taken from the OS as the settings say
+    (polyglotic-hq 567): each with a key that no other has before it
+    (`core.listening.hotkeys.clashes`), registered; registered again when
+    one changes; let go while Settings' key box listens, so a key the app
+    has reaches the box (and says whose it is) instead of doing its
+    action."""
+
+    def __init__(
+        self,
+        hotkeys: Callable[[Mapping[str, Callable[[], None]]], Hotkeys],
+        pressed: Callable[[str], None],
+    ) -> None:
+        """`hotkeys`: the OS's, made with each combination as kept;
+        `pressed`: a hotkey's name, on the hotkeys' own thread."""
+        self._hotkeys = hotkeys
+        self._pressed = pressed
+        self._held: Hotkeys | None = None
+        self.bound: dict[str, str] = {}
+        """Each combination registered, as kept, to its hotkey's name."""
+        self.taken: set[str] = set()
+        """The hotkeys (by name) whose key another program has."""
+        self.box_listening = False
+
+    def follow(
+        self,
+        keys: Mapping[Hotkey, DictationKey | None],
+        hold: Mapping[str, DictationKey | None] = {},
+    ) -> bool:
+        """The hotkeys' keys now, and the hold keys' (dictation's): each
+        hotkey whose key no hotkey or hold key before it has, registered.
+        True if that changed anything."""
+        together: dict[str, DictationKey | None] = {**hold}
+        together.update((hotkey.value, key) for hotkey, key in keys.items())
+        clashing = clashes(together)
+        wanted = {
+            str(key): hotkey.value
+            for hotkey, key in keys.items()
+            if key is not None and hotkey.value not in clashing
+        }
+        if self.box_listening:
+            wanted = {}
+        if wanted == self.bound and (self._held is not None or not wanted):
+            return False
+        self.stop()
+        self.bound = wanted
+        if wanted:
+            self._held = self._hotkeys(
+                {key: partial(self._pressed, name) for key, name in wanted.items()}
+            )
+            self.taken = {wanted[key] for key in self._held.start()}
+        return True
+
+    def not_working(self, names: Iterable[str]) -> list[str]:
+        """Of `names`, the hotkeys that do nothing now: no key, a key
+        another hotkey or program has, or let go (`not_working`)."""
+        return not_working(names, self.bound.values(), self.taken)
+
+    def stop(self) -> None:
+        if self._held is not None:
+            self._held.stop()
+        self._held = None
+        self.bound = {}
+        self.taken = set()
 
 
 class DictationKeyHeld:
@@ -6883,7 +7132,13 @@ def check_parity(report: Path, system: OsAdapters, os_name: str) -> int:
         ok = True
 
         def hotkeys_taken() -> object:
-            keys = system.hotkeys({key: lambda: None for key in "LPH"})
+            keys = system.hotkeys(
+                {
+                    str(key): lambda: None
+                    for key in hotkey_keys({}, Platform.MAC).values()
+                    if key
+                }
+            )
             taken = keys.start()
             keys.stop()
             return taken
@@ -7276,11 +7531,6 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
     sys.exit(1)
 
 
-COMMAND_KEYS = {"lock": "L", "pause": "P", "hide": "H"}
-"""Each command a start can give the copy that runs (`--lock`; polyglotic-hq
-570), by the hotkey that does the same (`DesktopApp.hotkeys`)."""
-
-
 def tell_the_copy(name: str, command: str) -> int:
     """Asks the copy that runs under `name` to do `command`, as its hotkey
     does, saying on the terminal what came of it: the process's exit code."""
@@ -7566,9 +7816,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     if second_starts is not None:  # a second start: the window, as the tray's Open
         second_starts.show_with(desktop.show_window)
         # or what a hotkey does, from a shortcut of the desktop's own (570)
-        second_starts.do_with(
-            lambda command: desktop.hotkey_pressed.emit(COMMAND_KEYS[command])
-        )
+        second_starts.do_with(desktop.hotkey_pressed.emit)  # its hotkey's name
     if notice := start_notice(store.set_aside, windows.taken_off):
         desktop.home_notice.emit(notice)
     # the installed app can start with Windows (176) - not the Store's copy
@@ -7913,6 +8161,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             speech_to_send,
             current.live_interval,
             current.caption_mode,
+            use_presets.usage(current),  # the preset in use, counted (556)
         )
         handoff.started(session, settings)
 
@@ -8537,14 +8786,58 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     resending.timeout.connect(problem_sender.send_waiting)
     resending.start()
 
-    bound = {key: partial(desktop.hotkey_pressed.emit, key) for key in desktop.hotkeys}
-    hotkeys = system.hotkeys(bound)
-    # another app may have some; a build may register none (398)
-    desktop.hotkeys_not_working(not_working(desktop.hotkeys, bound, hotkeys.start()))
-    # Home reads its actions; Help names only those that work (400)
-    hub.help.show_hotkeys(
-        [key for key, action in desktop.hotkeys.items() if hotkey_works(action)]
+    hotkeys = AppHotkeys(system.hotkeys, desktop.hotkey_pressed.emit)
+    hotkeys_shown: list[object] = [None]
+
+    def follow_hotkeys() -> None:
+        """The hotkeys taken as the settings say (polyglotic-hq 567) - again
+        when a key changes - and shown where they're named: the tray's
+        commands, Settings > Hotkeys, Home and Help; another app may have
+        some (398)."""
+        value = desktop.settings.value
+        keys = hotkey_keys(value.hotkeys, platform())
+        dictation = DictationKey.parse(value.dictation_key) if value.dictation else None
+        changed = hotkeys.follow(keys, {DICTATE: dictation})
+        shown = (keys, hotkeys.bound, hotkeys.taken)
+        if not changed and shown == hotkeys_shown[0]:
+            return
+        hotkeys_shown[0] = shown
+        desktop.set_hotkeys(keys)
+        desktop.hotkeys_not_working(hotkeys.not_working(desktop.hotkeys))
+        settings_page.show_hotkeys(
+            {h.value: str(k) if k else "" for h, k in keys.items()}, hotkeys.taken
+        )
+        # Help names Ctrl+Alt+L, P and H only while they're those and work (400)
+        hub.help.show_hotkeys(
+            [
+                letter
+                for letter, hotkey in (
+                    ("L", Hotkey.LOCK),
+                    ("P", Hotkey.PAUSE),
+                    ("H", Hotkey.HIDE),
+                )
+                if own_hotkey(desktop.hotkeys[hotkey.value], letter)
+            ]
+        )
+
+    def key_box(listening: bool) -> None:
+        """A key box in Settings listens - a hotkey's or dictation's: every
+        key the app holds lets keys through meanwhile, so the box gets the
+        one pressed (and says whose it is) instead of its action running."""
+        hotkeys.box_listening = listening
+        follow_hotkeys()
+        dictation_key_box(listening)
+
+    settings_page.hotkey_wanted.connect(
+        lambda name, key: desktop.settings.update(
+            hotkeys={**desktop.settings.value.hotkeys, name: key}
+        )
     )
+    settings_page.hotkeys_reset.connect(lambda: desktop.settings.update(hotkeys={}))
+    settings_page.hotkey_listening.connect(key_box)
+    settings_page.dictation_key_listening.connect(key_box)
+    desktop.settings.changed.connect(follow_hotkeys)
+    follow_hotkeys()
     # a game that is itself always on top comes to the front: the caption
     # windows go back above it (on the interface's thread)
     in_front = system.foreground_watch(windows.front_changed.emit)

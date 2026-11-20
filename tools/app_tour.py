@@ -582,10 +582,13 @@ def unlocking() -> Step:
     given.click(*away)  # the window beneath takes the keyboard back
     yield pause(1.0)
     given.press("ctrl", "alt", "shift", "l")
-    yield wait(lock.isChecked, 4, "the lock hotkey")
+    if "lock" in working:  # Lock's key, by its name (567)
+        yield wait(lock.isChecked, 4, "the lock hotkey")
+    else:
+        yield pause(2.0)  # said not to work here: nothing should lock
     by_key = lock.isChecked()
     check("Ctrl+Alt+Shift+L locks exactly where the app says it works",
-          by_key == ("L" in working), f"locked={by_key}, working={working}")  # fmt: skip
+          by_key == ("lock" in working), f"locked={by_key}, working={working}")  # fmt: skip
     if by_key:
         facts["first_lock_notice"] = captions.notice.text()
         yield pause(1.0)
@@ -613,7 +616,8 @@ def unlocking() -> Step:
                   f"exit {run.returncode}, {before} -> {action.isChecked()}; {said}")  # fmt: skip
             if turn == "on" and command != "pause":
                 if command == "lock":
-                    facts["notice_on_a_later_lock"] = captions.notice.text()
+                    facts.setdefault("first_lock_notice", captions.notice.text())
+                    facts["notice_on_lock_by_command"] = captions.notice.text()
                     picture(captions, "locked-by-command", "Locked by --lock")
                 yield from desk(f"{command}-by-command", home_hidden=True)
     lock.setChecked(False)

@@ -248,6 +248,10 @@ class StoredWindows:
     reading_hinted: bool = False
     set_up: bool = False
     start_like_this: bool = False
+    kept_languages: dict[str, str] = field(default_factory=dict)
+    """While every window shows the original only (a preset's Show,
+    polyglotic-hq 556): each window's translation language from before, by
+    its key, given back when translations show again."""
 
     def spoken_declined(self, key: str, code: str) -> None:
         """The window of `key` was asked to always hear `code` and the
@@ -323,6 +327,7 @@ class StoredWindows:
             "declined_spoken": {k: list(v) for k, v in self.declined_spoken.items()},
             "set_up": self.set_up,
             "start_like_this": self.start_like_this,
+            "kept_languages": dict(self.kept_languages),
         }
 
     @classmethod
@@ -366,7 +371,18 @@ class StoredWindows:
             # as my default (478)
             set_up=own.get("set_up") is True or ("set_up" not in own and bool(by_key)),
             start_like_this=own.get("start_like_this") is True,
+            kept_languages=_kept_languages(own.get("kept_languages")),
         )
+
+
+def _kept_languages(value: object) -> dict[str, str]:
+    """The windows' languages kept while the original only shows (556):
+    a window's key to a language's code; anything else left out."""
+    if not isinstance(value, Mapping):
+        return {}
+    return {
+        str(k): v for k, v in value.items() if isinstance(v, str) and 0 < len(v) <= 10
+    }
 
 
 def text_size(value: object) -> float | None:

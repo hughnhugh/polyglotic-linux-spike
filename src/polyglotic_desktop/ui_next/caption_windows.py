@@ -88,7 +88,7 @@ from dataclasses import replace
 from time import perf_counter
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 
 from polyglotic_desktop.core.lexicon.entries import DictionaryEntry
 from polyglotic_desktop.core.listening.captions import (
@@ -143,6 +143,7 @@ from polyglotic_desktop.ui_next.views.app_choices import AppChoice
 from polyglotic_desktop.ui_next.views.caption_window import (
     LIMIT,
     NOTICE_SEC,
+    ORIGINAL_ONLY,
     STORED_KEY,
     CaptionLook,
     JoinedChoices,
@@ -150,9 +151,11 @@ from polyglotic_desktop.ui_next.views.caption_window import (
     WindowChoices,
     slowed_now,
 )
+from polyglotic_desktop.ui_next.views.captions import CAPTION_TEXT_SIZES
 from polyglotic_desktop.ui_next.views.lookup import Learner
 from polyglotic_desktop.ui_next.views.migration import stored_windows
-from polyglotic_desktop.ui_next.views.placement import Rect
+from polyglotic_desktop.ui_next.views.placement import Preset, Rect
+from polyglotic_desktop.ui_next.views.preset_menu import PresetMenu
 
 SAVE_AFTER_MS = 400
 """A window's choices are saved this long after the last change (a run of
@@ -162,6 +165,25 @@ ON_TOP_EVERY_SEC = 1.0
 HIDDEN_TICK_MS = 1000
 """How often, while a window is hidden, its timer and what Home and the
 tray say of it are looked at."""
+
+
+def _tr(text: str) -> str:
+    return QApplication.translate("CaptionWindows", text)
+
+
+SUBTITLES_SAID_SEC = 3.0
+"""How long a window says it moved for Video's subtitles, or back (556):
+a few seconds, half a brief notice's."""
+
+
+def subtitle_text_size(share: float, area: Rect, text_px: float) -> float:
+    """A caption window's text size for Video's subtitles: their text
+    `share` of the screen's height (polyglotic-hq 556), within a caption
+    window's sizes, to two places."""
+    size = share * area.height / max(1.0, text_px)
+    low, high = CAPTION_TEXT_SIZES
+    return round(min(high, max(low, size)), 2)
+
 
 log = logging.getLogger(__name__)
 """Each window shown, hidden or closed, and why - by its place in the list,
@@ -233,6 +255,18 @@ class CaptionWindows(QObject):
     set_up_done = Signal()
     """A window's set-up went (465; 478: on every open until Use as my
     default)."""
+    # the preset dropdown's (polyglotic-hq 556), passed on from any window
+    preset_wanted = Signal(str)
+    lines_wanted = Signal(str)
+    readings_wanted = Signal(bool, tuple)
+    my_speech_wanted = Signal(bool)
+    customise_wanted = Signal()
+    subtitles_changed = Signal(float, float)
+    """Video's subtitles' text size and width share, changed in a window
+    (A- / A+, a resize): saved into the preset (556)."""
+    translations_wanted = Signal()
+    """A window was given a language to translate into while every window
+    showed the original only: translations show again (556)."""
 
     def __init__(
         self,
@@ -308,6 +342,8 @@ class CaptionWindows(QObject):
         """The next lock says at length how to unlock (`unlock_told`): the
         first on Linux (polyglotic-hq 570)."""
         self.unlock_keys = "Ctrl+Alt+L"
+        self.live_keys = ""
+        """Back to live's hotkey as the OS writes it ("" none: 567)."""
         """The hotkey that unlocks, as it is now ("" if another app has it)."""
         self.unlock_spot = False
         """A locked window's corner takes the mouse itself (`set_unlock_spot`)."""
@@ -355,6 +391,16 @@ class CaptionWindows(QObject):
         self._steady: dict[str, SteadyLanguage] = {}
         """Each window's app heard as Detect: the language it speaks
         steadily, for the window's question (317)."""
+        self.preset_menu = PresetMenu()
+        """The presets as `main` last said: every window's chip (556)."""
+        self.subtitles: tuple[float, float] | None = None
+        """Video's subtitles' text size and width share while they're on
+        (`set_subtitles`, 556); None: each window where the learner put it."""
+        self._own: dict[str, WindowChoices] = {}
+        """While subtitles are on, each window's own choices - its place and
+        text size from before, kept and saved as its own."""
+        self.original_only = False
+        """Every window shows the original only (a preset's Show, 556)."""
         self._save = QTimer(self, singleShot=True, interval=SAVE_AFTER_MS)
         self._save.timeout.connect(self.save_now)
         if (self.stored.first_use and self.stored.by_key) or self.taken_off:
@@ -385,7 +431,9 @@ class CaptionWindows(QObject):
         self.stored.first_use = False  # windows from now on are new ones
         for window in self.windows.values():
             window.windows = len(self.windows)
+            self._original(window)  # a new one: as every window shows (556)
         self._arrange()
+        self._place_subtitles()
         self._spoken_fallbacks()
         self.languages_changed.emit()
         self.mic_wanted.emit(self.show_mic_anywhere)
@@ -433,6 +481,7 @@ class CaptionWindows(QObject):
         window.set_unstable(self.unstable)
         window.set_connection(*self.connection)
         window.set_unlock_keys(self.unlock_keys)
+        window.set_live_keys(self.live_keys)
         window.unlock_spot.catch(self.unlock_spot)
         window.set_locked(self.locked)
         window.use_say_it(self.say_it)
@@ -467,6 +516,12 @@ class CaptionWindows(QObject):
         window.aligned_wanted.connect(self.aligned_wanted)
         window.said_colours_wanted.connect(self.said_colours_wanted)
         window.translation_colours_wanted.connect(self.translation_colours_wanted)
+        window.set_presets(self.preset_menu)
+        window.preset_wanted.connect(self.preset_wanted)
+        window.lines_wanted.connect(self.lines_wanted)
+        window.readings_wanted.connect(self.readings_wanted)
+        window.my_speech_wanted.connect(self.my_speech_wanted)
+        window.customise_wanted.connect(self.customise_wanted)
         window.app_choices = lambda: self.app_choices(key)
         window.recent_spoken = self.recent_spoken
         window.spoken_declined.connect(lambda code: self._spoken_declined(window, code))
@@ -595,9 +650,130 @@ class CaptionWindows(QObject):
             steady = self._steady.get(window.key)
             if steady is not None:  # heard afresh from the next caption
                 steady.start_again()
-        self.stored.by_key[window.key] = window.choices
-        self.stored.last = window.choices
+        if self.original_only and window.choices.translate_into != ORIGINAL_ONLY:
+            self.translations_wanted.emit()  # a language picked: shown again (556)
+        choices = self._kept_own(window)
+        self.stored.by_key[window.key] = choices
+        self.stored.last = choices
         self._save.start()
+
+    # -- presets (polyglotic-hq 556) ------------------------------------------------------
+
+    def set_presets(self, menu: PresetMenu) -> None:
+        """The presets as they are now: every window's chip and dropdown."""
+        self.preset_menu = menu
+        for window in self.windows.values():
+            window.set_presets(menu)
+
+    def set_original_only(self, on: bool) -> None:
+        """Every window shows the original only - its translation language
+        kept, and given back when it's off (a preset's Show)."""
+        if on == self.original_only:
+            return
+        self.original_only = on
+        for window in self.windows.values():
+            self._original(window)
+        self._save.start()
+
+    def _original(self, window: CaptionWindow) -> None:
+        kept = self.stored.kept_languages
+        language = window.choices.translate_into
+        if self.original_only and language != ORIGINAL_ONLY:
+            kept[window.key] = language
+            window.set_language(ORIGINAL_ONLY)
+        elif not self.original_only and language == ORIGINAL_ONLY:
+            back = kept.pop(window.key, None)
+            if back is not None:  # else it showed the original only by its own choice
+                window.set_language(back)
+        elif not self.original_only:
+            kept.pop(window.key, None)
+
+    def set_subtitles(self, subtitles: tuple[float, float] | None) -> None:
+        """Video's subtitles (556): with their text's size as a share of the
+        screen's height and their width as a share of its width, every
+        window at the bottom centre of the screen it's on, that wide, two
+        lines tall, its text that big - each one's own place and size kept;
+        None: each back where the learner put it, at its own size. At once,
+        saying nothing (`say_subtitles` does, on the learner's pick)."""
+        if subtitles == self.subtitles:
+            return
+        self.subtitles = subtitles
+        self._place_subtitles()
+
+    def say_subtitles(self, on: bool) -> None:
+        """Each window says where it went, for a moment, when the learner
+        picks Video or leaves it (556): never at a start or a move, and
+        gone after SUBTITLES_SAID_SEC - not left over a film (Claude,
+        2026-11-20)."""
+        text = (
+            _tr("Subtitles: along the bottom of the screen")
+            if on
+            else _tr("Back where you put it")
+        )
+        for window in self.windows.values():
+            window.show_notice(text, SUBTITLES_SAID_SEC)
+
+    def _place_subtitles(self) -> None:
+        ordered = self._ordered()
+        for index, window in enumerate(ordered):
+            own = self._own.get(window.key)
+            if self.subtitles is not None:
+                if own is None:
+                    self._own[window.key] = window.choices
+                share, width = self.subtitles
+                area = window.area_now()
+                size = subtitle_text_size(share, area, window.text_px())
+                height = window.subtitle_height(size)
+                rect = placement.subtitle_slot(area, width, height, index)
+                window.take_place(Preset.BOTTOM_CENTRE, rect, size)
+            elif own is not None:
+                del self._own[window.key]
+                window.take_place(own.preset, own.geometry, own.text_size)
+        joined = self.joined_window
+        if joined is None or not ordered:
+            return
+        if self.subtitles is not None:
+            share, width = self.subtitles
+            area = ordered[0].area_now()
+            size = subtitle_text_size(share, area, ordered[0].text_px())
+            height = max(w.subtitle_height(size) for w in ordered)
+            joined.place_at(placement.subtitle_slot(area, width, height))
+        else:
+            joined.place_at(
+                self.stored.joined.geometry or self._joined_place(ordered[0], ordered)
+            )
+
+    def _kept_own(self, window: CaptionWindow) -> WindowChoices:
+        """`window`'s choices to keep: as they are - or, while it's a
+        subtitle, with its own place and text size from before, and Video's
+        size and width as the learner changed them handed on (556)."""
+        own = self._own.get(window.key)
+        if own is None or self.subtitles is None:
+            return window.choices
+        share, width = self.subtitles
+        area = window.area_now()
+        new_share = share
+        if window.choices.text_size != subtitle_text_size(
+            share, area, window.text_px()
+        ):
+            new_share = round(
+                window.choices.text_size * window.text_px() / area.height, 4
+            )
+        new_width = round(min(1.0, max(0.3, window.width() / max(1, area.width))), 2)
+        given = min(placement.MAX_SUBTITLE_WIDTH, round(area.width * width))
+        if abs(window.width() - given) <= 2:
+            new_width = width  # not resized: the width it was given
+        if (new_share, new_width) != (share, width):
+            self.subtitles = (new_share, new_width)
+            self.subtitles_changed.emit(new_share, new_width)
+        kept = replace(
+            window.choices,
+            preset=own.preset,
+            geometry=own.geometry,
+            text_size=own.text_size,
+        )
+        self._own[window.key] = kept
+        return kept
 
     def _asks_set_up(self) -> bool:
         """Whether a window opening now asks its languages: every one, until
@@ -1157,6 +1333,25 @@ class CaptionWindows(QObject):
     def show_notice(self, text: str) -> None:
         for window in self.windows.values():
             window.show_notice(text)
+
+    def set_live_keys(self, keys: str) -> None:
+        """Back to live's hotkey as it is now ("" none), on every window's
+        Back to live (polyglotic-hq 567)."""
+        self.live_keys = keys
+        for window in self.windows.values():
+            window.set_live_keys(keys)
+
+    def go_live(self) -> None:
+        """Every window back to its newest caption, as its Back to live does
+        (the hotkey's: polyglotic-hq 567)."""
+        for window in self.windows.values():
+            window.go_live()
+
+    def step_text(self, steps: int) -> None:
+        """Every window's text `steps` sizes bigger (or smaller), as its
+        own A+ and A- do (the hotkeys': polyglotic-hq 567)."""
+        for window in self.windows.values():
+            window.step_text(steps)
 
     def set_locked(self, locked: bool) -> None:
         at_length = locked and not self.locked and self.tell_how_to_unlock

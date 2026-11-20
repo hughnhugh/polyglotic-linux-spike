@@ -251,12 +251,20 @@ def test_one_command_at_a_time() -> None:
         main.arguments(["--lock", "--hide"])
 
 
-def test_each_command_is_a_hotkeys(qapp: QApplication) -> None:
+def test_each_command_is_a_hotkey_by_its_name(qapp: QApplication) -> None:
+    """The copy that runs does each as its hotkey's press does
+    (`DesktopApp.hotkey_pressed`, by the hotkey's name)."""
     from tests.ui.fakes import make_app
 
+    from polyglotic_desktop.core.listening.hotkeys import Hotkey
+
     app = make_app()
-    assert set(main.COMMAND_KEYS) == set(one_copy.COMMANDS)
-    assert set(main.COMMAND_KEYS.values()) == set(app.hotkeys)
+    assert set(one_copy.COMMANDS) <= {hotkey.value for hotkey in Hotkey}
+    assert set(one_copy.COMMANDS) <= set(app.hotkeys)
+    app.lock_windows.setChecked(False)
+    app.hotkey_pressed.emit("lock")
+    qapp.processEvents()
+    assert app.lock_windows.isChecked()
     app.close()
 
 

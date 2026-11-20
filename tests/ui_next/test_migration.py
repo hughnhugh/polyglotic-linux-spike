@@ -127,6 +127,7 @@ def test_todays_keys_are_not_touched() -> None:
         "reading_hinted",
         "set_up",  # the first window's set-up answered (465)
         "start_like_this",
+        "kept_languages",  # while every window shows the original only (556)
     }
 
 

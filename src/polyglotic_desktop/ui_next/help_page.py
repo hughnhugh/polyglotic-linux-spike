@@ -822,9 +822,10 @@ def set_up(hotkeys: Collection[str] = HOTKEYS) -> list[tuple[str, str]]:
                 "it is never the active window. Put it where it doesn't cover "
                 "what you need to see, then Lock all (Ctrl+Alt+L) so clicks go "
                 "through to the game; Hide all (Ctrl+Alt+H) in a fight. The "
-                "hotkeys work while the game has focus and can't be changed "
-                "yet. A game in exclusive full screen covers every other "
-                "window: choose its borderless or windowed full screen instead."
+                "hotkeys work while the game has focus; Settings > Hotkeys "
+                "changes them. A game in exclusive full screen covers every "
+                "other window: choose its borderless or windowed full screen "
+                "instead."
             )
             if {"L", "H"} <= set(hotkeys)
             else pc_or_mac(

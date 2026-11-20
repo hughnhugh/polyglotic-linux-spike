@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from functools import partial
 
 from PySide6.QtCore import QCoreApplication, QPoint, QRect
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QAbstractScrollArea, QScrollArea, QWidget
 from tests.learning.fakes import Clock, MemoryLearningStore
 from tests.lexicon.sample import chinese_sample, english_sample
@@ -74,6 +74,7 @@ from polyglotic_desktop.ui_next.views.panels import (
     Timing,
     TimingView,
 )
+from polyglotic_desktop.ui_next.views.preset_menu import PresetsView
 from polyglotic_desktop.ui_next.views.presets import PRESETS
 from polyglotic_desktop.ui_next.word_bands import BY_FREQUENCY, BY_LEVEL
 from polyglotic_desktop.ui_next.words_page import WordsPage
@@ -564,7 +565,10 @@ def account(signed_in: bool) -> Callable[[Lab], QWidget]:
 
 
 def settings(
-    section: str, size: tuple[int, int] | None = None, scrolled_into: int = -1
+    section: str,
+    size: tuple[int, int] | None = None,
+    scrolled_into: int = -1,
+    presets: PresetsView | None = None,
 ) -> Callable[[Lab], QWidget]:
     """Settings on `section` (one of `SECTIONS`: 304's six, and 470's Word
     links and Readings) - at `size` if given (the window's minimum) - the views made
@@ -573,28 +577,19 @@ def settings(
     its own title under the pinned sections, which name it (470)."""
 
     def run(lab: Lab) -> QWidget:
-        hotkeys = {}
-        for key, text, keys in (
-            ("L", _app("Lock all caption windows"), "Ctrl+Alt+L"),
-            ("P", _app("Pause captions"), "Ctrl+Alt+P"),
-            ("H", _app("Hide all caption windows"), "Ctrl+Alt+H"),
-        ):
-            action = QAction(text)
-            action.setShortcut(QKeySequence(keys))
-            hotkeys[key] = action
         tell_us = QAction(_app("Tell us"))
         tell_us.setObjectName("settings.work_with_us")
         look = LookView(CaptionLook())
         page = SettingsPage(
             [("margin", "Margin"), ("glaze", "Glaze"), ("signal", "Signal")],
-            hotkeys,
             tell_us,
             interface_language.picker(),
             look=look,
             timing=TimingView(Timing()),
             speech=LanguagesView(SessionLanguages(in_use=("en",))),
+            presets=presets,
         )
-        page.keep = (hotkeys, tell_us)  # type: ignore[attr-defined]
+        page.keep = (tell_us,)  # type: ignore[attr-defined]
         page.show_theme("margin", "dark")
         page.show_interface_language("")
         # a machine draft's "Tell us what reads wrong", as main shows it
@@ -615,6 +610,11 @@ def settings(
                 budget=budgets.CLICK,
             )
             look.set_preset("classic")
+            lab.pump()
+        if section == "hotkeys":  # every key in one place (567): one changed, one
+            # cleared, one another program has, and a key refused as pressed
+            page.show_hotkeys({"hide": "", "copy": "ctrl+alt+c"}, {"pause"})
+            page.hotkeys_card.lines["bigger"].box.pressed_key.emit("ctrl+c")
             lab.pump()
         if section == "lab":  # its own section, at its top (304)
             look.set_lab(CaptionLab(new_for=3.0, new_fade=NewFade.GRADUAL, older=0.55))
@@ -1046,6 +1046,8 @@ STATES = [
         ("settings_timing", settings("timing")),
         ("settings_speech", settings("speech")),
         ("settings_dictation", settings("dictation")),
+        ("settings_hotkeys", settings("hotkeys")),
+        ("settings_hotkeys_scrolled", settings("hotkeys", scrolled_into=1)),
         ("settings_app", settings("app")),
         ("settings_app_scrolled", settings("app", scrolled_into=2)),
         ("settings_minimum", settings("look", minimum_size())),

@@ -36,10 +36,13 @@ windows (`ui_next`, wired by `main`'s `Hub`) follow it:
   `check_report_wanted.emit(summary)` (project 096);
 - `set_activity(provider)` - what each source being captured has done
   (sound and speech heard), for that check (`caption_facts`);
-- `hotkeys` - the commands with a system-wide hotkey (Ctrl+Alt+ the
-  letter, as in the proof of concept; ⌃⌘ the letter on a Mac), shown in
-  the tray menu;
-  `hotkey_pressed.emit(letter)` from any thread runs one on the Qt thread
+- `hotkeys` - the commands with a system-wide hotkey, by its name
+  (`core.listening.hotkeys.Hotkey`): lock, pause and hide (Ctrl+Alt+ the
+  letter, as in the proof of concept; ⌃⌘ the letter on a Mac), back to
+  live, and copy the newest caption, the next preset and the captions'
+  text size (polyglotic-hq 567) - each key the learner's own
+  (`set_hotkeys`), shown in the tray menu;
+  `hotkey_pressed.emit(name)` from any thread runs one on the Qt thread
   (`main` registers them with the OS); `hotkeys_not_working` stops showing
   the ones that don't work here - another app already has them, or they
   weren't registered (a preview build has none: polyglotic-hq 398) - so
@@ -63,7 +66,7 @@ choices is `main`'s.
 
 import logging
 import time
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from enum import StrEnum
 
 from PySide6.QtCore import (
@@ -83,9 +86,12 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from polyglotic_desktop.core.learning.curriculum import chosen_from
 from polyglotic_desktop.core.listening.captions import CaptionUpdate
 from polyglotic_desktop.core.listening.check import Facts, SourceActivity, Ticked
+from polyglotic_desktop.core.listening.dictation_keys import DictationKey
 from polyglotic_desktop.core.listening.failing import FailingCaptions
 from polyglotic_desktop.core.listening.held_back import LIVE_UPDATES_HELD_BACK
 from polyglotic_desktop.core.listening.history import CaptionHistory
+from polyglotic_desktop.core.listening.hotkeys import Hotkey
+from polyglotic_desktop.core.listening.hotkeys import keys as hotkey_keys
 from polyglotic_desktop.core.listening.sources import (
     EVERYTHING_ELSE,
     MIC,
@@ -109,7 +115,7 @@ from polyglotic_desktop.ui.apps_with_sound import AppsWithSound
 from polyglotic_desktop.ui.captions import CaptionFeed
 from polyglotic_desktop.ui.icons import TrayState, menu_bar_icon, tray_icon
 from polyglotic_desktop.ui.learning import LearningTools
-from polyglotic_desktop.ui.os_words import on_a_mac, on_linux, pc_or_mac
+from polyglotic_desktop.ui.os_words import on_a_mac, pc_or_mac, platform
 from polyglotic_desktop.ui.settings import (
     SOURCE_KEY_EVERYTHING_ELSE,
     SOURCE_KEY_MIC,
@@ -200,9 +206,47 @@ def fitted_tip(lines: list[str], limit: int = TIP_MAX) -> str:
     return fitted if _units(fitted) <= limit else text[: limit - 1] + "…"
 
 
+QT_KEYS = {
+    "space": "Space",
+    "enter": "Return",
+    "tab": "Tab",
+    "backspace": "Backspace",
+    "delete": "Del",
+    "left": "Left",
+    "right": "Right",
+    "up": "Up",
+    "down": "Down",
+    "home": "Home",
+    "end": "End",
+    "page_up": "PgUp",
+    "page_down": "PgDown",
+    "insert": "Ins",
+    "escape": "Esc",
+    "pause": "Pause",
+    "scroll_lock": "ScrollLock",
+    "print_screen": "Print",
+    "menu": "Menu",
+}
+"""`dictation_keys.KEYS` that Qt names otherwise; letters, digits and F1-F24
+are its own names, upper case."""
+QT_MODIFIERS = {"ctrl": "Ctrl", "alt": "Alt", "shift": "Shift", "win": "Meta"}
+"""As kept, Qt's names: on a Mac Qt's Ctrl is Command and Meta Control."""
+
+
+def key_sequence(key: DictationKey | None) -> QKeySequence:
+    """A hotkey's key as Qt's shortcut, for menus and the OS's own words
+    ("Ctrl+Alt+L"; on a Mac "⌃⌘L"); an empty one for none."""
+    if key is None or key.held_alone:
+        return QKeySequence()
+    held = [QT_MODIFIERS[part] for part in key.parts[:-1]]
+    name = key.parts[-1]
+    return QKeySequence("+".join([*held, QT_KEYS.get(name) or name.upper()]))
+
+
 class DesktopApp(QObject):
     hotkey_pressed = Signal(str)
-    """A hotkey's letter, from any thread (queued to the Qt thread)."""
+    """A hotkey's name (`Hotkey`), from any thread (queued to the Qt
+    thread)."""
     feedback_wanted = Signal(str)
     """The feedback form, opened on a kind (`problem`, `suggestion`, ...)."""
     check_report_wanted = Signal(str)
@@ -372,14 +416,38 @@ class DesktopApp(QObject):
             )
         )
 
+        # what only a hotkey does: `main` connects each (polyglotic-hq 567),
+        # named as Settings > Hotkeys names them
+        self.go_live = self._action(
+            "captions.live", QApplication.translate("Hotkeys", "Back to live")
+        )
+        self.copy_caption = self._action(
+            "captions.copy",
+            QApplication.translate("Hotkeys", "Copy the newest caption"),
+        )
+        self.next_preset = self._action(
+            "captions.preset", QApplication.translate("Hotkeys", "Next preset")
+        )
+        self.text_bigger = self._action(
+            "captions.bigger", QApplication.translate("Hotkeys", "Caption text bigger")
+        )
+        self.text_smaller = self._action(
+            "captions.smaller",
+            QApplication.translate("Hotkeys", "Caption text smaller"),
+        )
         self.hotkeys = {
-            "L": self.lock_windows,
-            "P": self.pause,
-            "H": self.hide_windows,
+            Hotkey.LOCK.value: self.lock_windows,
+            Hotkey.PAUSE.value: self.pause,
+            Hotkey.HIDE.value: self.hide_windows,
+            Hotkey.LIVE.value: self.go_live,
+            Hotkey.COPY.value: self.copy_caption,
+            Hotkey.PRESET.value: self.next_preset,
+            Hotkey.BIGGER.value: self.text_bigger,
+            Hotkey.SMALLER.value: self.text_smaller,
         }
-        """Ctrl+Alt+ the letter, system-wide: lock, pause, hide. (W, the
-        newest line checked with the best model, went with "Looks wrong?":
-        polyglotic-hq 339.)"""
+        """Each hotkey's command, by its name, system-wide (`Hotkey`). (W,
+        the newest line checked with the best model, went with "Looks
+        wrong?": polyglotic-hq 339.)"""
         self._activity: Callable[[], dict[SourceId, SourceActivity]] = dict
         self._last_caption: float | None = None
         self._drops = UnstableConnection()
@@ -402,19 +470,10 @@ class DesktopApp(QObject):
         self.lock_windows.toggled.connect(lambda on: self.settings.update(locked=on))
         self.show_delay.toggled.connect(lambda on: self.settings.update(show_delay=on))
         self.settings.changed.connect(self._settings_changed)
-        # Ctrl+Alt+ the letter; on a Mac Control+Command (polyglotic-hq 428,
-        # DECISIONS #193), which Qt writes Meta+Ctrl there: "⌃⌘L"; on Linux
-        # Ctrl+Alt+Shift, as Ctrl+Alt+L locks the screen on several desktops
-        # (570, `platform.linux.hotkeys.LINUX_MODIFIERS`)
-        hotkey = "Ctrl+Alt+{key}"
-        if on_a_mac():
-            hotkey = "Meta+Ctrl+{key}"
-        elif on_linux():
-            hotkey = "Ctrl+Alt+Shift+{key}"
-        for key, action in self.hotkeys.items():
+        for action in self.hotkeys.values():
             # shown in menus; the OS's hotkey does the work, from anywhere
-            action.setShortcut(QKeySequence(hotkey.format(key=key)))
             action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+        self.set_hotkeys(hotkey_keys(value.hotkeys, platform()))
         self.hotkey_pressed.connect(self._hotkey, Qt.ConnectionType.QueuedConnection)
         self.tray: QSystemTrayIcon | None = None
         self.tray_icons: Callable[[TrayState, bool], QIcon] = (
@@ -613,6 +672,13 @@ class DesktopApp(QObject):
             ).format(key=key)
         )
 
+    def set_hotkeys(self, keys: Mapping[Hotkey, DictationKey | None]) -> None:
+        """Each hotkey's key now, shown on its command: Ctrl+Alt+L; on a Mac
+        Control+Command, which Qt writes Meta+Ctrl there: "⌃⌘L"
+        (polyglotic-hq 428, DECISIONS #193). None: no key."""
+        for hotkey, key in keys.items():
+            self.hotkeys[hotkey.value].setShortcut(key_sequence(key))
+
     def hotkeys_not_working(self, keys: Collection[str]) -> None:
         """These hotkeys don't work here - another app already has them, or
         they weren't registered: stop showing them, so a locked caption
@@ -621,7 +687,7 @@ class DesktopApp(QObject):
         named = [
             self.hotkeys[key].shortcut().toString()
             for key in keys
-            if key in self.hotkeys
+            if key in self.hotkeys and not self.hotkeys[key].shortcut().isEmpty()
         ]
         if named:
             log.warning("hotkey(s) not working, not shown: %s", ", ".join(named))

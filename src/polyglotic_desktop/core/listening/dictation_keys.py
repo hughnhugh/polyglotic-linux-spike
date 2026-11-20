@@ -145,6 +145,9 @@ class Refusal(StrEnum):
     words would be typed into the menu."""
     APP_HOTKEY = "app_hotkey"
     """One of Polyglotic's own hotkeys (Ctrl+Alt+L, P, H...)."""
+    HELD_ALONE = "held_alone"
+    """A modifier alone, or modifiers alone: a hotkey that's pressed needs a
+    key with them (`core.listening.hotkeys`; dictation's, held, can be)."""
 
 
 def _keys(*texts: str) -> frozenset[DictationKey]:

@@ -85,17 +85,16 @@ hands over the themes, the hotkeys' commands, "Tell us" and the caption
 settings' views, and connects what the page asks for.
 """
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 
 from PySide6.QtCore import QEvent, QLocale, QObject, QPoint, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QKeySequence, QResizeEvent, QShowEvent
+from PySide6.QtGui import QAction, QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
-    QLabel,
     QPlainTextEdit,
     QPushButton,
     QSizePolicy,
@@ -110,7 +109,8 @@ from polyglotic_desktop.core.listening.dictation_keys import (
     DictationKey,
     refusal,
 )
-from polyglotic_desktop.ui_next import glyphs, os_words, style
+from polyglotic_desktop.core.listening.hotkeys import DICTATE
+from polyglotic_desktop.ui_next import glyphs, style
 from polyglotic_desktop.ui_next.controls import (
     Card,
     Combo,
@@ -126,6 +126,11 @@ from polyglotic_desktop.ui_next.dictation_key import KeyBox, key_words, refusal_
 from polyglotic_desktop.ui_next.face_rows import FacesPanel
 from polyglotic_desktop.ui_next.glyphs import Glyph
 from polyglotic_desktop.ui_next.home import MARGIN, Page
+from polyglotic_desktop.ui_next.hotkeys_card import (
+    HoldKeysCard,
+    HotkeysCard,
+    WindowKeysCard,
+)
 from polyglotic_desktop.ui_next.lab_panel import LabPanel
 from polyglotic_desktop.ui_next.languages import detect_name, dictation_choices
 from polyglotic_desktop.ui_next.os_words import pc_or_mac
@@ -139,6 +144,7 @@ from polyglotic_desktop.ui_next.panels import (
     TimingPanel,
     WordLinksPanel,
 )
+from polyglotic_desktop.ui_next.presets_card import PresetPanel, PresetsPanel, saved_in
 from polyglotic_desktop.ui_next.settings_marks import PinnedCard, mark_card
 from polyglotic_desktop.ui_next.sound_card import SoundCard
 from polyglotic_desktop.ui_next.views.panels import (
@@ -147,32 +153,40 @@ from polyglotic_desktop.ui_next.views.panels import (
     LookView,
     TimingView,
 )
+from polyglotic_desktop.ui_next.views.preset_menu import PresetsView
 from polyglotic_desktop.ui_next.views.sound import SoundView
 
 SECTIONS = (
+    "presets",
     "look",
     "links",
     "readings",
     "timing",
     "speech",
     "dictation",
+    "hotkeys",
     "app",
     "lab",
 )
-"""The page's eight sections, left to right at its top (304; Word links
-and Readings out of Look, 470)."""
+"""The page's ten sections, left to right at its top (304; Word links
+and Readings out of Look, 470; Presets first, polyglotic-hq 556: the
+caption settings' top, where a caption window's "Customise presets…"
+lands; Hotkeys after Dictation, 567)."""
 MARKS = {
+    "presets": Glyph.FILL,
     "look": Glyph.LOOK,
     "links": Glyph.LINKS,
     "readings": Glyph.READINGS,
     "timing": Glyph.TIMING,
     "speech": Glyph.SPEECH,
     "dictation": Glyph.MIC,
+    "hotkeys": Glyph.KEYS,
     "app": Glyph.APP,
     "lab": Glyph.LAB,
 }
 """Each section's mark, beside its name on its tab (470)."""
 CAPTION_CARDS = {
+    "presets": ("presets", "preset"),
     "look": ("look", "faces", "reset"),
     "links": ("word_links", "quiet"),
     "readings": ("reading",),
@@ -196,25 +210,6 @@ column's spacing."""
 
 def _tr(text: str) -> str:
     return QApplication.translate("Settings", text)
-
-
-def hotkey_name(key: str, action: QAction) -> str:
-    """What a hotkey does, in the new interface's words (today's commands
-    still say "overlays" until the switch-over); the command's own words
-    for any other."""
-    names = {
-        "L": _tr("Lock all caption windows"),
-        "P": _tr("Pause captions"),
-        "H": _tr("Hide all caption windows"),
-    }
-    return names.get(key) or action.text().replace("&", "")
-
-
-def _own_hotkey_modifiers() -> str:
-    """The app's own hotkeys' modifiers, as `DictationKey` keeps them: Ctrl
-    + Alt, and on a Mac Control + Command - Qt's Meta ("win") and Ctrl
-    there (polyglotic-hq 428's ⌃⌘L, P, H; 438)."""
-    return "ctrl+win" if os_words.on_a_mac() else "ctrl+alt"
 
 
 def _button(text: str, name: str) -> QPushButton:
@@ -280,6 +275,14 @@ class SettingsPage(Page):
     dictation_key_listening = Signal(bool)
     """The key box listens for a key: dictation's own key must let keys
     through meanwhile."""
+    hotkey_wanted = Signal(str, str)
+    """A hotkey's name and the key the learner gave it, as kept ("" for
+    none): one nothing refuses (`HotkeysCard`, polyglotic-hq 567)."""
+    hotkeys_reset = Signal()
+    """Reset all: every hotkey's key its default."""
+    hotkey_listening = Signal(bool)
+    """A hotkey's key box listens: the app's hotkeys and dictation's key
+    must let keys through meanwhile."""
     typing_settings_wanted = Signal()
     """"Open System Settings" beside "isn't allowed to type": `main` opens
     the OS's settings where the learner gives it (a Mac's Accessibility,
@@ -288,7 +291,6 @@ class SettingsPage(Page):
     def __init__(
         self,
         themes: Sequence[tuple[str, str]],
-        hotkeys: Mapping[str, QAction],
         work_with_us: QAction,
         languages: Sequence[tuple[str, str]] = (),
         *,
@@ -297,9 +299,9 @@ class SettingsPage(Page):
         speech: LanguagesView,
         sound: SoundView | None = None,
         downloads: DownloadsView | None = None,
+        presets: PresetsView | None = None,
     ) -> None:
-        """`themes`: each window theme's key and name; `hotkeys`: today's
-        hotkeys' commands, by their letter (Ctrl+Alt+ L, P, H, W);
+        """`themes`: each window theme's key and name;
         `work_with_us`: "Tell us"; `languages`: each interface language's
         code and its own name ("简体中文"); `look`, `timing` and `speech`:
         the caption settings' views (`main`'s `Panels`); `sound`: Home's
@@ -307,7 +309,9 @@ class SettingsPage(Page):
         super().__init__(_tr("Settings"))
         self._sound = sound
         self._downloads = downloads
-        self._hotkeys = hotkeys
+        self._presets = presets or PresetsView()
+        """The presets (polyglotic-hq 556): their section, and the line
+        under the title saying which one a change is saved in."""
         self.typing_allowed: Callable[[], bool] | None = None
         """Whether the OS lets the app type, where it asks (a Mac's
         Accessibility: `main` sets it, polyglotic-hq 438); None: it asks
@@ -341,6 +345,11 @@ class SettingsPage(Page):
         rows.setContentsMargins(0, 0, 0, 0)
         rows.setSpacing(self.content.spacing())
         self._language_line(rows, languages)
+        self.saved_in = label("", "Dim", wrap=True)
+        self.saved_in.setObjectName("settings.saved_in")
+        rows.addWidget(self.saved_in)
+        stop = self._presets.subscribe(self._show_saved_in)
+        self.destroyed.connect(lambda *_: stop())
         self.content.insertWidget(0, top)
         self.section: dict[str, QWidget] = {}
         for key in SECTIONS:
@@ -358,9 +367,23 @@ class SettingsPage(Page):
         """The caption sections whose cards are made (`_make`)."""
         self._current = "look"
         """The section on show (`show_section`)."""
+        self._show_saved_in()
         self._section_layout("dictation").addWidget(
             self._marked(self._dictation(), Glyph.MIC)
         )
+        # every key in one place (polyglotic-hq 567, decision 0273)
+        keys = self._section_layout("hotkeys")
+        self.hotkeys_card = HotkeysCard()
+        self.hotkeys_card.hotkey_wanted.connect(self.hotkey_wanted)
+        self.hotkeys_card.reset_wanted.connect(self.hotkeys_reset)
+        self.hotkeys_card.listening.connect(self.hotkey_listening)
+        self._hotkey_keys: dict[str, str] = {}
+        self._hotkeys_taken: frozenset[str] = frozenset()
+        keys.addWidget(self._marked(self.hotkeys_card, Glyph.KEYS))
+        self.hold_keys = HoldKeysCard()
+        self.hold_keys.dictation_wanted.connect(lambda: self.show_section("dictation"))
+        keys.addWidget(self._marked(self.hold_keys, Glyph.MIC))
+        keys.addWidget(self._marked(WindowKeysCard(), Glyph.APP))
         app = self._section_layout("app")
         app.addWidget(self._marked(self._text_size(), Glyph.TEXT_SIZE))
 
@@ -395,20 +418,6 @@ class SettingsPage(Page):
         app.addWidget(self._marked(appearance, Glyph.THEME))
 
         app.addWidget(self._marked(self._transcripts(), Glyph.TRANSCRIPTS))
-
-        keys = Card(
-            _tr("Hotkeys"), _tr("They work from any program, including a game.")
-        )
-        self.hotkey_values: dict[str, QLabel] = {}
-        for key, action in hotkeys.items():
-            line = QHBoxLayout()
-            line.setSpacing(12)
-            line.addWidget(label(hotkey_name(key, action), wrap=True), 1)
-            value = label("", "Dim")
-            line.addWidget(value)
-            self.hotkey_values[key] = value
-            keys.add(line)
-        app.addWidget(self._marked(keys, Glyph.KEYS))
 
         updates = Card(
             _tr("Updates"),
@@ -454,7 +463,6 @@ class SettingsPage(Page):
         app.addWidget(self._marked(about, Glyph.ABOUT))
         self.content.addStretch(1)
         self._show("look", make=False)  # its cards once the page is shown
-        self.refresh()
 
     # -- text size (polyglotic-hq 292) -------------------------------------------------
 
@@ -714,6 +722,8 @@ class SettingsPage(Page):
         elif self._key_taken_shown:
             self._dictation_note("")
         self._key_taken_shown = on and taken
+        self.hold_keys.show_dictation(on, key)  # Settings > Hotkeys names it (567)
+        self._show_keys()
 
     def dictation_key_not_taken(self, wanted: str) -> None:
         """Another program has the key the learner pressed: the one before
@@ -728,11 +738,8 @@ class SettingsPage(Page):
         """A key pressed in the box (or Reset): refused with why, or asked
         for (`dictation_key_wanted`) - unless it's the key already."""
         key = DictationKey.parse(pressed) if pressed else None
-        own = (
-            DictationKey.parse(f"{_own_hotkey_modifiers()}+{k.lower()}")
-            for k in self._hotkeys
-        )
-        refused = refusal(key, [k for k in own if k]) if key else None
+        own = [k for n, k in self.hotkeys_card.keys.items() if k and n != DICTATE]
+        refused = refusal(key, own) if key else None
         if key is None or refused is not None:
             self._dictation_note(refusal_words(refused))
             return
@@ -767,6 +774,8 @@ class SettingsPage(Page):
         head.setContentsMargins(0, 0, 0, 0)
         head.addWidget(heading)
         names = {
+            #: Settings' section of the presets for use cases (conversation, video...)
+            "presets": _tr("Presets"),
             "look": _tr("Look"),
             "links": _tr("Word links"),
             #: Settings' section of reading lines over captions - pinyin above Chinese, Jyutping above Cantonese
@@ -774,6 +783,8 @@ class SettingsPage(Page):
             "timing": _tr("Timing"),
             "speech": _tr("Speech"),
             "dictation": _tr("Dictation"),
+            #: Settings' section of keys pressed anywhere: lock, pause, back to live...
+            "hotkeys": _tr("Hotkeys"),
             "app": _tr("App"),
             "lab": _tr("Lab"),
         }
@@ -1013,7 +1024,14 @@ class SettingsPage(Page):
         self._made.add(key)
         look, timing, speech = self._views
         placed: tuple[tuple[QWidget, Glyph], ...]
-        if key == "look":
+        if key == "presets":
+            self._presets_panel = PresetsPanel(self._presets)
+            self._preset_panel = PresetPanel(self._presets)
+            placed = (
+                (self._presets_panel, Glyph.FILL),
+                (self._preset_panel, Glyph.LOOK),
+            )
+        elif key == "look":
             self._look = LookPanel(look, notes=True, preview=True, languages=speech)
             # a row per language, its faces downloaded on choice (482)
             self._faces = FacesPanel(look, speech, self._downloads, notes=True)
@@ -1059,6 +1077,24 @@ class SettingsPage(Page):
         column = self._section_layout(key)
         for card, glyph in placed:
             column.addWidget(self._marked(card, glyph))
+
+    @property
+    def presets(self) -> PresetsPanel:
+        self._make("presets")
+        return self._presets_panel
+
+    @property
+    def preset(self) -> PresetPanel:
+        self._make("presets")
+        return self._preset_panel
+
+    def _show_saved_in(self) -> None:
+        """The line under the title: which preset a change here goes into
+        (556) - none said on App and Dictation, which no preset holds."""
+        name = self._presets.value.name
+        self.saved_in.setText(saved_in(name) if name else "")
+        caption = self._current in CAPTION_CARDS and self._current != "presets"
+        self.saved_in.setVisible(bool(name) and caption)
 
     @property
     def look(self) -> LookPanel:
@@ -1138,6 +1174,7 @@ class SettingsPage(Page):
         self._styled(self.section[key])  # before it's shown: polished once
         for each, box in self.section.items():
             box.setVisible(each == key)
+        self._show_saved_in()
         self.verticalScrollBar().setValue(0)
         self._place_pinned()
 
@@ -1196,17 +1233,20 @@ class SettingsPage(Page):
     def showEvent(self, event: QShowEvent) -> None:
         if self._current in CAPTION_CARDS and self._current not in self._made:
             self.show_section(self._current)  # first shown: its cards made now
-        self.refresh()  # a hotkey another program had is shown as not available
         self.show_typing_permission()  # given in System Settings meanwhile (438)
         super().showEvent(event)
 
-    def refresh(self) -> None:
-        """Each hotkey as Windows writes it in the app's language - "Strg+Alt+L"
-        in German, as Home and the dictation card have it (polyglotic-hq 300)."""
-        native = QKeySequence.SequenceFormat.NativeText
-        for key, value in self.hotkey_values.items():
-            shortcut = self._hotkeys[key].shortcut().toString(native)
-            value.setText(shortcut or _tr("another program has it"))
+    def show_hotkeys(self, keys: Mapping[str, str], taken: Collection[str]) -> None:
+        """Each hotkey's key now, by its name, as kept ("" none); `taken`:
+        those another program has (Settings > Hotkeys, polyglotic-hq 567)."""
+        self._hotkey_keys, self._hotkeys_taken = dict(keys), frozenset(taken)
+        self._show_keys()
+
+    def _show_keys(self) -> None:
+        dictation = (
+            self.dictation_key.key if self.dictation_on.switch.isChecked() else None
+        )
+        self.hotkeys_card.show_keys(self._hotkey_keys, self._hotkeys_taken, dictation)
 
     def set_version(self, version: str, channel: str, store: bool = False) -> None:
         """This copy's version and update channel - or, for the Microsoft

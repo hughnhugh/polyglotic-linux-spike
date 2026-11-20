@@ -4,6 +4,7 @@ in the new interface's words - caption windows, Home, Words. Made-up
 names only; offscreen."""
 
 import re
+import sys
 import time
 from collections.abc import Iterator
 from dataclasses import replace
@@ -16,10 +17,8 @@ from PySide6.QtGui import (
     QDesktopServices,
     QFocusEvent,
     QKeyEvent,
-    QKeySequence,
 )
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QWidget
-from tests.ui_next.test_lock_says_how_to_unlock import LOCK_KEYS
 
 from polyglotic_desktop.core.learning.highlights import WordIntroductions
 from polyglotic_desktop.core.learning.languages import LearningLanguages, Tier
@@ -213,23 +212,20 @@ def settings_deleted() -> Iterator[None]:
             shiboken6.delete(page)
 
 
-def settings_page() -> tuple[SettingsPage, dict[str, QAction]]:
-    hotkeys = {"L": QAction("Lock overlays"), "P": QAction("Pause captions")}
-    hotkeys["L"].setShortcut(QKeySequence("Ctrl+Alt+L"))
+def settings_page() -> SettingsPage:
     page = SettingsPage(
         [("margin", "Margin"), ("glaze", "Glaze"), ("signal", "Signal")],
-        hotkeys,
         QAction("Tell us"),
         look=LookView(CaptionLook()),
         timing=TimingView(Timing()),
         speech=LanguagesView(SessionLanguages()),
     )
     PAGES.append(page)
-    return page, hotkeys
+    return page
 
 
 def test_settings_say_the_theme_and_ask_for_a_change(qapp: QApplication) -> None:
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_theme("glaze", "light")
     assert page.theme.value() == "glaze" and page.window_theme.value() == "light"
     chosen: list[str] = []
@@ -240,15 +236,13 @@ def test_settings_say_the_theme_and_ask_for_a_change(qapp: QApplication) -> None
     assert chosen == ["signal", "system"]
 
 
-def test_settings_show_the_hotkeys_the_version_and_the_notices(
+def test_settings_show_the_version_and_the_notices(
     qapp: QApplication,
 ) -> None:
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("app")
     page.show()
     settle()
-    assert page.hotkey_values["L"].text() == LOCK_KEYS
-    assert page.hotkey_values["P"].text() == "another program has it"
     assert not page.version.isVisible() and not page.notices.isVisible()
     page.set_version("0.4.0", "win-x64-alpha")
     page.set_notices("notices")
@@ -261,39 +255,10 @@ def test_settings_show_the_hotkeys_the_version_and_the_notices(
     page.close()
 
 
-def test_the_hotkeys_are_written_in_the_apps_language(qapp: QApplication) -> None:
-    """In German, Settings > App says "Strg+Alt+L", as Home's Lock all and
-    the dictation card do - not Qt's portable "Ctrl+Alt+L" (polyglotic-hq
-    300: the German walk showed both on one page)."""
-    from PySide6.QtCore import QTranslator
-
-    from polyglotic_desktop.ui import interface_language
-
-    german = QTranslator()
-    if not german.load(str(interface_language._qts_own("de"))):
-        pytest.skip("no Qt translation of its own words for German here")
-    qapp.installTranslator(german)
-    try:
-        native = QKeySequence("Ctrl+Alt+L").toString(
-            QKeySequence.SequenceFormat.NativeText
-        )
-        if "Strg" not in native:
-            pytest.skip("Qt's German doesn't name Ctrl here")
-        page, _keys = settings_page()
-        page.show_section("app")
-        page.show()
-        settle()
-        assert page.hotkey_values["L"].text() == native
-        assert "Strg" in page.hotkey_values["L"].text()
-        page.close()
-    finally:
-        qapp.removeTranslator(german)
-
-
 def test_the_store_copy_says_the_store_keeps_it_up_to_date(qapp: QApplication) -> None:
     """The Microsoft Store's copy (decision 0056): the Store updates it, so
     the version says so, and there's no Check now."""
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("app")  # where the version is (261)
     page.show()
     settle()
@@ -314,7 +279,7 @@ def test_the_first_run_questions_again_are_split_where_each_belongs(
     what's shared, one after the other (polyglotic-hq 248's 1.4, 262): the
     level is Learning's, on the language in use's card; what's shared is
     Account's. Settings asks neither."""
-    page, _keys = settings_page()
+    page = settings_page()
     assert not hasattr(page, "ask_again") and not hasattr(page, "first_run_again")
     texts = [b.text() for b in page.findChildren(QPushButton)]
     assert "Ask me the first-run questions again" not in texts
@@ -340,7 +305,7 @@ def test_the_first_run_questions_again_are_split_where_each_belongs(
 
 
 def test_settings_speak_of_the_caption_windows(qapp: QApplication) -> None:
-    page, _keys = settings_page()
+    page = settings_page()
     for key in SECTIONS:  # each made: a caption section is when first shown (544)
         page.show_section(key)
     words = " ".join(texts(page))
@@ -429,7 +394,7 @@ def test_help_points_to_where_each_setting_is_now(qapp: QApplication) -> None:
     assert "Settings > Timing" in every["When do captions appear?"]
     _, dictation = help_page.dictation_topic("Right Ctrl")
     assert dictation.count("Settings > Dictation") == 2
-    page, _keys = settings_page()
+    page = settings_page()
     assert page.speech.title is not None and page.speech.title.text() == "Speech"
     assert "Names and slang" in texts(page.speech)
     assert page.section["speech"].isAncestorOf(page.speech)
@@ -502,7 +467,7 @@ def test_settings_turn_dictation_on_choose_its_key_and_language(
 ) -> None:
     """Dictation's card (polyglotic-hq 283): off until turned on; each change
     asked for as the settings name it; a key another program has said."""
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("dictation")
     page.show()
     settle()
@@ -556,7 +521,7 @@ def test_settings_say_when_the_os_doesnt_let_dictation_type(
     Settings > Dictation says why nothing is typed and where to allow it,
     with a way to System Settings; asked again each time it shows, so it
     goes once the learner has given it. Windows asks nothing: never shown."""
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("dictation")
     page.show()
     settle()
@@ -589,7 +554,7 @@ def test_settings_dictation_key_is_pressed_in_a_box(
     """polyglotic-hq 289: click the key, press the one you want - taken if
     nothing refuses it, refused with why if something does, Reset back to
     Right Ctrl; the dictation key let go meanwhile."""
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("dictation")
     page.show()
     settle()
@@ -634,14 +599,19 @@ def test_settings_dictation_key_is_pressed_in_a_box(
     assert page.dictation_key_note.text() == (
         "That key types. Hold it with Ctrl, Alt or Win, or choose another."
     )
-    # one of the app's own hotkeys (Settings > App lists them)
+    # one of the app's own hotkeys (Settings > App lists them): with Shift
+    # on Linux (570)
     box.click()
     down(Qt.Key.Key_Control, 0x1D)
     down(Qt.Key.Key_Alt, 0x38)
+    if sys.platform.startswith("linux"):
+        down(Qt.Key.Key_Shift, 0x2A)
     down(Qt.Key.Key_L, 0x26, 0x4C)
     assert page.dictation_key_note.text() == (
         "That's one of Polyglotic's own hotkeys: choose another."
     )
+    if sys.platform.startswith("linux"):
+        up(Qt.Key.Key_Shift, 0x2A)
     up(Qt.Key.Key_Alt)
     up(Qt.Key.Key_Control)
     # Left Shift alone
@@ -682,7 +652,7 @@ def test_settings_dictation_key_is_pressed_in_a_box(
 def test_the_dictation_key_box_takes_tab_and_stops_when_left(
     qapp: QApplication,
 ) -> None:
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("dictation")
     page.show()
     settle()
@@ -783,7 +753,7 @@ def test_dictation_key_on_a_mac(
     assert key_words("right_ctrl") == "Right ⌘"
     assert key_words("ctrl+win+d") == "⌃⌘D"
     assert key_words("ctrl+alt+shift+f9") == "⌥⇧⌘F9"
-    page, _keys = settings_page()
+    page = settings_page()
     page.show_section("dictation")
     page.show()
     settle()
@@ -856,12 +826,12 @@ def test_settings_dictation_says_a_macs_keys_and_menu_bar(
     or the tray; the example combination is one the app takes; Windows'
     text is unchanged."""
     monkeypatch.setattr(os_words, "on_a_mac", lambda: False)  # Windows' first
-    windows, _keys = settings_page()
+    windows = settings_page()
     said = " ".join(texts(windows))
     assert "Right Ctrl, F9, Ctrl + Alt + D… A key on its own" in said
     assert "The tray's menu switches it too." in said
     monkeypatch.setattr(os_words, "on_a_mac", lambda: True)
-    page, _keys = settings_page()
+    page = settings_page()
     said = " ".join(texts(page))
     assert (
         "Right ⌘, F9, ⌃⌘E… A key on its own, or with ⌃, ⌥ or ⌘, is Polyglotic's"

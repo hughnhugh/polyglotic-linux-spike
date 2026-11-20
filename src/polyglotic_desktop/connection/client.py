@@ -27,7 +27,7 @@ Low 2).
 
 import logging
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 
 from polyglotic_desktop.connection import listening, protocol
@@ -123,11 +123,13 @@ class Connection:
         take_speech: SpeechSource,
         live_interval: float | None = LIVE_UPDATE_INTERVAL_SEC,
         caption_mode: CaptionMode | None = None,
+        preset: Mapping[str, protocol.UsageValue] | None = None,
     ) -> ListeningSession:
         """Opens the listening session (stopping a sync session); returns
         it, for `speech_ready` and `change_settings`. `live_interval` (the
-        live-update interval followed; None: none) and `caption_mode` are
-        for its summary."""
+        live-update interval followed; None: none), `caption_mode` and
+        `preset` (the preset in use, as the summary's properties:
+        polyglotic-hq 556) are for its summary."""
         with self._lock:
             if self._listening is not None:
                 raise RuntimeError("already listening")
@@ -149,6 +151,7 @@ class Connection:
                 maintenance=self.maintenance,
             )
             listener.session = session
+            session.preset_usage = dict(preset or {})
             self._listening = session
             self._moved = False
         if sync is not None:
@@ -188,10 +191,10 @@ class Connection:
             self._hand_on(session)
             summary = session.ended()
             if summary is not None:
+                properties = listening.session_ended(summary, self._app.platform)
+                properties.update(session.preset_usage)  # optional (556)
                 self._exchange.usage(
-                    listening.SESSION_ENDED,
-                    listening.session_ended(summary, self._app.platform),
-                    datetime.now(UTC),
+                    listening.SESSION_ENDED, properties, datetime.now(UTC)
                 )
             timelines = session.timelines()
             if timelines is not None:  # where its caption time went (543)

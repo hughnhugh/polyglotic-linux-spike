@@ -1268,16 +1268,14 @@ def test_the_strips_buttons_have_names_a_screen_reader_can_say(
         name: QAccessible.queryAccessibleInterface(button).text(QAccessible.Text.Name)
         for name, button in window.buttons.items()
     }
-    assert said == {
-        "links": "Word links",
-        "quiet": "Quiet view",
-        "fill": "Fill the width",
-        "aligned": "Line up the parts",
+    assert said == {  # word links and the rest: the preset chip's (556)
         "lock": "Lock all windows",
         "report": "Report a problem",
         "settings": "Settings",
         "stop": "Stop captioning Discord",
     }
+    chip = QAccessible.queryAccessibleInterface(window.preset_chip)
+    assert chip.text(QAccessible.Text.Name) == "Everyday"
 
 
 def test_notes_are_never_under_12_px(window: CaptionWindow) -> None:

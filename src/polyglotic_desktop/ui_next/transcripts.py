@@ -216,6 +216,8 @@ class Transcripts(QObject):
         """Each app's label as its caption window last had it, by key - a
         transcript outlives its window (Quit's question names it)."""
         self.shown: dict[str, TranscriptWindow] = {}
+        self.live_keys = ""
+        """Back to live's hotkey as the OS writes it ("" none: 567)."""
         """The transcript windows opened, by app (closed ones kept, hidden)."""
         self.say_it: SelectionReading | None = None
         """Reads a selection aloud from its menu (polyglotic-hq 495)."""
@@ -318,6 +320,19 @@ class Transcripts(QObject):
                     shown.refresh()
 
     # -- the session's ----------------------------------------------------------------
+
+    def set_live_keys(self, keys: str) -> None:
+        """Back to live's hotkey as it is now ("" none), on every
+        transcript's Back to live (polyglotic-hq 567)."""
+        self.live_keys = keys
+        for window in self.shown.values():
+            window.set_live_keys(keys)
+
+    def go_live(self) -> None:
+        """Every open transcript back to its newest line, as its Back to
+        live does (the hotkey's: polyglotic-hq 567)."""
+        for window in self.shown.values():
+            window.go_live()
 
     def is_open(self, key: str) -> bool:
         """Whether app `key`'s transcript window is open and not minimised:
@@ -428,6 +443,7 @@ class Transcripts(QObject):
             self._panels(key) if window is not None else [],
             self.save_folder,
         )
+        shown.set_live_keys(self.live_keys)
         # beside its caption window - or, joined, the joined window it's a column of
         joined = self.windows.joined_window
         anchor: QWidget | None = joined if joined is not None else window

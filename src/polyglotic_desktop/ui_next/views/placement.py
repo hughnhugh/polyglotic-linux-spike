@@ -149,6 +149,20 @@ def slot(preset: Preset, area: Rect, size: Size, index: int = 0) -> Rect:
     return clamped(Rect(x, y, width, height), area)
 
 
+MAX_SUBTITLE_WIDTH = 1600
+"""Video's subtitles are at most this wide (polyglotic-hq 556): wider, a
+line is too long to read at a glance."""
+
+
+def subtitle_slot(area: Rect, width_share: float, height: int, index: int = 0) -> Rect:
+    """Where Video's subtitles go (polyglotic-hq 556): the bottom centre of
+    `area`, `width_share` of its width (at most MAX_SUBTITLE_WIDTH), `height`
+    tall, BOTTOM_MARGIN up - over a player's controls, as Bottom centre is -
+    the `index`-th of several stacked upwards."""
+    width = min(MAX_SUBTITLE_WIDTH, round(area.width * width_share))
+    return slot(Preset.BOTTOM_CENTRE, area, Size(width, height), index)
+
+
 def clamped(rect: Rect, area: Rect) -> Rect:
     """`rect` inside `area`: moved in, and made smaller only if it's bigger
     than the area."""

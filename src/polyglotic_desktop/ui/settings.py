@@ -56,6 +56,8 @@ from polyglotic_desktop.core.listening.display import (
     WordLinks,
 )
 from polyglotic_desktop.core.listening.hidden import PAUSE_AFTER_MIN, PAUSE_CHOICES
+from polyglotic_desktop.core.listening.hotkeys import Hotkey
+from polyglotic_desktop.core.listening.hotkeys import refusal as hotkey_refusal
 from polyglotic_desktop.core.listening.playout import (
     DELAY_SEC,
     EAGER_DELAY_SEC,
@@ -125,6 +127,15 @@ MARKS_IN = ("learned", "both", "said")
 TRANSCRIPT_LENGTHS = ("newest", "three_hours", "session")
 """How far back a transcript's list may go: `TranscriptLength`'s values."""
 WIDTH_SHARES = (0.2, 1.0)
+SUBTITLE_SIZE = 0.045
+"""Video's subtitles' text: its size as a share of the screen's height -
+4.5 %, about 47 px on a 1080p screen, 63 px at 1440p - so it reads as
+subtitles on any screen (polyglotic-hq 556; Claude, 2026-11-20: "about
+4.5-5 % of it per line"), not a caption window's text size."""
+SUBTITLE_SIZES = (0.015, 0.12)
+SUBTITLE_WIDTH = 0.8
+"""Video's subtitles' width, as a share of the work area (556)."""
+SUBTITLE_WIDTHS = (0.3, 1.0)
 OLD_LIVE_DEFAULT = 1.5  # the interval before there were caption modes
 # the caption mode as versions before 176 kept it: Steady whether chosen or
 # not, so only Quick preview and Live updates show a choice
@@ -428,6 +439,34 @@ class AppSettings:
     dictation_key: str = str(DEFAULT_KEY)
     dictation_language: str | None = None
     dictation_australian: bool = False
+    # each hotkey's key (polyglotic-hq 567, decision 0273), by its name
+    # (`core.listening.hotkeys.Hotkey`: "lock", "live"...): a DictationKey as
+    # kept ("ctrl+alt+l", "f9"), or "" for none; a hotkey not in it has its
+    # default (Ctrl+Alt+L, P, H and J; the rest none)
+    hotkeys: dict[str, str] = field(default_factory=dict)
+    # presets for use cases (polyglotic-hq 556, decision 0264; `use_presets`):
+    # what each caption shows beside `show_original` - its translation, or
+    # none in every window ("Original only", the presets' Show); Video's
+    # subtitle place - every caption window at the bottom centre of its
+    # screen, `subtitle_width` of it wide, its text `subtitle_size` of its
+    # height, two lines tall, each window's own place kept for after; and my speech in
+    # every window (True), in none (False) or as each window has it (None)
+    show_translation: bool = True
+    subtitles: bool = False
+    subtitle_size: float = SUBTITLE_SIZE
+    subtitle_width: float = SUBTITLE_WIDTH
+    my_speech: bool | None = None
+    # the preset chosen: "everyday" (the base, a new install's),
+    # "conversation", "video", "learning", "custom" (a setup from before
+    # presets) or one of `own_presets` ("own1"...); each preset's own
+    # changes by its key - only what differs from what it would have, the
+    # chosen one's worked out from the settings above (`use_presets`); a
+    # preset's name where the learner renamed it, an own one's always (on
+    # this PC only); Custom and the learner's own presets' keys
+    preset: str = "everyday"
+    preset_values: dict[str, dict[str, object]] = field(default_factory=dict)
+    preset_names: dict[str, str] = field(default_factory=dict)
+    own_presets: tuple[str, ...] = ()
     # the settings changed on this PC since this record began (0.1.8), by
     # name - by the learner, or by the app for them: a switch that follows
     # the app's default (`FOLLOW_DEFAULT`) and isn't here takes the default
@@ -517,6 +556,11 @@ class AppSettings:
         values["not_now_learning"] = list(self.not_now_learning)
         values["better_voice_quiet"] = list(self.better_voice_quiet)
         values["changed"] = list(self.changed)
+        values["own_presets"] = list(self.own_presets)
+        values["preset_values"] = {
+            k: {name: list(v) if isinstance(v, tuple) else v for name, v in own.items()}
+            for k, own in self.preset_values.items()
+        }
         # what versions before 176 read: the mode followed, chosen or not
         values[OLD_CAPTION_TIMING] = self.caption_mode.value
         return values
@@ -700,6 +744,7 @@ _TUPLES = (  # stored as lists
     "reading_lines",
     "quiet_words",
     "changed",
+    "own_presets",
 )
 
 
@@ -831,6 +876,22 @@ def _dictation_key(value: object) -> bool:
     return key is not None and refusal(key) is None
 
 
+def _hotkeys(value: object) -> bool:
+    """Hotkeys' keys by their names (polyglotic-hq 567): each a hotkey's,
+    to a key one can be or "" (none). One read wrong makes them all their
+    defaults - a file edited by hand."""
+    if not isinstance(value, dict):
+        return False
+    names = {h.value for h in Hotkey}
+    for name, text in value.items():
+        if name not in names or not isinstance(text, str):
+            return False
+        key = DictationKey.parse(text) if text else None
+        if text and (key is None or hotkey_refusal(key) is not None):
+            return False
+    return True
+
+
 def _languages(value: object) -> bool:
     return isinstance(value, list | tuple) and all(isinstance(v, str) for v in value)
 
@@ -938,6 +999,7 @@ _CHECKS: dict[str, Callable[[object], bool]] = {
     "speaker_device": _text_or_none,
     "mic_device": _text_or_none,
     "dictation_key": _dictation_key,
+    "hotkeys": _hotkeys,
     "dictation_language": lambda v: v is None or v in DICTATION_LANGUAGES,
     "cohort": _text_or_none,
     "whats_new_seen": _text_or_none,
@@ -1012,7 +1074,30 @@ _CHECKS: dict[str, Callable[[object], bool]] = {
     # read whole by core.listening.maintenance.from_stored, which refuses the rest
     "maintenance": lambda v: isinstance(v, dict) and len(v) <= 3,
     "changed": _languages,  # a list of settings' names
+    # presets (556): each value read leniently where it's used (`use_presets`)
+    "subtitle_size": _number_in(*SUBTITLE_SIZES),
+    "subtitle_width": _number_in(*SUBTITLE_WIDTHS),
+    "my_speech": lambda v: v is None or isinstance(v, bool),
+    "preset": lambda v: isinstance(v, str) and 0 < len(v) <= 20,
+    "preset_values": lambda v: (
+        isinstance(v, dict)
+        and all(isinstance(k, str) and isinstance(own, dict) for k, own in v.items())
+    ),
+    "preset_names": lambda v: _text_map(v, lambda name: len(name) <= 100),
+    "own_presets": _languages,  # their keys: "own1"...
 }
+
+
+def as_valid(name: str, value: object, default: object) -> tuple[object] | None:
+    """`value` as setting `name` keeps it, if it's valid for it - a list
+    read as a tuple where the setting is one - in a one-item tuple; None
+    if it isn't (a preset's stored values, polyglotic-hq 556)."""
+    found = _valid(name, value, default)
+    if found is _INVALID:
+        return None
+    if name in _TUPLES and isinstance(found, list | tuple):
+        return (tuple(found),)
+    return (found,)
 
 
 def with_changed(before: AppSettings, after: AppSettings) -> AppSettings:
@@ -1039,7 +1124,13 @@ class Settings(QObject):
         super().__init__(parent)
         self._store = store
         stored = store.load() if store else {}
-        self.value = AppSettings.from_stored(stored)
+        # the presets read beside (polyglotic-hq 556): Custom chosen in a file
+        # from before them, the chosen one's changes from the settings
+        from polyglotic_desktop.ui import use_presets  # it builds on this module
+
+        self.value = use_presets.from_flat(
+            AppSettings.from_stored(stored), before_presets="preset" not in stored
+        )
         # keys this version doesn't know (a newer version's, after a rollback)
         # are kept on every save, so going back and forth loses nothing
         # (polyglotic-hq project 107, 104's G11)
@@ -1050,7 +1141,18 @@ class Settings(QObject):
         new = replace(self.value, **changes)  # type: ignore[arg-type]
         if new == self.value:
             return
-        new = with_changed(self.value, new)
+        self.change(with_changed(self.value, new))
+
+    def change(self, new: AppSettings) -> None:
+        """The settings become `new` - every change made while a preset is
+        chosen saved into it at once (polyglotic-hq 556) - saved and
+        announced. `update` for a few settings; a preset's own steps
+        (`use_presets.chosen`, `reset`...) hand the whole value."""
+        from polyglotic_desktop.ui import use_presets  # it builds on this module
+
+        new = use_presets.saved_into(new)
+        if new == self.value:
+            return
         self.value = new
         if self._store is not None:
             # the file's other keys as they are now: saved, changed or

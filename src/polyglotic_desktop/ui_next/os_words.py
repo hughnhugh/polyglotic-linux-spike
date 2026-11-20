@@ -20,6 +20,8 @@ German's "Strg").
 import re
 import sys
 
+from polyglotic_desktop.core.listening.hotkeys import Platform
+
 _HOTKEY = re.compile(r"\b(Ctrl|Strg)\+Alt\+([LPH])\b")
 """One of the app's hotkeys (`ui.app.DesktopApp.hotkeys`) as a translated
 text names it on Windows."""
@@ -40,6 +42,15 @@ def on_linux() -> bool:
     return sys.platform.startswith("linux")
 
 
+def platform() -> Platform:
+    """The platform whose keys the app's own hotkeys follow (polyglotic-hq
+    567): the one place each interface tells core which OS it is - Linux's
+    own since 570."""
+    if on_a_mac():
+        return Platform.MAC
+    return Platform.LINUX if on_linux() else Platform.WINDOWS
+
+
 def pc_or_mac(pc: str, mac: str) -> str:
     """`mac` on a Mac, else `pc` - both already translated."""
     return mac if on_a_mac() else pc
@@ -50,7 +61,7 @@ def hotkeys_here(text: str) -> str:
     shortcuts as this OS writes them: on a Mac the hotkeys are
     Control+Command, "⌃⌘L", and Ctrl is Command, "⌘C", "⌘+wheel";
     on Linux the hotkeys are Ctrl+Alt+Shift (570); elsewhere as it is."""
-    if on_linux():
+    if platform() is Platform.LINUX:
         return _HOTKEY.sub(_linux_hotkey, text)
     if not on_a_mac():
         return text

@@ -1,6 +1,7 @@
 """Home and the new main window as widgets, offscreen (project 109's
 sections 5, 7 and 10.5)."""
 
+import sys
 from dataclasses import replace
 
 from PySide6.QtCore import QPoint, QRect, Qt
@@ -49,6 +50,13 @@ def _row(
     return AppRow(key, key.title(), "#4dd0e1", status, show_mic=show_mic)
 
 
+def own_keys(letter: str) -> str:
+    """The app's own hotkey with `letter`, as Qt reads it: Ctrl+Alt, and
+    Ctrl+Alt+Shift on Linux (polyglotic-hq 570)."""
+    shift = "Shift+" if sys.platform.startswith("linux") else ""
+    return f"Ctrl+Alt+{shift}{letter}"
+
+
 def home(picker: Picker) -> tuple[HomePage, Commands]:
     commands = Commands()
     view = PickerView(picker, commands)  # type: ignore[arg-type]
@@ -56,7 +64,7 @@ def home(picker: Picker) -> tuple[HomePage, Commands]:
     for action in actions[1:]:
         action.setCheckable(True)
     for action, key in zip(actions, "PLH", strict=True):  # as `DesktopApp`'s
-        action.setShortcut(QKeySequence(f"Ctrl+Alt+{key}"))
+        action.setShortcut(QKeySequence(own_keys(key)))
     pause, lock, hide = actions
     page = HomePage(
         view,
@@ -760,7 +768,7 @@ def test_home_names_only_the_hotkeys_that_work(qapp: QApplication) -> None:
     )
     assert row.captions.toolTip() == "Hidden - turn off Hide all to show it"
 
-    lock.setShortcut(QKeySequence("Ctrl+Alt+L"))  # one that works is named
+    lock.setShortcut(QKeySequence(own_keys("L")))  # one that works is named
     assert page.lock.toolTip() == keys("Ctrl+Alt+L") and not page.hide_all.toolTip()
     page.close()
     page.deleteLater()

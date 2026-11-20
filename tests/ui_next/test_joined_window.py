@@ -830,7 +830,9 @@ def test_no_column_is_narrower_than_its_strip_needs(qapp: QApplication) -> None:
     windows.set_captioned(THREE)
     windows.join()
     window = joined(windows)
-    window.resize(1500, window.height())
+    # 1,500 px before the strip's four toggles went into the preset chip's
+    # dropdown (polyglotic-hq 556): its strip needs less now
+    window.resize(1000, window.height())
     for column in window.columns:
         column.hovered = True
         column._show_band(True)
@@ -841,5 +843,5 @@ def test_no_column_is_narrower_than_its_strip_needs(qapp: QApplication) -> None:
         if column.chip.isVisibleTo(column.band) and layout is not None:
             least -= column.chip.sizeHint().width() + layout.spacing()
         assert column.band.width() >= least, column.choices
-    assert window.width() > 1500
+    assert window.width() > 1000
     windows.close()

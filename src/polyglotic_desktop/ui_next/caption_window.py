@@ -221,6 +221,8 @@ from polyglotic_desktop.ui_next.languages import (
 )
 from polyglotic_desktop.ui_next.lookup_card import LookupCard
 from polyglotic_desktop.ui_next.os_words import hotkeys_here, pc_or_mac
+from polyglotic_desktop.ui_next.preset_popover import PresetPopover
+from polyglotic_desktop.ui_next.preset_popover import chip_text as preset_chip_text
 from polyglotic_desktop.ui_next.selection_reading import SAID_NOW, SelectionReading
 from polyglotic_desktop.ui_next.sentence_card import SentenceCard
 from polyglotic_desktop.ui_next.settings_popover import (
@@ -280,6 +282,7 @@ from polyglotic_desktop.ui_next.views.lab import (
 from polyglotic_desktop.ui_next.views.lookup import Learner, WordAt, with_counterpart
 from polyglotic_desktop.ui_next.views.pacing import Pacing
 from polyglotic_desktop.ui_next.views.placement import Edge, Preset, Rect, Size
+from polyglotic_desktop.ui_next.views.preset_menu import PresetMenu
 from polyglotic_desktop.ui_next.views.presets import AA_TEXT, contrast, readable_on
 from polyglotic_desktop.ui_next.views.reveal import Reveal
 from polyglotic_desktop.ui_next.views.sentences import (
@@ -330,16 +333,15 @@ def least_size(least: Size) -> Size:
     return Size(style.px(least.width), least.height)
 
 
-STRIP = ("links", "quiet", "fill", "aligned", "lock", "report", "settings", "stop")
-"""The hover strip's buttons after the source's label, left to right - the
-same at every width (the user, 2026-11-07); the rest is in the settings
-popover. Word links in place of A- / A+, which moved to the popover (the
-user's rehearsal feedback F9, 2026-11-08); filled lines and parts lined
-up beside them, the other clicks on how every window's captions look
-(polyglotic-hq 372); the quiet view beside word links, the other way of
-showing them (477).
-"Report a problem" only for alpha testers (`set_reporting`, polyglotic-hq
-275)."""
+STRIP = ("lock", "report", "settings", "stop")
+"""The hover strip's buttons at its right, after the preset chip - the same
+at every width (the user, 2026-11-07); the rest is in the settings
+popover. Word links, the quiet view, filled lines and parts lined up were
+here (F9, 372, 477) until the presets' dropdown took them in
+(polyglotic-hq 556: "simplify the nav bar with those presets as a
+categorised drop down"); their actions stay, for the settings popover's
+rows and the tests. "Report a problem" only for alpha testers
+(`set_reporting`, polyglotic-hq 275)."""
 BAND_IN_MS = 80
 BAND_OUT_MS = 300
 STILL_OVER_MS = 250
@@ -390,6 +392,11 @@ LOCK_SPOT_AROUND = 10
 """How far past the locked corner's lock and hotkey resting the mouse
 offers Unlock (`UnlockSpot`, polyglotic-hq 398)."""
 FEW_ROWS = 3
+SUBTITLE_ROWS = 3.0
+"""Video's subtitles' height, in rows of text (polyglotic-hq 556): two
+lines - what was said and its translation, or two of one - with the gaps
+between them and Chinese's taller line (measured: 2.4 rows held only the
+translation of a pair)."""
 """At this many text rows or fewer, A+ says how to get more."""
 GLYPH_PX, MIC_PX = 12, 11
 """The band's icons' and the label's mic's sizes at 100 % text size
@@ -433,6 +440,14 @@ def _tr(text: str) -> str:
 def _trn(text: str, n: int) -> str:
     """A count's text in the language's form for `n` (decision 0034)."""
     return QApplication.translate("CaptionWindow", text, None, n)
+
+
+def live_tip(keys: str) -> str:
+    """Back to live's tip: what it does, and its hotkey while it has one
+    ("Ctrl+Alt+J": polyglotic-hq 567) - pressed anywhere, it does the same
+    in every window and transcript."""
+    text = _tr("Back to the newest captions")
+    return f"{text} ({keys})" if keys else text
 
 
 def quiet_tip() -> str:
@@ -2523,6 +2538,17 @@ class CaptionWindow(QWidget):
     set_up_done = Signal(bool)
     """Its set-up went: Start captions, or its first caption came (465) -
     with "Use as my default" chosen in it, or not (478)."""
+    # the bar's preset dropdown (polyglotic-hq 556, `preset_popover`)
+    preset_wanted = Signal(str)
+    """A preset picked (its key: "video", "own1")."""
+    lines_wanted = Signal(str)
+    """The dropdown's Show: a `Show`'s value - both, original, translation."""
+    readings_wanted = Signal(bool, tuple)
+    """Its Readings, on or off, with this window's languages' (`readings`)."""
+    my_speech_wanted = Signal(bool)
+    """Its My speech: in every window, or in none."""
+    customise_wanted = Signal()
+    """Customise presets…: Settings > Presets."""
 
     def __init__(
         self,
@@ -2614,6 +2640,10 @@ class CaptionWindow(QWidget):
         self._selecting: _Selecting | None = None
         self.popover: SettingsPopover | None = None
         self.languages: SettingsPopover | None = None
+        self.presets: PresetPopover | None = None
+        """The bar's preset dropdown (polyglotic-hq 556), made when first opened."""
+        self.preset_menu = PresetMenu()
+        """The presets as `main` last said (`set_presets`)."""
         """What the bar's language chip opens (465; made when first opened)."""
         self.set_up: CaptionSetUp | None = None
         """The first window's set-up while it's asked (465)."""
@@ -2724,7 +2754,7 @@ class CaptionWindow(QWidget):
         self.pill.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pill.setStyleSheet(pill_style())
         self.pill.clicked.connect(self.go_live)
-        self.pill.setToolTip(_tr("Back to the newest captions"))
+        self.pill.setToolTip(live_tip(""))
         self.pill.hide()
         self.notice = QLabel(self)
         self.notice.setObjectName("caption_window.notice")
@@ -3674,6 +3704,43 @@ class CaptionWindow(QWidget):
         self.introduce()  # shown where it now is (DECISIONS.md #56)
         self.changed.emit()
 
+    def take_place(
+        self, preset: Preset, geometry: Rect | None, text_size: float
+    ) -> None:
+        """At `geometry` - None: `preset`'s slot at the default size - and
+        `text_size`, as its choices: Video's subtitles and back
+        (polyglotic-hq 556). At once, as a snap is: a window's place is one
+        step. Says nothing changed - `CaptionWindows` keeps its own place
+        apart while it's a subtitle."""
+        self.choices = replace(self.choices, preset=preset, geometry=geometry)
+        self.view.set_text_size(text_size)
+        self.choices = replace(self.choices, text_size=self.view.text_size)
+        area = self._area() if self.isVisible() else self._primary()
+        rect = geometry or placement.slot(
+            preset, area, placement.default_size(area), self.index
+        )
+        self._set_place(rect)
+        self._refresh()
+        self.canvas.repaint()
+
+    def subtitle_height(self, text_size: float, rows: float = SUBTITLE_ROWS) -> int:
+        """How tall it is for `rows` of text at `text_size`, what was said's
+        and its translation's rows averaged as `Canvas.rows_that_fit` counts
+        them: Video's subtitles' two lines (polyglotic-hq 556)."""
+        share = self.choices.translation_size
+        mean = (1.0 + share) / 2 if self.view.target is not None else 1.0
+        row = self.canvas.engine.style.text_px * text_size * mean * 1.35
+        chrome = self.canvas.height() - self.canvas._view_height()
+        return max(self._minimum().height, math.ceil(chrome + rows * row))
+
+    def text_px(self) -> float:
+        """Its captions' text in pixels at 100 % text size."""
+        return float(self.canvas.engine.style.text_px)
+
+    def area_now(self) -> Rect:
+        """The work area it's on (its centre's screen)."""
+        return self._area() if self.isVisible() else self._primary()
+
     def set_locked(self, locked: bool, at_length: bool = False) -> None:
         """Locked: clicks pass through; no band, no hover, no resizing.
         `at_length`: it says how to unlock at more length (the first lock on
@@ -3723,6 +3790,11 @@ class CaptionWindow(QWidget):
     def go_live(self) -> None:
         self.view.scroll.follow()
         self._refresh()
+
+    def set_live_keys(self, keys: str) -> None:
+        """Back to live's hotkey as the OS writes it ("" none), on its tip
+        (polyglotic-hq 567)."""
+        self.pill.setToolTip(live_tip(keys))
 
     # -- in a joined window -------------------------------------------------------------
 
@@ -4036,6 +4108,18 @@ class CaptionWindow(QWidget):
         chip.clicked.connect(self.toggle_languages)
         row.addWidget(chip)
         row.addStretch(1)
+        # the preset chip ("Video ▾", polyglotic-hq 556): its dropdown
+        chip = self.preset_chip = QToolButton(band)
+        chip.setObjectName("caption_window.band.presets")
+        chip.setProperty("chip", True)
+        chip.setCursor(Qt.CursorShape.PointingHandCursor)
+        chip.setMouseTracking(True)
+        chip.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        chip.setToolTip(
+            _tr("Presets: conversation, video, learning - and what each shows")
+        )
+        chip.clicked.connect(self.toggle_presets)
+        row.addWidget(chip)
         self.buttons: dict[str, QToolButton] = {}
         for name in STRIP:
             action = self.controls[name]
@@ -4052,7 +4136,8 @@ class CaptionWindow(QWidget):
         self.tips.watch(self.tag, self.tag.tip_at)
         for button in self.buttons.values():
             self.tips.watch(button)
-        self.tips.watch(chip)
+        self.tips.watch(self.chip)
+        self.tips.watch(self.preset_chip)
         self._draw_glyphs()
         band.hide()
         self.set_timing(self.timing)
@@ -4151,9 +4236,16 @@ class CaptionWindow(QWidget):
             )
         )
         self.chip.setAccessibleName(self.chip.text().rstrip(" ▾▴"))
+        self.preset_chip.setText(
+            preset_chip_text(
+                self.preset_menu, self.presets is not None and self.presets.isVisible()
+            )
+        )
+        self.preset_chip.setAccessibleName(self.preset_chip.text().rstrip(" ▾▴"))
         buttons = sum(
             b.sizeHint().width() + 3 for b in self.buttons.values() if not b.isHidden()
         )
+        buttons += self.preset_chip.sizeHint().width() + 3
         chip = self.chip.sizeHint().width() + 3
         fits = width - buttons - chip >= style.px(CHIP_LEAST_LABEL)
         self.chip.setVisible(fits)
@@ -4178,7 +4270,7 @@ class CaptionWindow(QWidget):
         """Its settings popover or its languages' is open."""
         return any(
             each is not None and each.isVisible()
-            for each in (self.popover, self.languages)
+            for each in (self.popover, self.languages, self.presets)
         )
 
     def toggle_settings(self) -> None:
@@ -4237,7 +4329,7 @@ class CaptionWindow(QWidget):
             popover._toggle_apps()
 
     def close_settings(self) -> None:
-        for each in (self.popover, self.languages):
+        for each in (self.popover, self.languages, self.presets):
             if each is not None:
                 each.close()
 
@@ -4258,6 +4350,34 @@ class CaptionWindow(QWidget):
         anchor = QRect(chip.mapToGlobal(QPoint(0, 0)), chip.size())
         self.languages.open_beside(anchor)
         self._fit_band()  # its arrow turned up
+
+    def toggle_presets(self) -> None:
+        """The bar's preset chip: the presets' dropdown under it, at its
+        right - or closed (polyglotic-hq 556)."""
+        if self.presets is not None and self.presets.isVisible():
+            self.close_settings()
+            self._fit_band()
+            return
+        self.close_settings()
+        if self.locked or not self.isVisible():
+            return
+        with spans.span("caption_window.presets"):
+            if self.presets is None:
+                self.presets = PresetPopover(self)
+            chip = self.preset_chip
+            anchor = QRect(chip.mapToGlobal(QPoint(0, 0)), chip.size())
+            self.presets.open_beside(anchor)
+        self._fit_band()  # its arrow turned up
+
+    def set_presets(self, menu: PresetMenu) -> None:
+        """The presets as they are now (`main`'s, by way of
+        `CaptionWindows`): the chip's name, and the dropdown if it's open."""
+        if menu == self.preset_menu:
+            return
+        self.preset_menu = menu
+        self._fit_band()
+        if self.presets is not None and self.presets.isVisible():
+            self.presets.refresh()
 
     # -- the first window's set-up (465) ------------------------------------------------
 

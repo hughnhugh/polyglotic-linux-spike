@@ -62,6 +62,8 @@ gnome)
   done
   [ -n "$xs" ] || { echo "mutter's XWayland didn't start"; tail -20 "$out/mutter.log"; exit 1; }
   export WAYLAND_DISPLAY=wayland-550 DISPLAY=":${xs#X}"
+  # as GNOME's own session says it is (570: the hotkeys read them)
+  export XDG_CURRENT_DESKTOP=GNOME XDG_SESSION_TYPE=wayland
   auth="$(ls "$XDG_RUNTIME_DIR"/.mutter-Xwaylandauth.* 2>/dev/null | head -1 || true)"
   [ -n "$auth" ] && export XAUTHORITY="$auth"
   echo "GNOME: $(mutter --version 2>&1 | head -1)" >> "$out/sound.txt"
@@ -73,6 +75,8 @@ kde)
   for _ in $(seq 60); do [ -S "$XDG_RUNTIME_DIR/wayland-550" ] && break; sleep 0.5; done
   [ -S "$XDG_RUNTIME_DIR/wayland-550" ] || { echo "KWin didn't start"; tail -20 "$out/kwin.log"; exit 1; }
   export WAYLAND_DISPLAY=wayland-550 DISPLAY=:0
+  # as Plasma's own session says it is (570: the hotkeys read them)
+  export XDG_CURRENT_DESKTOP=KDE KDE_SESSION_VERSION=6 XDG_SESSION_TYPE=wayland
   sleep 2
   auth="$(ls "$XDG_RUNTIME_DIR"/xauth_* 2>/dev/null | head -1 || true)"
   [ -n "$auth" ] && export XAUTHORITY="$auth"
@@ -81,7 +85,7 @@ kde)
 *)
   if [ -z "${DISPLAY:-}" ]; then
     Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp > "$out/xvfb.log" 2>&1 & started+=($!)
-    export DISPLAY=:99
+    export DISPLAY=:99 XDG_SESSION_TYPE=x11  # an Xorg session's (570)
     for _ in $(seq 50); do [ -S /tmp/.X11-unix/X99 ] && break; sleep 0.1; done
   fi
   ;;

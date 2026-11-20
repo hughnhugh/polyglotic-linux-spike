@@ -74,6 +74,7 @@ def test_todays_interface_keeps_its_own_values() -> None:
         "reading_hinted",
         "set_up",  # the first window's set-up answered (465)
         "start_like_this",
+        "kept_languages",  # while every window shows the original only (556)
     }
 
 

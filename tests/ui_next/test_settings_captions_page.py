@@ -65,7 +65,7 @@ def page_with(
     timing: TimingView | None = None,
     speech: LanguagesView | None = None,
 ) -> SettingsPage:
-    actions = {"L": QAction("Lock all caption windows")}, QAction("Tell us")
+    actions = (QAction("Tell us"),)
     page = SettingsPage(
         [("margin", "Margin")],
         *actions,
@@ -74,25 +74,32 @@ def page_with(
         speech=speech or LanguagesView(SessionLanguages()),
     )
     page.keep = actions  # type: ignore[attr-defined]  # alive as long as it
-    page.resize(900, 700)
+    # wide enough for ten sections' tabs on one line in any of the test
+    # machines' fonts (556; eight fitted at 900; Linux's faces are wider)
+    page.resize(1300, 700)
     MADE.append(page)
     return page
 
 
-def test_eight_sections_at_the_top_look_first(qapp: QApplication) -> None:
+def test_ten_sections_at_the_top_look_shown_first(qapp: QApplication) -> None:
+    """Presets first among them (polyglotic-hq 556); Hotkeys after Dictation
+    (567); Look still the one a page opens on."""
     page = page_with()
     page.show()
     qapp.processEvents()
     assert SECTIONS == (
-        "look", "links", "readings", "timing", "speech", "dictation", "app", "lab",
+        "presets", "look", "links", "readings", "timing", "speech", "dictation",
+        "hotkeys", "app", "lab",
     )  # fmt: skip
     assert [b.text() for b in page.sections.buttons] == [
+        "Presets",
         "Look",
         "Word links",
         "Readings",
         "Timing",
         "Speech",
         "Dictation",
+        "Hotkeys",
         "App",
         "Lab",
     ]
@@ -393,7 +400,7 @@ def test_the_apps_language_is_under_the_title_in_every_section(
     page's title whichever section shows, each language by its own name
     (284) - and only there: App's own Language card said it a second time
     (polyglotic-hq 449's finding 9, 470)."""
-    actions = {"L": QAction("Lock all caption windows")}, QAction("Tell us")
+    actions = (QAction("Tell us"),)
     page = SettingsPage(
         [("margin", "Margin")],
         *actions,
@@ -404,7 +411,7 @@ def test_the_apps_language_is_under_the_title_in_every_section(
     )
     page.keep = actions  # type: ignore[attr-defined]
     MADE.append(page)
-    page.resize(900, 700)
+    page.resize(1300, 700)
     page.show()
     qapp.processEvents()
     picker = page.language_picker
@@ -432,7 +439,7 @@ def test_a_machine_drafted_language_says_so_and_asks(qapp: QApplication) -> None
     """polyglotic-hq 294 (decision 0087): the app's text in a language no
     native speaker has checked says it's a machine draft, under the title
     in every section, with "Tell us what reads wrong" - the feedback form."""
-    actions = {"L": QAction("Lock all caption windows")}, QAction("Tell us")
+    actions = (QAction("Tell us"),)
     page = SettingsPage(
         [("margin", "Margin")],
         *actions,
@@ -443,7 +450,7 @@ def test_a_machine_drafted_language_says_so_and_asks(qapp: QApplication) -> None
     )
     page.keep = actions  # type: ignore[attr-defined]
     MADE.append(page)
-    page.resize(900, 700)
+    page.resize(1300, 700)
     page.show()
     qapp.processEvents()
     assert not page.language_draft.isVisible()  # English: not a draft
@@ -527,18 +534,20 @@ def test_the_title_and_sections_stay_put_as_the_page_scrolls(
     """Pinned at the top (449's finding 7: Look was 2,557 px, and the tabs
     and card titles scrolled away)."""
     page = page_with()
-    page.resize(900, 500)
+    page.resize(1300, 500)
     page.show()
     qapp.processEvents()
     page.show_section("app")
     qapp.processEvents()
     bar = page.verticalScrollBar()
     assert bar.maximum() > 0
-    before = page.sections.mapTo(page, page.sections.rect().topLeft())
+    # the tabs, or their dropdown in fonts too wide for ten on a line (556, 567)
+    head = page.sections if page.sections.isVisible() else page.section_picker
+    before = head.mapTo(page, head.rect().topLeft())
     bar.setValue(bar.maximum())
     qapp.processEvents()
-    assert page.sections.mapTo(page, page.sections.rect().topLeft()) == before
-    assert page.sections.isVisible() and not page.viewport().isAncestorOf(page.sections)
+    assert head.mapTo(page, head.rect().topLeft()) == before
+    assert head.isVisible() and not page.viewport().isAncestorOf(head)
     # what scrolls stays under them
     assert page.viewport().geometry().top() >= page.head.geometry().bottom()
     page.close()
@@ -550,27 +559,29 @@ def test_the_card_scrolled_into_is_named_under_the_sections(
     """Its title scrolled away, the card the learner is in is named, with
     its mark, under the pinned sections; at a card's top it isn't."""
     page = page_with()
-    page.resize(900, 500)
+    page.resize(1300, 500)
     page.show()
     qapp.processEvents()
     page.show_section("app")
     qapp.processEvents()
     assert not page.pinned.isVisible()
-    transcripts = next(
+    # Appearance: App's cards end soon after Transcripts since its hotkeys
+    # moved to their own section (567) - too near the end to scroll into
+    appearance = next(
         c for c in cards_in(page, "app") if isinstance(c, Card) and c.title
-        and c.title.text() == "Transcripts"
+        and c.title.text() == "Appearance"
     )  # fmt: skip
     inner = page.widget()
     assert inner is not None
-    top = transcripts.mapTo(inner, transcripts.rect().topLeft()).y()
+    top = appearance.mapTo(inner, appearance.rect().topLeft()).y()
     page.verticalScrollBar().setValue(top + 40)
     qapp.processEvents()
     assert page.pinned.isVisible()
-    assert page.pinned.title.text() == "Transcripts"
+    assert page.pinned.title.text() == "Appearance"
     assert page.pinned.geometry().top() == page.viewport().geometry().top()
     page.verticalScrollBar().setValue(top - 2)  # its own title in view
     qapp.processEvents()
-    assert not page.pinned.isVisible() or page.pinned.title.text() != "Transcripts"
+    assert not page.pinned.isVisible() or page.pinned.title.text() != "Appearance"
     page.show_section("look")  # another section starts at its top
     qapp.processEvents()
     assert not page.pinned.isVisible()
@@ -584,13 +595,13 @@ def test_where_the_tabs_dont_fit_on_one_line_they_are_a_dropdown(
     page = page_with()
     page.show()
     qapp.processEvents()
-    assert page.sections.isVisible() and not page.section_picker.isVisible()
+    assert fitted(page)
     page.resize(420, 600)
     qapp.processEvents()
     assert not page.sections.isVisible() and page.section_picker.isVisible()
     picker = page.section_picker
     assert [picker.itemText(i) for i in range(picker.count())][:3] == [
-        "Look", "Word links", "Readings",
+        "Presets", "Look", "Word links",
     ]  # fmt: skip
     assert all(not picker.itemIcon(i).isNull() for i in range(picker.count()))
     picker.setCurrentIndex(SECTIONS.index("readings"))
@@ -598,10 +609,21 @@ def test_where_the_tabs_dont_fit_on_one_line_they_are_a_dropdown(
     assert [k for k, box in page.section.items() if box.isVisible()] == ["readings"]
     page.show_section("app")
     assert picker.currentData() == "app"
-    page.resize(900, 600)
+    page.resize(1300, 600)
     qapp.processEvents()
-    assert page.sections.isVisible() and not page.section_picker.isVisible()
+    assert fitted(page)
     page.close()
+
+
+def fitted(page: SettingsPage) -> bool:
+    """The tabs where they fit the column on one line, else the dropdown:
+    one of them, never both. Nine fit in Windows' fonts at every text size
+    (the UI lab's Settings states); Linux's wider faces take the dropdown
+    (polyglotic-hq 556)."""
+    column = page.content.parentWidget()
+    assert column is not None
+    fits = page.sections.sizeHint().width() <= column.width()
+    return page.sections.isVisible() == fits and page.section_picker.isVisible() != fits
 
 
 def test_the_dropdown_holds_every_section_at_the_largest_text_size(
@@ -620,12 +642,14 @@ def test_the_dropdown_holds_every_section_at_the_largest_text_size(
         page.use_sheet(style.stylesheet(style.current()))
         picker = page.section_picker
         names = (
+            "預設集",
             "字幕外觀",
             "詞語對應",
             "讀音",
             "時機",
             "語音",
             "聽寫",
+            "快速鍵",
             "應用程式",
             "實驗室",
         )

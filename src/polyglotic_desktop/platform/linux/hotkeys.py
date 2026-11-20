@@ -29,10 +29,10 @@ Lock on or off are grabbed alike. Held down, a combination fires once:
 the X server's repeats (a release and a press at the same moment) are
 let go.
 
-A binding's key is a letter or digit, taken with `modifiers` (Linux's:
-Ctrl+Alt+Shift) - today's port - or a whole combination as the settings
-keep one ("ctrl+alt+shift+l", "f9": `core.listening.dictation_keys.
-DictationKey`), for the hotkeys the learner sets (polyglotic-hq 567).
+Each binding's key is a combination as the settings keep it
+("ctrl+alt+shift+l", "f9": `core.listening.dictation_keys.DictationKey`,
+polyglotic-hq 567); Linux's own are Ctrl+Alt+Shift with the letter
+(`core.listening.hotkeys.OWN_MODIFIERS`, decision 0276).
 
 Each combination's binding is called on the hotkeys' own thread; `main`
 hands the call to the interface's thread. Nothing pressed is ever logged.
@@ -58,11 +58,7 @@ SHIFT, LOCK, CONTROL, MOD1, MOD2, MOD4 = 0x01, 0x02, 0x04, 0x08, 0x10, 0x40
 """X11's modifier masks: Shift, Caps Lock, Ctrl, Alt (Mod1), NumLock
 (Mod2 on every current keyboard map), Super (Mod4)."""
 CTRL_ALT_SHIFT = CONTROL | MOD1 | SHIFT
-LINUX_MODIFIERS = CTRL_ALT_SHIFT
-"""Linux's hotkeys: Ctrl+Alt+Shift with L, P and H (polyglotic-hq 570's
-survey of each desktop's own defaults): Ctrl+Alt+L locks the screen on
-KDE, Xfce, Cinnamon and MATE, which would take it before the app heard
-it."""
+"""Linux's own hotkeys' modifiers (decision 0276)."""
 WATCHED = SHIFT | CONTROL | MOD1 | MOD4
 """The modifiers a combination is told apart by; Caps Lock and NumLock
 aren't."""
@@ -99,13 +95,10 @@ NAMED_KEYSYMS = {
 letters and digits (X11's keysymdef.h)."""
 
 
-def binding_key(key: str, modifiers: int) -> tuple[int, str]:
-    """A binding's modifiers and key: a letter or digit with `modifiers`,
-    or a kept combination ("ctrl+alt+shift+l") as it says. Raises
+def binding_key(key: str) -> tuple[int, str]:
+    """A kept combination's ("ctrl+alt+shift+l") modifiers and key. Raises
     ValueError for anything else: a modifier alone can't be pressed, and a
     letter or digit alone would never be typed anywhere again."""
-    if len(key) == 1 and key.isascii() and (key.isupper() or key.isdigit()):
-        return modifiers, key
     found = DictationKey.parse(key)
     lone = found is not None and not found.modifiers and len(found.key or "") == 1
     if found is None or found.key is None or found.held_alone or lone:
@@ -184,17 +177,15 @@ class Xcb(Protocol):
 
 
 class X11Hotkeys:
-    """`Hotkeys` through X11's key grab: each a letter or digit with
-    `modifiers`, or a kept combination (`binding_key`), its binding called on
-    the hotkeys' own thread."""
+    """`Hotkeys` through X11's key grab: each a kept combination
+    (`binding_key`), its binding called on the hotkeys' own thread."""
 
     def __init__(
         self,
         bindings: Mapping[str, Callable[[], None]],
-        modifiers: int = LINUX_MODIFIERS,
         connect: Callable[[], Xcb] | None = None,
     ) -> None:
-        self._combinations = {key: binding_key(key, modifiers) for key in bindings}
+        self._combinations = {key: binding_key(key) for key in bindings}
         """Each binding's modifiers and key."""
         self._bindings = dict(bindings)
         self._connect = connect or LibXcb

@@ -396,6 +396,10 @@ class ListeningSession:
         self._stopped_for = StopReason.CLOSED  # what `stop` was asked for
         self._mode = caption_mode.value if caption_mode is not None else None
         self._live_interval = live_interval
+        self.preset_usage: dict[str, protocol.UsageValue] = {}
+        """The preset in use as the session started, as its summary's
+        optional properties (`ui.use_presets.usage`, polyglotic-hq 556):
+        sent with it, with consent to usage statistics."""
         # the session's caption timelines, summarised for its usage
         # statistics (perf.trace; polyglotic-hq 543)
         self._timelines = SessionTimelines(trace.tracer())

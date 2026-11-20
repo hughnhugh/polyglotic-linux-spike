@@ -315,6 +315,26 @@ def test_a_listening_session_leaves_a_summary_only_with_consent(
     app.connection.close()
 
 
+def test_the_summary_carries_the_preset_in_use(server: FakeServer) -> None:
+    """polyglotic-hq 556: the preset in use and what differs in it, as the
+    summary's optional properties - sent with it, so only with consent."""
+    app = App(server.url)
+    app.exchange.choose_consent(usage=True, crashes=False, exposures=False)
+    preset = {"preset": "video", "preset_word_links": "arrows"}
+    session = app.connection.start_listening(SETTINGS, app.speech.take, preset=preset)
+    wait_until(app.listener.listening)
+    app.speech.put(finished("c1"), b"OggS")
+    session.speech_ready()
+    wait_until(lambda: len(app.listener.captions) == 1)
+    app.connection.stop_listening()
+    wait_until(lambda: len(server.app_closes) == 2)  # a sync session after it
+    (event,) = [e for m in server.of_type("usage") for e in m["events"]]
+    assert event["name"] == "listening_session_ended" and event["v"] == 1
+    assert event["props"]["preset"] == "video"
+    assert event["props"]["preset_word_links"] == "arrows"
+    app.connection.close()
+
+
 def test_a_listening_session_with_nothing_captioned_leaves_a_summary_too(
     server: FakeServer,
 ) -> None:

@@ -61,7 +61,7 @@ def test_it_names_the_hotkey_only_where_it_works(
 ) -> None:
     desktop, windows = wired
     (window,) = windows.windows.values()
-    desktop.hotkeys_not_working(["L"])  # GNOME's Wayland session: none
+    desktop.hotkeys_not_working(["lock"])  # GNOME's Wayland session: none
     desktop.lock_windows.setChecked(True)
     said = window.notice.text()
     assert said == first_locked_text("")
