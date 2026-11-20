@@ -243,6 +243,8 @@ def main() -> None:
             for p in procs:
                 p.stop()
             r["caption_log_tail"] = procs[0].events[-6:] if procs else []
+            r["fullscreen_states"] = [e for p in procs if p.name.endswith("fullscreen") for e in p.events
+                                      if e.get("ev") in ("shown", "state", "active")][:8]
             time.sleep(0.5)
         print(json.dumps(r), flush=True)
         results.append(r)
