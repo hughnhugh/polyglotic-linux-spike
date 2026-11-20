@@ -160,10 +160,14 @@ esac
 # Save transcript's and the export's dialogs: the app's buttons pressed as a
 # screen reader presses them, through AT-SPI (tools/linux_atspi_press.py)
 [ ${#dialogs[@]} -gt 0 ] && export QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1
-# the portal's backend: GTK's, as Ubuntu's desktops have one (KDE: its own)
+# the portal's backend: GTK's, as Ubuntu's desktops have one; KDE's own on
+# KDE - started here, with its log (run 44743443965: the bus's own start of
+# it gave the portal no file chooser), and GTK's after it if it won't run
+mkdir -p "$HOME/.config/xdg-desktop-portal"
 if [ "$desktop" != kde ]; then
-  mkdir -p "$HOME/.config/xdg-desktop-portal"
   printf '[preferred]\ndefault=gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
+else
+  printf '[preferred]\ndefault=kde;gtk\n' > "$HOME/.config/xdg-desktop-portal/portals.conf"
 fi
 dbus-update-activation-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP \
   XDG_SESSION_TYPE XDG_RUNTIME_DIR > /dev/null 2>&1 || true
@@ -171,6 +175,10 @@ if [ -n "$scheme" ] && command -v gsettings > /dev/null; then
   gsettings set org.gnome.desktop.interface color-scheme "prefer-$scheme" > "$here/gsettings.log" 2>&1 || true
 fi
 sleep 8
+if [ "$desktop" = kde ] && [ -x /usr/libexec/xdg-desktop-portal-kde ]; then
+  QT_QPA_PLATFORM=wayland /usr/libexec/xdg-desktop-portal-kde > "$here/portal-kde.log" 2>&1 & started+=($!)
+  sleep 3
+fi
 echo "574: $(date +%T) the desktop started ($desktop)"
 if [ "$tray" = yes ]; then  # a host for KDE's watcher where Plasma's shell didn't start (571)
   uv run --no-sync python -m tools.linux_tray_menu "$here/tray-host.json" --host \

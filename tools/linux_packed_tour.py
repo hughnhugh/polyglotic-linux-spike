@@ -720,29 +720,52 @@ def the_dialogs(
         return calls.read_text(errors="replace")
 
     press = Path(__file__).with_name("linux_atspi_press.py")
-    try:
-        for name, buttons, title in (
-            (  # a narrow transcript window folds Save into its "More" menu
+    dialogs: list[tuple[str, list[str], str]] = [
+        (
+            "anki-export",
+            ["?Words", "Anki deck file (.apkg)"],
+            "Export words as an Anki deck file",
+        ),
+    ]
+    if args.tray == "yes":  # the transcript window, opened from the tray's menu
+        # (Home's Transcript buttons aren't told apart over AT-SPI); a narrow
+        # window folds Save into its "More" menu
+        dialogs.insert(
+            0,
+            (
                 "save-transcript",
                 [
-                    "Transcript",
                     "Save transcript as… || More: Copy all, Save transcript as…",
                     "?menu:Save transcript as…",
                 ],
                 "Save transcript",
             ),
-            (
-                "anki-export",
-                ["?Words", "Anki deck file (.apkg)"],
-                "Export words as an Anki deck file",
-            ),
-        ):
+        )
+    else:
+        RESULTS["facts"]["save_transcript_dialog"] = (
+            "not run here: no tray to open a transcript window from outside"
+        )
+    try:
+        for name, buttons, title in dialogs:
             data = out / f"data-{name}"
             returning_learner(data, one_app=False)
             packed = Packed(app, server.url, data, out / f"app-{name}.log")
             try:
                 wait(lambda: home_window(x_windows()), 60)
                 time.sleep(3)
+                if name == "save-transcript":
+                    tray_menu(
+                        out / "tray-transcript.json", click="Everything the PC plays"
+                    )
+                    wait(
+                        lambda: [
+                            w
+                            for w in x_windows()
+                            if w["shown"] and "transcript" in w["name"].lower()
+                        ],
+                        20,
+                    )
+                    time.sleep(2)
                 pressed = subprocess.run(
                     ["/usr/bin/python3", str(press), *buttons],
                     capture_output=True,
