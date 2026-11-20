@@ -190,12 +190,11 @@ def main() -> int:
     log("null sink module:", out_mod)
     fifo = os.path.join(tmp, "mic.fifo")
     os.mkfifo(fifo)
-    mic_mod = pa.load_module("module-pipe-source",
-                             f"source_name=spike_mic file={fifo} format=s16le rate=48000 channels=1 "
-                             "source_properties=device.description=SpikeMic")
-    log("pipe source module:", mic_mod)
+    pipe_mod = pa.load_module("module-pipe-source",
+                              f"source_name=spike_pipe file={fifo} format=s16le rate=48000 channels=1 "
+                              "source_properties=device.description=SpikePipe")
+    log("pipe source module:", pipe_mod)
     procs: list[subprocess.Popen] = []
-    mic_name = "spike_mic"
     writer = (
         "import sys\nd=open(sys.argv[2],'rb').read()\nf=open(sys.argv[1],'wb',buffering=0)\n"
         "while True:\n f.write(d)\n"
@@ -203,20 +202,23 @@ def main() -> int:
     raw = os.path.join(tmp, "mic700.raw")
     with open(raw, "wb") as fh:
         fh.write(mic_raw)
-    if mic_mod != P.PA_INVALID_INDEX:
+    if pipe_mod != P.PA_INVALID_INDEX:
         procs.append(subprocess.Popen([sys.executable, "-I", "-c", writer, fifo, raw]))
-    # A second stand-in mic: a virtual source fed by a native player.
-    vmic_mod = pa.load_module("module-null-sink",
-                              "media.class=Audio/Source/Virtual sink_name=spike_vmic channel_map=mono "
-                              "sink_properties=device.description=SpikeVirtualMic")
-    log("virtual source module:", vmic_mod)
+    # The stand-in mic: a real Audio/Source (a remap of a hidden sink's
+    # monitor), fed a 700 Hz tone by paplay on that sink.
+    feed_mod = pa.load_module("module-null-sink",
+                              "sink_name=spike_micfeed rate=48000 channels=1 channel_map=mono "
+                              "sink_properties=device.description=SpikeMicFeed")
+    mic_mod = pa.load_module("module-remap-source",
+                             "master=spike_micfeed.monitor source_name=spike_mic channels=1 channel_map=mono "
+                             "source_properties=device.description=SpikeMic")
+    log("mic feed sink module:", feed_mod, "| remap source module:", mic_mod)
     mic_wav = os.path.join(tmp, "mic700.wav")
     write_wav(mic_wav, 700.0, 60)
-    vmic_feed = subprocess.Popen(["pw-play", "--target", "spike_vmic", mic_wav])
-    procs.append(vmic_feed)
-    log("virtual mic feeder: pw-play pid", vmic_feed.pid)
-    if mic_mod == P.PA_INVALID_INDEX:
-        mic_name = "spike_vmic"
+    feeder = subprocess.Popen(["paplay", "--device=spike_micfeed", "--client-name=Mic feed", mic_wav])
+    procs.append(feeder)
+    log("mic feeder: paplay pid", feeder.pid)
+    mic_name = "spike_mic" if mic_mod != P.PA_INVALID_INDEX else "spike_pipe"
     results["mic_route"] = mic_name
     time.sleep(0.5)
     log("set default sink:", pa.set_default_sink("spike_out"))
@@ -302,7 +304,8 @@ def main() -> int:
         "default sink monitor": P.Recorder(pa, "rec mon", mon_name, dont_move=True),
         "mic by name": P.Recorder(pa, "rec mic", mic_name, dont_move=True),
         "default source": P.Recorder(pa, "rec default src", None),
-        "virtual mic by name": P.Recorder(pa, "rec vmic", "spike_vmic", dont_move=True),
+        "pipe source by name": P.Recorder(pa, "rec pipe", "spike_pipe", dont_move=True),
+        "@DEFAULT_MONITOR@": P.Recorder(pa, "rec @DEFAULT_MONITOR@", "@DEFAULT_MONITOR@"),
     }
     pa.run_for(4.0)
     results["recordings"] = {}
@@ -331,7 +334,12 @@ def main() -> int:
     check("default sink monitor has both tones",
           lv("default sink monitor", "A 440") > -30 and lv("default sink monitor", "B 1000") > -30,
           f"440 at {lv('default sink monitor', 'A 440')}, 1000 at {lv('default sink monitor', 'B 1000')}, 700 at {lv('default sink monitor', 'mic 700')}")
-    for label in ("mic by name", "default source", "virtual mic by name"):
+    check("@DEFAULT_MONITOR@ is the output, not the mic",
+          lv("@DEFAULT_MONITOR@", "A 440") > -30 and lv("@DEFAULT_MONITOR@", "mic 700") < -60,
+          f"device={results['recordings']['@DEFAULT_MONITOR@']['device']} 440 at {lv('@DEFAULT_MONITOR@', 'A 440')}, "
+          f"700 at {lv('@DEFAULT_MONITOR@', 'mic 700')}")
+    log("pipe source (information only):", json.dumps(results["recordings"]["pipe source by name"]["levels"]))
+    for label in ("mic by name", "default source"):
         check(f"{label}: the mic's tone only",
               lv(label, "mic 700") > -30 and lv(label, "A 440") < -60 and lv(label, "B 1000") < -60,
               f"700 at {lv(label, 'mic 700')}, 440 at {lv(label, 'A 440')}, 1000 at {lv(label, 'B 1000')}")
