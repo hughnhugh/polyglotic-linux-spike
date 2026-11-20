@@ -10,7 +10,7 @@ PARTS holds each part's findings as the jobs left them:
   lines (tools/package/linux_linkage.sh, linux_update_rehearsal.sh);
 - `capture/summary.txt`: the same, for the sound server's and the keyring's
   own tests in a desktop session;
-- `tour-DESKTOP/DESKTOP/checks.json`: the packed AppImage's tour on each
+- `tour-DESKTOP/checks.json`: the packed AppImage's tour on each
   desktop (tools/linux_packed_tour.py).
 
 The seven (546's section 3), and what each is made of:
