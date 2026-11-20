@@ -2569,6 +2569,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">デスクトップ自身のショートカット</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Polyglotic のホットキーが使えない環境（Wayland の GNOME）では、デスクトップのキーボード設定でカスタムショートカットを追加し（GNOME：設定 &gt; キーボード &gt; カスタムショートカット）、コマンドに {command} --lock、--pause、または --hide を指定します。ホットキーと同じことをします。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">どのプログラムでも音声入力（プレビュー）</translation>
     </message>

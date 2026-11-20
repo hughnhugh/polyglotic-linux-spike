@@ -2569,6 +2569,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">Phím tắt của chính màn hình nền</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Ở nơi phím tắt của Polyglotic không hoạt động (GNOME trên Wayland), hãy thêm một phím tắt tùy chỉnh trong cài đặt bàn phím của màn hình nền (GNOME: Cài đặt &gt; Bàn phím &gt; Phím tắt tùy chỉnh) với lệnh {command} --lock, hoặc --pause, hoặc --hide. Nó làm đúng việc phím tắt sẽ làm.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">Nhập bằng giọng nói vào mọi chương trình (thử nghiệm)</translation>
     </message>

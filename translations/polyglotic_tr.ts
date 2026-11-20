@@ -2569,6 +2569,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">Masaüstünüzün kendi kısayolları</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Polyglotic&apos;in kısayol tuşlarının çalışmadığı yerde (Wayland&apos;de GNOME), masaüstünüzün klavye ayarlarında özel bir kısayol ekleyin (GNOME: Ayarlar &gt; Klavye &gt; Özel Kısayollar), komut olarak {command} --lock, --pause ya da --hide. Kısayol tuşunun yapacağını yapar.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">Her programa dikte et (önizleme)</translation>
     </message>

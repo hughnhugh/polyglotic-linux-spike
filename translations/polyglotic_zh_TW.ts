@@ -2569,6 +2569,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">桌面自己的快速鍵</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">在 Polyglotic 的快速鍵無效的地方（Wayland 上的 GNOME），請在桌面的鍵盤設定中新增自訂快速鍵（GNOME：設定 &gt; 鍵盤 &gt; 自訂快速鍵），指令為 {command} --lock、--pause 或 --hide。它的作用與快速鍵相同。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">在任何程式中聽寫（預覽版）</translation>
     </message>

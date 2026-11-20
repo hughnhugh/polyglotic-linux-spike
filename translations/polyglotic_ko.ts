@@ -2569,6 +2569,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">데스크톱 자체의 단축키</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Polyglotic의 단축키가 작동하지 않는 곳(Wayland의 GNOME)에서는 데스크톱의 키보드 설정에서 사용자 지정 단축키를 추가하세요(GNOME: 설정 &gt; 키보드 &gt; 사용자 지정 바로 가기). 명령은 {command} --lock, --pause 또는 --hide입니다. 단축키와 같은 일을 합니다.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">어떤 프로그램에서든 음성 입력 (미리 보기)</translation>
     </message>

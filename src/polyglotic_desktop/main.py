@@ -7531,6 +7531,17 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
     sys.exit(1)
 
 
+def shortcut_command(environ: Mapping[str, str] | None = None) -> str:
+    """How a shortcut of the desktop's own starts this app again (570): the
+    AppImage's path where it runs as one (quoted if it has a space), else the
+    interpreter running it from source."""
+    env = os.environ if environ is None else environ
+    found = env.get("APPIMAGE") or f"{sys.executable} -m polyglotic_desktop.main"
+    if " " in found and env.get("APPIMAGE"):
+        return f'"{found}"'
+    return found
+
+
 def tell_the_copy(name: str, command: str) -> int:
     """Asks the copy that runs under `name` to do `command`, as its hotkey
     does, saying on the terminal what came of it: the process's exit code."""
@@ -7817,6 +7828,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         second_starts.show_with(desktop.show_window)
         # or what a hotkey does, from a shortcut of the desktop's own (570)
         second_starts.do_with(desktop.hotkey_pressed.emit)  # its hotkey's name
+    hub.help.show_command(shortcut_command())  # Help says how to make one (570)
     if notice := start_notice(store.set_aside, windows.taken_off):
         desktop.home_notice.emit(notice)
     # the installed app can start with Windows (176) - not the Store's copy

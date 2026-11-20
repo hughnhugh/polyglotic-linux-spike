@@ -2573,6 +2573,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">आपके डेस्कटॉप के अपने शॉर्टकट</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">जहाँ Polyglotic के हॉटकी काम नहीं करते (Wayland पर GNOME), वहाँ अपने डेस्कटॉप की कीबोर्ड सेटिंग में एक कस्टम शॉर्टकट जोड़ें (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts), कमांड {command} --lock, या --pause, या --hide के साथ। यह वही करता है जो हॉटकी करती।</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">किसी भी प्रोग्राम में बोलकर टाइप करें (प्रायोगिक)</translation>
     </message>

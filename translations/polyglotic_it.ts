@@ -2573,6 +2573,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">Le scorciatoie del tuo desktop</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Dove le scorciatoie di Polyglotic non funzionano (GNOME su Wayland), aggiungi una scorciatoia personalizzata nelle impostazioni della tastiera del tuo desktop (GNOME: Impostazioni &gt; Tastiera &gt; Scorciatoie personalizzate) con il comando {command} --lock, --pause o --hide. Fa ciò che farebbe la scorciatoia.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">Detta in qualsiasi programma (anteprima)</translation>
     </message>

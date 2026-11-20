@@ -2573,6 +2573,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">Sneltoetsen van je eigen bureaublad</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Waar de sneltoetsen van Polyglotic niet werken (GNOME onder Wayland), voeg je een eigen sneltoets toe in de toetsenbordinstellingen van je bureaublad (GNOME: Instellingen &gt; Toetsenbord &gt; Aangepaste sneltoetsen) met de opdracht {command} --lock, --pause of --hide. Die doet wat de sneltoets zou doen.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">In elk programma dicteren (preview)</translation>
     </message>

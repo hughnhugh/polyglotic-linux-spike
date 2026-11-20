@@ -64,6 +64,8 @@ def test_macos_gets_a_whole_record() -> None:
             assert isinstance(piece, mic_permission.Permission)
         elif field.name == "qt_platform":  # Qt's own choice on a Mac (550)
             assert piece is None
+        elif field.name == "unlock_spot":  # the mouse read anywhere there (570)
+            assert piece is False
         else:
             assert callable(piece), field.name
             assert "windows" not in getattr(piece, "__module__", ""), field.name

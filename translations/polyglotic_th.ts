@@ -2569,6 +2569,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">ปุ่มลัดของเดสก์ท็อปเอง</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">ในที่ที่ปุ่มลัดของ Polyglotic ใช้ไม่ได้ (GNOME บน Wayland) ให้เพิ่มปุ่มลัดกำหนดเองในการตั้งค่าแป้นพิมพ์ของเดสก์ท็อป (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) โดยใช้คำสั่ง {command} --lock หรือ --pause หรือ --hide ซึ่งจะทำแบบเดียวกับปุ่มลัด</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">พิมพ์ด้วยเสียงในทุกโปรแกรม (ทดลอง)</translation>
     </message>

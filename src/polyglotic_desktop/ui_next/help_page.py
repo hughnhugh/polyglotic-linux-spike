@@ -63,7 +63,7 @@ from polyglotic_desktop.ui_next.controls import (
 from polyglotic_desktop.ui_next.dictation_key import key_words
 from polyglotic_desktop.ui_next.home import Page, unreachable_words
 from polyglotic_desktop.ui_next.lookup_card import dictionary_out
-from polyglotic_desktop.ui_next.os_words import hotkeys_here, pc_or_mac
+from polyglotic_desktop.ui_next.os_words import hotkeys_here, on_linux, pc_or_mac
 
 CHECK_EVERY_MS = 2000
 KEEP_WHATS_NEW_MS = 500
@@ -188,6 +188,8 @@ class HelpPage(Page):
 
         self._hotkeys: frozenset[str] = HOTKEYS
         """Those that work here (`show_hotkeys`)."""
+        self._command = "polyglotic"
+        """How the desktop's own shortcuts start this app (`show_command`)."""
         self._set_up: list[Topic] = []
         setting_up = self._topics(_tr("Set up"), set_up(), self._set_up)
         self.dictation = Topic(*dictation_topic(key_words(DEFAULT_KEY)))
@@ -363,7 +365,17 @@ class HelpPage(Page):
         weren't registered (`DesktopApp.hotkeys_not_working`; polyglotic-hq
         398's preview build has none, and Help said "Ctrl+Alt+L": 400)."""
         self._hotkeys = frozenset(working)
-        for topic, (_, text) in zip(self._set_up, set_up(self._hotkeys), strict=True):
+        self._show_set_up()
+
+    def show_command(self, command: str) -> None:
+        """How a shortcut of the desktop's own starts this app - the
+        AppImage's path - for Linux's topic on them (polyglotic-hq 570)."""
+        self._command = command
+        self._show_set_up()
+
+    def _show_set_up(self) -> None:
+        topics = set_up(self._hotkeys, self._command)
+        for topic, (_, text) in zip(self._set_up, topics, strict=True):
             topic.text.setText(text)
         if self.isVisible():
             self.refresh()
@@ -710,10 +722,13 @@ def problem(
     return line, hotkeys_here(fix)  # "⌃⌘P" on a Mac (428)
 
 
-def set_up(hotkeys: Collection[str] = HOTKEYS) -> list[tuple[str, str]]:
+def set_up(
+    hotkeys: Collection[str] = HOTKEYS, command: str = "polyglotic"
+) -> list[tuple[str, str]]:
     """`hotkeys`: those that work here. A topic names its hotkeys only
     while they all work; else it says where else the commands are
-    (polyglotic-hq 400)."""
+    (polyglotic-hq 400). On Linux, a topic on the desktop's own shortcuts,
+    which start the app (`command`) with --lock and the like (570)."""
     topics = [
         (
             pc_or_mac(
@@ -848,7 +863,25 @@ def set_up(hotkeys: Collection[str] = HOTKEYS) -> list[tuple[str, str]]:
             ),
         ),
     ]
+    if on_linux():  # GNOME's Wayland session gives the app no hotkey (570)
+        topics.append(desktop_shortcuts(command))
     return [(title, hotkeys_here(text)) for title, text in topics]  # "⌃⌘L" (428)
+
+
+def desktop_shortcuts(command: str) -> tuple[str, str]:
+    """Linux's topic on shortcuts the desktop keeps (polyglotic-hq 546, 570):
+    where the app gets no hotkeys of its own (GNOME's Wayland session), a
+    custom shortcut in the desktop's keyboard settings runs the app again
+    with `--lock`, `--pause` or `--hide`, and the copy that runs does it."""
+    return (
+        _tr("Shortcuts of your desktop's own"),
+        _tr(
+            "Where Polyglotic's hotkeys don't work (GNOME on Wayland), add a custom "
+            "shortcut in your desktop's keyboard settings (GNOME: Settings > "
+            "Keyboard > Custom Shortcuts) with the command {command} --lock, or "
+            "--pause, or --hide. It does what the hotkey would."
+        ).format(command=command),
+    )
 
 
 def dictation_topic(key: str) -> tuple[str, str]:

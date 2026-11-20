@@ -2573,6 +2573,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">Mga shortcut ng sarili mong desktop</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Kung saan hindi gumagana ang mga hotkey ng Polyglotic (GNOME sa Wayland), magdagdag ng custom shortcut sa keyboard settings ng iyong desktop (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) na may command na {command} --lock, o --pause, o --hide. Ginagawa nito ang gagawin ng hotkey.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">Mag-dictate sa kahit anong program (preview)</translation>
     </message>

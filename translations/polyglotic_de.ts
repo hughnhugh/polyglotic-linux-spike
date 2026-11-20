@@ -2573,6 +2573,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Shortcuts of your desktop&apos;s own</source>
+        <translation type="unfinished">Tastenkürzel deiner Arbeitsumgebung</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
+        <source>Where Polyglotic&apos;s hotkeys don&apos;t work (GNOME on Wayland), add a custom shortcut in your desktop&apos;s keyboard settings (GNOME: Settings &gt; Keyboard &gt; Custom Shortcuts) with the command {command} --lock, or --pause, or --hide. It does what the hotkey would.</source>
+        <translation type="unfinished">Wo die Tastenkürzel von Polyglotic nicht gehen (GNOME unter Wayland), lege in den Tastatureinstellungen deiner Arbeitsumgebung ein eigenes Tastenkürzel an (GNOME: Einstellungen &gt; Tastatur &gt; Eigene Tastenkürzel) mit dem Befehl {command} --lock, --pause oder --hide. Es tut, was das Tastenkürzel täte.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/help_page.py"/>
         <source>Dictate into any program (preview)</source>
         <translation type="unfinished">In jedes Programm diktieren (Vorschau)</translation>
     </message>
