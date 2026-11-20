@@ -60,7 +60,10 @@ for p in libfuse2t64 libfuse2; do
 done
 check "libfuse2 absent" "! ldconfig -p | grep -q 'libfuse.so.2'"
 check "fusermount3 there (fuse3, on every desktop)" "command -v fusermount3 > /dev/null"
-sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 > /dev/null 2>&1
+# what a desktop has for any X11 program (the runner's image lacks libEGL)
+sudo apt-get update -qq > /dev/null 2>&1
+sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libxkbcommon0   libxkbcommon-x11-0 libfontconfig1 libdbus-1-3 libglib2.0-0 xvfb > /dev/null 2>&1
+check "libEGL there, as on a desktop" "ldconfig -p | grep -q 'libEGL.so.1'"
 
 pub=/tmp/polyglotic-feed # readable by every user (a home folder is 750)
 rm -rf "$pub" && mkdir -p "$pub"
@@ -93,7 +96,6 @@ timeout 300 "$app" --check-install "$out/after.json" --data "$data" > "$out/afte
 check "the next start is $new and passes its check" "grep -q '\"ok\": true' '$out/after.json' && grep -q '\"installed\": true' '$out/after.json'"
 
 say "the updated AppImage started as a learner starts it, on X11 (Xvfb)"
-sudo apt-get install -y -qq xvfb > /dev/null 2>&1
 Xvfb :93 -screen 0 1280x800x24 > /dev/null 2>&1 &
 xvfb=$!
 sleep 2
