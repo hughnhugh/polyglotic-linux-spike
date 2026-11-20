@@ -78,6 +78,31 @@ class Caption(QWidget):
         pos = event.globalPosition().toPoint()  # type: ignore[attr-defined]
         log("move", x=pos.x(), y=pos.y())
 
+    def input_spot(self) -> None:
+        """Locked but for one small spot: the X input shape cut to a 60x40
+        corner (top right) through libXext, so the rest passes clicks on and
+        the spot alone still takes the pointer - a stand-in for an unlock
+        spot that a Wayland window beneath can't hide."""
+        import ctypes
+
+        class XRectangle(ctypes.Structure):
+            _fields_ = [("x", ctypes.c_short), ("y", ctypes.c_short),
+                        ("width", ctypes.c_ushort), ("height", ctypes.c_ushort)]
+
+        x11 = ctypes.CDLL("libX11.so.6")
+        xext = ctypes.CDLL("libXext.so.6")
+        x11.XOpenDisplay.restype = ctypes.c_void_p
+        x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+        x11.XFlush.argtypes = [ctypes.c_void_p]
+        x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+        xext.XShapeCombineRectangles.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                                 ctypes.POINTER(XRectangle), ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        dpy = x11.XOpenDisplay(None)
+        rect = XRectangle(self.width() - 60, 0, 60, 40)
+        xext.XShapeCombineRectangles(dpy, int(self.winId()), 2, 0, 0, ctypes.byref(rect), 1, 0, 0)  # ShapeInput, ShapeSet
+        x11.XFlush(dpy)
+        x11.XCloseDisplay(dpy)
+
     def set_flag(self, flag: Qt.WindowType, on: bool) -> None:
         geo = self.geometry()
         self.setWindowFlag(flag, on)
@@ -122,6 +147,8 @@ def main() -> None:
             win.set_flag(Qt.WindowType.WindowTransparentForInput, True)
         elif line == "unlock":
             win.set_flag(Qt.WindowType.WindowTransparentForInput, False)
+        elif line == "spot":
+            win.input_spot()
         elif line == "bypass":
             win.set_flag(Qt.WindowType.X11BypassWindowManagerHint, True)
         elif line == "quit":

@@ -34,6 +34,7 @@ OUTSIDE = (100, 100)  # the full-screen window only: the focusing click
 BARE = (200, 300)  # the full-screen window only, away from the pointer
 OVER = [(600, 520), (700, 540)]  # pointer stops over the caption
 CLICK = (810, 600)
+SPOT = (810, 500)  # the caption's 60x40 input spot when "spot" is on (top right)
 
 
 class Proc:
@@ -142,6 +143,8 @@ def main() -> None:
         ("x11fs-above-unlocked-then-lock-again", "x11", ["--unlocked"], "lock", "caption"),
         ("x11fs-above-locked-then-unlock", "x11", [], "unlock", "caption"),
         ("wlfs-above-locked-then-unlock", "wayland", [], "unlock", "caption"),
+        ("wlfs-above-spot", "wayland", ["--unlocked"], "spot", "caption"),
+        ("x11fs-above-spot", "x11", ["--unlocked"], "spot", "caption"),
     ]
     results = []
     for name, fs_platform, opts, mid, first in scenarios:
@@ -193,11 +196,21 @@ def main() -> None:
             session.picture(shot)
             r["picture_3_after_raise"] = pixels(shot)
 
-            def pointer_round(tag: str) -> None:
+            def pointer_round(tag: str, spot: bool = False) -> None:
                 mc, mf = len(cap.events), len(fs.events)
                 for x, y in OVER:
                     session.move(x, y)
                     time.sleep(0.4)
+                if spot:
+                    ms = len(cap.events)
+                    session.move(*SPOT)
+                    time.sleep(0.5)
+                    on_spot = cap.since(ms, "cursor")
+                    r[f"pointer_{tag}_spot"] = {
+                        "caption_cursor_readings": [[e["x"], e["y"]] for e in on_spot],
+                        "caption_saw_pointer_on_spot": any(e["x"] == SPOT[0] and e["y"] == SPOT[1] for e in on_spot),
+                        "caption_enter": len(cap.since(ms, "enter")),
+                    }
                 session.click(*CLICK)
                 time.sleep(0.6)
                 cursor = cap.since(mc, "cursor")
@@ -212,14 +225,14 @@ def main() -> None:
                 }
 
             pointer_round("1")
-            if mid in ("lock", "unlock"):
+            if mid in ("lock", "unlock", "spot"):
                 cap.send(mid)
                 time.sleep(1.2)
                 shot = out / f"{name}-4-after-{mid}.png"
                 session.picture(shot)
                 r["picture_4_after_mid"] = pixels(shot)
                 r["x_stack_4"] = x_stacking()
-                pointer_round("2_after_mid")
+                pointer_round("2_after_mid", spot=(mid == "spot"))
             if stacking:
                 r["stack_end"] = stacking(f"{name}-end")
         except Exception as exc:  # noqa: BLE001 - a scenario's failure is a result too
@@ -248,6 +261,8 @@ def main() -> None:
             to2 = "caption" if p2.get("caption_presses") else ("full-screen" if p2.get("fullscreen_presses") else "nobody")
             to += f"; after {r['mid']}: {to2}"
             rounds += f"; after {r['mid']}: {p2.get('caption_saw_pointer_at_stops')}"
+        if "pointer_2_after_mid_spot" in r:
+            rounds += f"; on the spot: {r['pointer_2_after_mid_spot']['caption_saw_pointer_on_spot']}"
         if "picture_4_after_mid" in r:
             pb = {"caption_on_top": f"after {r['mid']}: {r['picture_4_after_mid'].get('caption_on_top')}"}
         summary.append(f"| {r['scenario']} | {p1.get('caption_on_top')} | {pb.get('caption_on_top', '-')} | "

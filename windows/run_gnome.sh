@@ -2,9 +2,25 @@
 # A headless GNOME window manager session (mutter, with XWayland and
 # PipeWire for its screen streams) on GitHub's Ubuntu 24.04 runner, then
 # 547's window scenarios inside it.   bash windows/run_gnome.sh OUT_DIR
+# With a Fedora tag (bash windows/run_gnome.sh OUT_DIR 45) it runs the same
+# in a Fedora container instead: the newest GNOME.
 set -euo pipefail
 [ "${GITHUB_ACTIONS:-}" = true ] || { echo "547's probes run only on GitHub's runners"; exit 1; }
 out="$(realpath -m "$1")"; mkdir -p "$out"
+if [ -n "${2:-}" ] && [ -z "${IN_CONTAINER_547:-}" ]; then
+  root="$(cd "$(dirname "$0")/.." && pwd)"
+  exec docker run --rm --cap-add SYS_NICE -e GITHUB_ACTIONS=true -e IN_CONTAINER_547=1 -v "$root:/w" -v "$out:/out" \
+    "fedora:$2" bash /w/windows/run_gnome.sh /out
+fi
+if [ -n "${IN_CONTAINER_547:-}" ] && [ -z "${IN_SESSION_547:-}" ]; then
+  dnf -y -q install --skip-unavailable mutter xorg-x11-server-Xwayland pipewire wireplumber pipewire-gstreamer \
+    gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good mesa-dri-drivers mesa-libEGL mesa-libGL \
+    libglvnd-egl dbus-daemon dbus-tools python3 xcb-util-cursor xcb-util-wm xcb-util-image xcb-util-keysyms \
+    xcb-util-renderutil libxkbcommon-x11 fontconfig dejavu-sans-fonts xwininfo xdpyinfo > /tmp/dnf.log 2>&1 \
+    || { tail -30 /tmp/dnf.log; exit 1; }
+  python3 -m venv /tmp/venv
+  /tmp/venv/bin/pip install -q PySide6-Essentials==6.12.0 jeepney==0.9.0
+fi
 if [ -z "${IN_SESSION_547:-}" ]; then
   XDG_RUNTIME_DIR="$(mktemp -d)"; chmod 700 "$XDG_RUNTIME_DIR"
   export XDG_RUNTIME_DIR GSETTINGS_BACKEND=memory IN_SESSION_547=1
@@ -15,7 +31,7 @@ py=/tmp/venv/bin/python
 {
   echo "os: $(. /etc/os-release; echo "$PRETTY_NAME")"
   echo "mutter: $(mutter --version 2>&1 | head -1)"
-  echo "xwayland: $(dpkg-query -W -f '${Version}' xwayland)"
+  echo "xwayland: $(dpkg-query -W -f '${Version}' xwayland 2>/dev/null || rpm -q xorg-x11-server-Xwayland)"
   echo "pipewire: $(pipewire --version | tail -1)"
   echo "pyside6: $($py -c 'import PySide6; print(PySide6.__version__)')"
 } | tee "$out/versions.txt"
