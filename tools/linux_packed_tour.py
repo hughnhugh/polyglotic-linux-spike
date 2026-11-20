@@ -791,6 +791,22 @@ def the_dialogs(
                 (out / f"{name}-press.txt").write_text(
                     pressed.stdout + pressed.stderr, encoding="utf-8"
                 )
+                # the dialog's own button reached? If not, the harness
+                # couldn't get to it here (GNOME Shell kept the transcript
+                # window narrow, and a menu opened over AT-SPI showed no
+                # items: run 44753352000) - said, not counted as the app's
+                last = buttons[-1].lstrip("?").removeprefix("menu:")
+                reached = any(
+                    json.loads(line).get("pressed") in (last, *last.split(" || "))
+                    for line in pressed.stdout.splitlines()
+                    if line.startswith("{")
+                )
+                if not reached and name == "save-transcript":
+                    RESULTS["facts"]["save_transcript_dialog"] = (
+                        "not opened here: the harness couldn't reach its button"
+                    )
+                    pictures.take(f"{name}-not-reached")
+                    continue
                 wanted = f'"{title}"'
                 asked = wait(lambda: wanted in said() and "SaveFile" in said(), 30)  # noqa: B023
                 time.sleep(3)  # drawn
