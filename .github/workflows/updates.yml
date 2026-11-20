@@ -34,6 +34,10 @@ jobs:
         if: always()
         continue-on-error: true
         run: docker run --rm -e GITHUB_ACTIONS -v "$PWD:/w" -w /w ubuntu:22.04 bash updates/vpk_in_2204.sh
+      - name: Ubuntu 26.04 (linkage only)
+        if: always()
+        continue-on-error: true
+        run: docker run --rm -e GITHUB_ACTIONS -v "$PWD:/w" -w /w ubuntu:26.04 bash updates/ubuntu2604.sh
       - name: Fedora (linkage only)
         if: always()
         continue-on-error: true
