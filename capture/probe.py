@@ -113,7 +113,18 @@ def levels(data: bytes | bytearray) -> dict:
     out = {k: level_db(seg, f) for k, f in FREQS.items()}
     out["rms"] = rms_db(seg)
     out["seconds"] = round(len(a) / RATE, 2)
+    out["peak_hz"] = peak_hz(seg[: RATE // 4])
     return out
+
+
+def peak_hz(seg) -> float | None:
+    """The strongest frequency, 50-4000 Hz in 10 Hz steps."""
+    best = (-300.0, None)
+    for f in range(50, 4001, 10):
+        v = level_db(seg, float(f))
+        if v is not None and v > best[0]:
+            best = (v, f)
+    return best[1]
 
 
 def windows(data: bytes | bytearray, mark: int, step: float = 0.5) -> list[dict]:
@@ -185,24 +196,27 @@ def main() -> int:
     log("pipe source module:", mic_mod)
     procs: list[subprocess.Popen] = []
     mic_name = "spike_mic"
-    if mic_mod == P.PA_INVALID_INDEX:
-        # fallback: a virtual source fed by a native player
-        mic_mod = pa.load_module("module-null-sink",
-                                 "media.class=Audio/Source/Virtual sink_name=spike_vmic channel_map=mono")
-        log("virtual source module (fallback):", mic_mod)
-        mic_name = "spike_vmic"
-        mic_wav = os.path.join(tmp, "mic700.wav")
-        write_wav(mic_wav, 700.0, 60)
-        procs.append(subprocess.Popen(["pw-play", "--target", mic_name, mic_wav]))
-    else:
-        writer = (
-            "import sys\nd=open(sys.argv[2],'rb').read()\nf=open(sys.argv[1],'wb',buffering=0)\n"
-            "while True:\n f.write(d)\n"
-        )
-        raw = os.path.join(tmp, "mic700.raw")
-        with open(raw, "wb") as fh:
-            fh.write(mic_raw)
+    writer = (
+        "import sys\nd=open(sys.argv[2],'rb').read()\nf=open(sys.argv[1],'wb',buffering=0)\n"
+        "while True:\n f.write(d)\n"
+    )
+    raw = os.path.join(tmp, "mic700.raw")
+    with open(raw, "wb") as fh:
+        fh.write(mic_raw)
+    if mic_mod != P.PA_INVALID_INDEX:
         procs.append(subprocess.Popen([sys.executable, "-I", "-c", writer, fifo, raw]))
+    # A second stand-in mic: a virtual source fed by a native player.
+    vmic_mod = pa.load_module("module-null-sink",
+                              "media.class=Audio/Source/Virtual sink_name=spike_vmic channel_map=mono "
+                              "sink_properties=device.description=SpikeVirtualMic")
+    log("virtual source module:", vmic_mod)
+    mic_wav = os.path.join(tmp, "mic700.wav")
+    write_wav(mic_wav, 700.0, 60)
+    vmic_feed = subprocess.Popen(["pw-play", "--target", "spike_vmic", mic_wav])
+    procs.append(vmic_feed)
+    log("virtual mic feeder: pw-play pid", vmic_feed.pid)
+    if mic_mod == P.PA_INVALID_INDEX:
+        mic_name = "spike_vmic"
     results["mic_route"] = mic_name
     time.sleep(0.5)
     log("set default sink:", pa.set_default_sink("spike_out"))
@@ -225,17 +239,28 @@ def main() -> int:
     procs += [pw_b]
     log("players: A paplay pid", pa_a.pid, "| B pw-play pid", pw_b.pid)
 
+    def joined() -> list[dict]:
+        """Sink inputs with their client's properties beside them."""
+        clients = {c["index"]: c["props"] for c in pa.clients()}
+        out = pa.sink_inputs()
+        for si in out:
+            si["client_props"] = clients.get(si["client"], {})
+        return out
+
+    def pid_of(si: dict) -> str | None:
+        return si["props"].get("application.process.id") or si["client_props"].get("application.process.id")
+
     def find(pid: int, timeout: float = 6.0) -> dict | None:
         end = time.monotonic() + timeout
         while time.monotonic() < end:
-            for si in pa.sink_inputs():
-                if si["props"].get("application.process.id") == str(pid):
+            for si in joined():
+                if pid_of(si) == str(pid):
                     return si
             pa.run_for(0.2)
         return None
 
     si_a, si_b = find(pa_a.pid), find(pw_b.pid)
-    all_si = pa.sink_inputs()
+    all_si = joined()
     results["sink_inputs"] = all_si
     results["clients"] = pa.clients()
     log("sink inputs:")
@@ -243,20 +268,24 @@ def main() -> int:
         p = si["props"]
         log(f"  #{si['index']} sink={si['sink']} client={si['client']} driver={si['driver']} name={si['name']!r}")
         for k in ("application.name", "application.process.binary", "application.process.id",
-                  "media.name", "node.name", "application.id", "client.api"):
-            log(f"      {k} = {p.get(k)!r}")
+                  "media.name", "node.name", "application.id", "client.api", "media.role"):
+            log(f"      {k} = {p.get(k)!r}   (client: {si['client_props'].get(k)!r})")
     log("clients:", json.dumps([{k: c[k] for k in ("index", "name", "driver")} for c in results["clients"]]))
-    check("app A (libpulse) listed by pid", si_a is not None,
-          f"application.name={si_a and si_a['props'].get('application.name')!r} "
-          f"binary={si_a and si_a['props'].get('application.process.binary')!r}")
-    check("app B (native PipeWire) listed by pid", si_b is not None,
-          f"application.name={si_b and si_b['props'].get('application.name')!r} "
-          f"binary={si_b and si_b['props'].get('application.process.binary')!r}")
+    def who(si):
+        if si is None:
+            return "not found"
+        p, c = si["props"], si["client_props"]
+        return (f"sink input: name={p.get('application.name')!r} binary={p.get('application.process.binary')!r} "
+                f"pid={p.get('application.process.id')!r}; client: name={c.get('application.name')!r} "
+                f"binary={c.get('application.process.binary')!r} pid={c.get('application.process.id')!r}")
+
+    check("app A (libpulse) found by pid", si_a is not None, who(si_a))
+    check("app B (native PipeWire) found by pid", si_b is not None, who(si_b))
     if si_a is None:
         # match by name as a fallback, to carry on
         si_a = next((x for x in all_si if x["props"].get("application.name") == "Tone A"), None)
-    if si_b is None:
-        si_b = next((x for x in all_si if x is not si_a), None)
+    if si_b is None and si_a is not None:
+        si_b = next((x for x in all_si if x["index"] != si_a["index"] and x["sink"] != P.PA_INVALID_INDEX), None)
     if si_a is None or si_b is None:
         log("no sink inputs to monitor: stop")
         return 1
@@ -273,6 +302,7 @@ def main() -> int:
         "default sink monitor": P.Recorder(pa, "rec mon", mon_name, dont_move=True),
         "mic by name": P.Recorder(pa, "rec mic", mic_name, dont_move=True),
         "default source": P.Recorder(pa, "rec default src", None),
+        "virtual mic by name": P.Recorder(pa, "rec vmic", "spike_vmic", dont_move=True),
     }
     pa.run_for(4.0)
     results["recordings"] = {}
@@ -301,7 +331,7 @@ def main() -> int:
     check("default sink monitor has both tones",
           lv("default sink monitor", "A 440") > -30 and lv("default sink monitor", "B 1000") > -30,
           f"440 at {lv('default sink monitor', 'A 440')}, 1000 at {lv('default sink monitor', 'B 1000')}, 700 at {lv('default sink monitor', 'mic 700')}")
-    for label in ("mic by name", "default source"):
+    for label in ("mic by name", "default source", "virtual mic by name"):
         check(f"{label}: the mic's tone only",
               lv(label, "mic 700") > -30 and lv(label, "A 440") < -60 and lv(label, "B 1000") < -60,
               f"700 at {lv(label, 'mic 700')}, 440 at {lv(label, 'A 440')}, 1000 at {lv(label, 'B 1000')}")
