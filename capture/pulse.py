@@ -18,8 +18,8 @@ PA_STREAM_ADJUST_LATENCY = 0x2000
 PA_INVALID_INDEX = 0xFFFFFFFF
 CTX_READY, CTX_FAILED, CTX_TERMINATED = 4, 5, 6
 ST_NAMES = {0: "UNCONNECTED", 1: "CREATING", 2: "READY", 3: "FAILED", 4: "TERMINATED"}
-SUB_SINK_INPUT, SUB_SOURCE_OUTPUT = 0x0004, 0x0008
-FACILITY = {0: "sink", 1: "source", 2: "sink-input", 3: "source-output", 4: "module", 5: "client"}
+SUB_SINK_INPUT, SUB_SOURCE_OUTPUT, SUB_SERVER = 0x0004, 0x0008, 0x0080
+FACILITY = {0: "sink", 1: "source", 2: "sink-input", 3: "source-output", 4: "module", 5: "client", 7: "server"}
 EVENT = {0x00: "new", 0x10: "change", 0x20: "remove"}
 
 
@@ -135,6 +135,7 @@ context_get_client_info_list = _f("pa_context_get_client_info_list", vp, vp, CLI
 context_load_module = _f("pa_context_load_module", vp, vp, C.c_char_p, C.c_char_p, INDEX_CB, vp)
 context_set_default_sink = _f("pa_context_set_default_sink", vp, vp, C.c_char_p, SUCCESS_CB, vp)
 context_set_default_source = _f("pa_context_set_default_source", vp, vp, C.c_char_p, SUCCESS_CB, vp)
+context_move_sink_input_by_name = _f("pa_context_move_sink_input_by_name", vp, vp, C.c_uint32, C.c_char_p, SUCCESS_CB, vp)
 context_set_subscribe_callback = _f("pa_context_set_subscribe_callback", None, vp, SUB_CB, vp)
 context_subscribe = _f("pa_context_subscribe", vp, vp, C.c_int, SUCCESS_CB, vp)
 operation_get_state = _f("pa_operation_get_state", C.c_int, vp)
@@ -303,6 +304,17 @@ class Pulse:
     def set_default_sink(self, name: str) -> bool:
         return self._set_default(context_set_default_sink, name)
 
+    def move_sink_input(self, idx: int, sink: str) -> bool:
+        out = [0]
+
+        def cb(_c, ok, _u):
+            out[0] = ok
+
+        f = SUCCESS_CB(cb)
+        self.keep.append(f)
+        self.wait_op(context_move_sink_input_by_name(self.ctx, idx, sink.encode(), f, None))
+        return bool(out[0])
+
     def set_default_source(self, name: str) -> bool:
         return self._set_default(context_set_default_source, name)
 
@@ -314,7 +326,7 @@ class Pulse:
         f = SUB_CB(cb)
         self.keep.append(f)
         context_set_subscribe_callback(self.ctx, f, None)
-        self.wait_op(context_subscribe(self.ctx, SUB_SINK_INPUT | SUB_SOURCE_OUTPUT, SUCCESS_CB(), None))
+        self.wait_op(context_subscribe(self.ctx, SUB_SINK_INPUT | SUB_SOURCE_OUTPUT | SUB_SERVER, SUCCESS_CB(), None))
 
 
 class Recorder:

@@ -188,6 +188,10 @@ def main() -> int:
                              "sink_name=spike_out rate=48000 channels=2 "
                              "sink_properties=device.description=SpikeOut")
     log("null sink module:", out_mod)
+    out2_mod = pa.load_module("module-null-sink",
+                              "sink_name=spike_out2 rate=48000 channels=2 "
+                              "sink_properties=device.description=SpikeHeadset")
+    log("second output (a headset) module:", out2_mod)
     fifo = os.path.join(tmp, "mic.fifo")
     os.mkfifo(fifo)
     pipe_mod = pa.load_module("module-pipe-source",
@@ -381,6 +385,39 @@ def main() -> int:
         for w in res["windows"]:
             log("    ", json.dumps(w))
         rec.close()
+    # 3. The app's stream moved to another output (a headset plugged in),
+    #    while its monitor (DONT_MOVE) records; then the default output
+    #    changed: is it announced?
+    if pa_a.poll() is not None:
+        pa_a = start_a()
+        si_a = find(pa_a.pid)
+    if si_a is not None:
+        rec = P.Recorder(pa, "rec A follow", mon_name, monitor_of=si_a["index"], dont_move=True)
+        pa.run_for(2.0)
+        mark = len(rec.data)
+        rec.events.append((round(pa.now(), 3), f"--- move sink input #{si_a['index']} to spike_out2"))
+        moved = pa.move_sink_input(si_a["index"], "spike_out2")
+        pa.run_for(3.0)
+        after = [w for w in windows(rec.data, mark) if w["t"] >= 0.5]
+        ok = bool(after) and all(w["A 440"] > -30 for w in after)
+        res = {"move_ok": moved, "state_after": rec.state(), "device_after": rec.device(),
+               "seconds_after_move": round((len(rec.data) - mark) / 2 / RATE, 2),
+               "events": rec.events, "windows": windows(rec.data, mark)}
+        results["app_moved_to_another_output"] = res
+        check("A's monitor follows A to another output", ok and rec.state() == "READY",
+              f"move ok={moved}, state after={res['state_after']}, device after={res['device_after']}, "
+              f"audio after={res['seconds_after_move']} s, 440 Hz after: {[w['A 440'] for w in after]}")
+        for e in rec.events:
+            log("    ", e)
+        rec.close()
+        n0 = len(pa.events)
+        log("set default sink to spike_out2:", pa.set_default_sink("spike_out2"))
+        pa.run_for(1.0)
+        server_events = [e for e in pa.events[n0:] if e[1].startswith("server")]
+        info3 = pa.server_info()
+        check("a default-output change is announced", bool(server_events) and info3.get("default_sink_name") == "spike_out2",
+              f"server events {server_events}; default sink now {info3.get('default_sink_name')}")
+
     results["subscription_events"] = pa.events
     log("subscription events:", pa.events)
 
