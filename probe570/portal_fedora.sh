@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 570: GNOME Shell 51, headless, in fedora:45 - the GlobalShortcuts portal
-# as an app that isn't a Flatpak reaches it (probe570/portal.py). Run 3: GLib finds an app only if its Exec is there.
+# as an app that isn't a Flatpak reaches it (probe570/portal.py). Run 4: GLib finds an app only if its Exec is there; the portals' own logs.
 set -uo pipefail
 out="$(realpath -m "${1:?OUT}")"
 if [ -z "${IN_FEDORA_570:-}" ]; then
@@ -35,6 +35,11 @@ dbus-run-session -- bash -c '
     > /out/gnome-shell.log 2>&1 & shell=$!
   for _ in $(seq 60); do [ -S "$XDG_RUNTIME_DIR/wayland-570" ] && break; sleep 0.5; done
   sleep 6
+  # the portals started by hand, saying what they do (run 4)
+  G_MESSAGES_DEBUG=all /usr/libexec/xdg-desktop-portal-gnome --verbose > /out/xdp-gnome.log 2>&1 &
+  sleep 2
+  G_MESSAGES_DEBUG=all /usr/libexec/xdg-desktop-portal --verbose > /out/xdp.log 2>&1 &
+  sleep 3
   export POLYGLOTIC_DESK_PICTURES=/out/desk; mkdir -p /out/desk
   uv run --no-sync python -m tools.linux_desktop_pictures serve /out/desk gnome > /out/pictures.log 2>&1 &
   timeout 180 uv run --no-sync python probe570/portal.py /out/portal.json > /out/portal.out 2>&1
