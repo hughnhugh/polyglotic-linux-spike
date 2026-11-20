@@ -8,7 +8,7 @@ if [ -z "${IN_CONTAINER_547:-}" ]; then
   out="$(realpath -m "$1")"; mkdir -p "$out"
   tag="${2:-latest}"
   root="$(cd "$(dirname "$0")/.." && pwd)"
-  exec docker run --rm -e GITHUB_ACTIONS=true -e IN_CONTAINER_547=1 -v "$root:/w" -v "$out:/out" \
+  exec docker run --rm --cap-add SYS_NICE -e GITHUB_ACTIONS=true -e IN_CONTAINER_547=1 -v "$root:/w" -v "$out:/out" \
     "fedora:$tag" bash /w/windows/run_kde.sh /out
 fi
 if [ -z "${IN_SESSION_547:-}" ]; then

@@ -30,7 +30,8 @@ W, H = 1280, 720
 CAPTION = (440, 480, 400, 160)  # x, y, w, h
 SOLID = (810, 500)  # the caption's solid half, away from its text
 HALF = (470, 500)  # the caption's 50 % half
-OUTSIDE = (100, 100)  # the full-screen window only
+OUTSIDE = (100, 100)  # the full-screen window only: the focusing click
+BARE = (200, 300)  # the full-screen window only, away from the pointer
 OVER = [(600, 520), (700, 540)]  # pointer stops over the caption
 CLICK = (810, 600)
 
@@ -91,11 +92,20 @@ def pixels(path: Path) -> dict:
         c = img.pixelColor(int(p[0] * sx), int(p[1] * sy))
         return [c.red(), c.green(), c.blue()]
 
-    solid, half, outside = px(SOLID), px(HALF), px(OUTSIDE)
+    solid, half, outside = px(SOLID), px(HALF), px(BARE)
     on_top = solid[1] > 200 and solid[0] < 80 and solid[2] < 80
     translucent = on_top and 80 < half[1] < 200 and max(half[0], half[2]) > 80
     return {"size": [img.width(), img.height()], "solid": solid, "half": half, "outside": outside,
             "caption_on_top": on_top, "translucent": translucent}
+
+
+def x_stacking() -> list[str]:
+    """The X server's own order of its top-level windows, top first: X11 windows only."""
+    try:
+        text = subprocess.run(["xwininfo", "-root", "-children"], capture_output=True, text=True, timeout=5).stdout
+    except Exception as exc:  # noqa: BLE001
+        return [repr(exc)]
+    return [ln.strip() for ln in text.splitlines() if "547" in ln]
 
 
 def main() -> None:
@@ -128,6 +138,10 @@ def main() -> None:
         ("x11fs-above-unlocked-then-lock", "x11", ["--unlocked"], "lock", "caption"),
         ("wlfs-above-unlocked-then-lock", "wayland", ["--unlocked"], "lock", "caption"),
         ("wlfs-bypass-unlocked-then-lock", "wayland", ["--bypass", "--unlocked"], "lock", "caption"),
+        ("x11fs-bypass-unlocked-then-lock", "x11", ["--bypass", "--unlocked"], "lock", "caption"),
+        ("x11fs-above-unlocked-then-lock-again", "x11", ["--unlocked"], "lock", "caption"),
+        ("x11fs-above-locked-then-unlock", "x11", [], "unlock", "caption"),
+        ("wlfs-above-locked-then-unlock", "wayland", [], "unlock", "caption"),
     ]
     results = []
     for name, fs_platform, opts, mid, first in scenarios:
@@ -162,6 +176,7 @@ def main() -> None:
             shot = out / f"{name}-1.png"
             session.picture(shot)
             r["picture_1"] = pixels(shot)
+            r["x_stack_1"] = x_stacking()
             if stacking:
                 r["stack_1"] = stacking(f"{name}-1")
             if mid in ("bypass",):
@@ -197,13 +212,14 @@ def main() -> None:
                 }
 
             pointer_round("1")
-            if mid == "lock":
-                cap.send("lock")
+            if mid in ("lock", "unlock"):
+                cap.send(mid)
                 time.sleep(1.2)
-                shot = out / f"{name}-4-after-lock.png"
+                shot = out / f"{name}-4-after-{mid}.png"
                 session.picture(shot)
-                r["picture_4_after_lock"] = pixels(shot)
-                pointer_round("2_after_lock")
+                r["picture_4_after_mid"] = pixels(shot)
+                r["x_stack_4"] = x_stacking()
+                pointer_round("2_after_mid")
             if stacking:
                 r["stack_end"] = stacking(f"{name}-end")
         except Exception as exc:  # noqa: BLE001 - a scenario's failure is a result too
@@ -216,7 +232,7 @@ def main() -> None:
         print(json.dumps(r), flush=True)
         results.append(r)
     (out / "results.json").write_text(json.dumps(results, indent=1))
-    summary = ["| scenario | on top (1st) | after bypass | after raise | translucent | caption saw pointer | click went to |", "|---|---|---|---|---|---|---|"]
+    summary = ["| scenario | on top (1st) | after bypass / lock / unlock | after raise | translucent | caption saw pointer | click went to |", "|---|---|---|---|---|---|---|"]
     for r in results:
         if "error" in r and "picture_1" not in r:
             summary.append(f"| {r['scenario']} | error: {r['error'][:80]} | | | | | |")
@@ -227,11 +243,13 @@ def main() -> None:
         pt = r.get("pointer_1", {})
         to = "caption" if pt.get("caption_presses") else ("full-screen" if pt.get("fullscreen_presses") else "nobody")
         rounds = f"{pt.get('caption_saw_pointer_at_stops')}"
-        if "pointer_2_after_lock" in r:
-            p2 = r["pointer_2_after_lock"]
+        if "pointer_2_after_mid" in r:
+            p2 = r["pointer_2_after_mid"]
             to2 = "caption" if p2.get("caption_presses") else ("full-screen" if p2.get("fullscreen_presses") else "nobody")
-            to += f"; locked: {to2}"
-            rounds += f"; locked: {p2.get('caption_saw_pointer_at_stops')}"
+            to += f"; after {r['mid']}: {to2}"
+            rounds += f"; after {r['mid']}: {p2.get('caption_saw_pointer_at_stops')}"
+        if "picture_4_after_mid" in r:
+            pb = {"caption_on_top": f"after {r['mid']}: {r['picture_4_after_mid'].get('caption_on_top')}"}
         summary.append(f"| {r['scenario']} | {p1.get('caption_on_top')} | {pb.get('caption_on_top', '-')} | "
                        f"{pr.get('caption_on_top')} | {p1.get('translucent')} | {rounds} | {to} |")
     text = f"### {de}\n\n" + "\n".join(summary) + "\n"
