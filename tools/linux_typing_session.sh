@@ -41,13 +41,19 @@ if [ -z "${IN_SESSION_571:-}" ]; then
   dbus-uuidgen --ensure=/etc/machine-id
   dpkg-query -W -f='${Package} ${Version}\n' ibus ibus-libpinyin ibus-anthy ibus-mozc \
     fcitx5 fcitx5-chinese-addons fcitx5-mozc xdotool | tee "$out/versions.txt"
-  export UV_PROJECT_ENVIRONMENT=/tmp/venv
+  export UV_PROJECT_ENVIRONMENT=/tmp/venv UV_PYTHON_INSTALL_DIR=/opt/uv-python
   uv sync --locked > "$out/uv-sync.log" 2>&1 || { tail -20 "$out/uv-sync.log"; exit 1; }
+  # each session as a learner, not root: Mozc's server won't run as root
+  useradd -m learner
+  mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
+  chmod 777 "$out"
   code=0
-  for im in ibus fcitx5; do
-    IN_SESSION_571="$im" dbus-run-session -- bash /w/tools/linux_typing_session.sh "$out/$im-session" \
-      || code=1
+  for im in ibus fcitx5 fcitx5-kubuntu; do
+    # Kubuntu has no IBus installed: the container's own copy hidden
+    [ "$im" = fcitx5-kubuntu ] && mv /usr/bin/ibus-daemon /usr/bin/ibus-daemon.571
+    runuser -u learner -- env HOME=/home/learner IN_SESSION_571="$im"       dbus-run-session -- bash /w/tools/linux_typing_session.sh "$out/$im-session" || code=1
   done
+  mv /usr/bin/ibus-daemon.571 /usr/bin/ibus-daemon
   exit "$code"
 fi
 
@@ -61,7 +67,7 @@ export DISPLAY=:97
 for _ in $(seq 50); do [ -S /tmp/.X11-unix/X97 ] && break; sleep 0.1; done
 
 code=0
-check=(uv run --no-sync python -m tools.linux_typing_check)
+check=(/tmp/venv/bin/python -m tools.linux_typing_check)
 case "$im" in
 ibus)
   # Mozc on in Hiragana from the start, as a learner who types Japanese
@@ -93,7 +99,7 @@ MOZC
   env -u QT_IM_MODULE -u QT_IM_MODULES "${check[@]}" "$out/ibus-unnamed" ibus-unnamed || true
   env -u QT_IM_MODULE -u QT_IM_MODULES "${check[@]}" "$out/ibus-unnamed-app" ibus-unnamed-app --app-env || code=1
   ;;
-fcitx5)
+fcitx5|fcitx5-kubuntu)
   mkdir -p "$HOME/.config/fcitx5"
   cat > "$HOME/.config/fcitx5/profile" <<'PROFILE'
 [Groups/0]
@@ -121,20 +127,22 @@ PROFILE
   {
     echo "== fcitx5 $(fcitx5 --version 2>&1)"
     echo "== the ibus address file(s) Fcitx5 wrote:"; ls -la "$HOME/.config/ibus/bus" 2>&1
-    echo "== on the bus:"; dbus-send --session --print-reply --dest=org.freedesktop.DBus       /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 | grep -E -o '"[^"]*(IBus|Fcitx|fcitx)[^"]*"'
+    echo "== on the bus:"
+    dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus       org.freedesktop.DBus.ListNames 2>&1 | grep -E -o '"[^"]*(IBus|Fcitx|fcitx)[^"]*"'
   } > "$out/engines.txt" 2>&1
-  QT_IM_MODULE=ibus "${check[@]}" "$out/fcitx5" fcitx5 || code=1
-  # Kubuntu's own setting asks Qt for Fcitx's plugin, which the app doesn't
-  # carry: what Qt does alone is a finding; IBus's named after it types
-  QT_IM_MODULE=fcitx "${check[@]}" "$out/fcitx5-own-plugin" fcitx5-own-plugin || true
-  QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" "${check[@]}" "$out/fcitx5-fallback" fcitx5-fallback     || true
-  # Kubuntu has no IBus installed: hidden here (the container's own copy),
-  # Qt's IBus plugin gives up unless it's asked to use the portal's IBus,
-  # which Fcitx5 also answers; the app's own environment must type
-  mv /usr/bin/ibus-daemon /usr/bin/ibus-daemon.571
-  QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" "${check[@]}" "$out/fcitx5-no-ibus" fcitx5-no-ibus     || true
-  QT_IM_MODULE=fcitx "${check[@]}" "$out/fcitx5-kubuntu-app" fcitx5-kubuntu-app --app-env || code=1
-  mv /usr/bin/ibus-daemon.571 /usr/bin/ibus-daemon
+  if [ "$im" = fcitx5 ]; then
+    QT_IM_MODULE=ibus "${check[@]}" "$out/fcitx5" fcitx5 || code=1
+    # Kubuntu's own setting asks Qt for Fcitx's plugin, which the app
+    # doesn't carry: what Qt does alone is a finding; IBus's named after it
+    QT_IM_MODULE=fcitx "${check[@]}" "$out/fcitx5-own-plugin" fcitx5-own-plugin || true
+    QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" "${check[@]}" "$out/fcitx5-fallback"       fcitx5-fallback || true
+  else
+    # no IBus installed: Qt's IBus plugin gives up unless it's asked to use
+    # the portal's IBus, which Fcitx5 also answers; the app's own
+    # environment must type
+    QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" "${check[@]}" "$out/fcitx5-no-ibus"       fcitx5-no-ibus || true
+    QT_IM_MODULE=fcitx "${check[@]}" "$out/fcitx5-kubuntu-app" fcitx5-kubuntu-app --app-env       || code=1
+  fi
   ;;
 *) echo "ibus or fcitx5"; code=2 ;;
 esac
