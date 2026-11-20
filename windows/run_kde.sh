@@ -8,7 +8,12 @@ if [ -z "${IN_CONTAINER_547:-}" ]; then
   out="$(realpath -m "$1")"; mkdir -p "$out"
   tag="${2:-latest}"
   root="$(cd "$(dirname "$0")/.." && pwd)"
-  exec docker run --rm --cap-add SYS_NICE -e GITHUB_ACTIONS=true -e IN_CONTAINER_547=1 -v "$root:/w" -v "$out:/out" \
+  # KWin 6.8 has no QPainter mode and quits without a render device (547's
+  # kde-debug runs): the runner's kernel has virtual DRM devices, vgem gives
+  # a render node for Mesa's software OpenGL (llvmpipe).
+  sudo modprobe vgem && sudo modprobe vkms
+  ls /dev/dri
+  exec docker run --rm --cap-add SYS_NICE --device /dev/dri -e GITHUB_ACTIONS=true -e IN_CONTAINER_547=1 -v "$root:/w" -v "$out:/out" \
     "fedora:$tag" bash /w/windows/run_kde.sh /out
 fi
 if [ -z "${IN_SESSION_547:-}" ]; then
