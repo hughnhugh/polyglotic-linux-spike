@@ -45,6 +45,11 @@ env:
   RUN_SHARD: |
     import base64, json, os, shutil, subprocess, sys, time, zlib
     from xml.sax.saxutils import escape, quoteattr
+    # UTF-8 out whatever the machine's own code page (572, 2026-11-20: on
+    # Windows, cp1252, a language's output killed this script before its
+    # report was written, and the lab's language runs reported nothing)
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
     plan = json.loads(zlib.decompress(base64.b64decode(os.environ["PLAN"])))
     shard = int(os.environ["SHARD"])
     os.makedirs("out", exist_ok=True)
@@ -78,22 +83,26 @@ env:
     began = time.time()
     def one(item):
         start = time.time()
+        # a Python child writes UTF-8 too (its stdio only: open()'s default stays the machine's)
         done = subprocess.run(plan["each"].replace("{}", item), shell=True, capture_output=True,
-                              text=True, encoding="utf-8", errors="replace")
+                              text=True, encoding="utf-8", errors="replace",
+                              env={**os.environ, "PYTHONIOENCODING": "utf-8"})
         return item, done.returncode, time.time() - start, (done.stdout + done.stderr)[-20000:]
-    cases, failed = [], 0
+    cases, failed, said_all = [], 0, []
     with ThreadPoolExecutor(max(1, int(plan.get("processes", 1)))) as pool:
         for item, code, took, said in pool.map(one, plan["shards"][shard]):
-            print(f"::group::{item}: exit {code} in {took:.0f} s\n{said}\n::endgroup::", flush=True)
+            said_all.append(f"::group::{item}: exit {code} in {took:.0f} s\n{said}\n::endgroup::")
             failure = ""
             if code:
                 failed += 1
                 failure = f"<failure message={quoteattr(f'exit {code}')}>{escape(said)}</failure>"
             cases.append(f"<testcase classname=\"each\" name={quoteattr(item)} file=\"each\" "
                           f"time=\"{took:.2f}\">{failure}</testcase>")
+    # the report first: what's printed after it can't lose it
     with open(f"out/junit-{shard}.xml", "w", encoding="utf-8") as junit:
         junit.write(f"<testsuites><testsuite name=\"each\" time=\"{time.time() - began:.2f}\">"
                     + "".join(cases) + "</testsuite></testsuites>")
+    print("\n".join(said_all), flush=True)
     sys.exit(1 if failed else 0)
 
 jobs:
