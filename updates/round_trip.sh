@@ -83,50 +83,82 @@ for f in $(find "$HOME" /tmp /var/tmp -xdev -newer "$stamp" -type f -iname '*vel
 done
 
 # Where learners put an AppImage, and what the update does there. These are
-# observations, not pass/fail: the package is already downloaded by now.
-restarted_from() {
-  grep '"version": "1.0.1", "event": "start"' "$TOY547_MARKER" | grep -q "\"appimage\": \"$1\""
+# observations, not pass/fail.
+pk=/var/tmp/velopack/Toy547/packages
+echo "== Velopack's shared folders: $(stat -c '%n %U %a' /var/tmp/velopack /var/tmp/velopack/Toy547 "$pk" 2>&1 | tr '\n' ';')"
+restarted_from() {  # marker, path
+  grep '"version": "1.0.1", "event": "start"' "$1" | grep -q "\"appimage\": \"$2\""
 }
-scenario() {
-  local name="$1" path="$2" lines
-  echo "== scenario: $name ($path)"
+scenario() {  # name, path, args, [user]
+  local name="$1" path="$2" args="$3" user="${4:-}" lines marker="$TOY547_MARKER"
+  echo "== scenario: $name ($path${user:+, as $user})"
   lines="$(wc -l < /tmp/velopack_Toy547.log 2>/dev/null || echo 0)"
-  timeout 60 "$path" --update "$PWD/feed"; echo "exit $?"
-  for _ in $(seq 1 45); do restarted_from "$path" && break; sleep 1; done
-  if restarted_from "$path"; then echo "RESULT $name: 1.0.1 restarted from $path"; else echo "RESULT $name: no 1.0.1 restart from $path"; fi
+  if [ -n "$user" ]; then
+    marker="/tmp/$user/marker.jsonl"
+    # shellcheck disable=SC2086
+    sudo -n -u "$user" -H env TOY547_MARKER="$marker" QT_QPA_PLATFORM=offscreen timeout 60 "$path" $args < /dev/null; echo "exit $?"
+  else
+    # shellcheck disable=SC2086
+    timeout 60 "$path" $args; echo "exit $?"
+  fi
+  for _ in $(seq 1 30); do restarted_from "$marker" "$path" && break; sleep 1; done
+  if restarted_from "$marker" "$path"; then echo "RESULT $name: 1.0.1 restarted from $path"; else echo "RESULT $name: no 1.0.1 restart from $path"; fi
+  sudo cat "$marker" 2>/dev/null | grep -v -E '"event": "(start|window)"' | tail -4 | cut -c1-400
   ls -la "$(dirname "$path")"
   echo "-- Velopack's log for it"
   tail -n +"$((lines + 1))" /tmp/velopack_Toy547.log 2>/dev/null | sed -E 's/^\[update:[0-9]+\] //' \
-    | grep -i -E 'WARN|ERROR|Moving|moved|applied|pkexec|sudo|permission|denied|device|copy|elevat' | head -20
-  for p in $(pgrep -f UpdateNix || true); do echo "UpdateNix still running: $p (stopped)"; kill "$p" 2>/dev/null || true; done
+    | grep -i -E 'Exe Args|WARN|ERROR|Moving|moved|applied|pkexec|sudo|permission|denied|device|copy|elevat' | head -20
+  for p in $(pgrep -f UpdateNix || true); do echo "UpdateNix still running: $p (stopped)"; sudo kill "$p" 2>/dev/null || true; done
 }
 src0="$(ls installers/*-1.0.0.AppImage | head -1)"
 
+# 1. A downloaded package is applied at the next start of any copy
+mkdir -p "$HOME/Elsewhere"
+cp "$src0" "$HOME/Elsewhere/Toy547.AppImage" && chmod +x "$HOME/Elsewhere/Toy547.AppImage"
+echo "packages already downloaded: $(ls "$pk" | tr '\n' ' ')"
+scenario "another 1.0.0 copy, started plainly, with 1.0.1 already downloaded" "$HOME/Elsewhere/Toy547.AppImage" ""
+
+# 2-3. The update's own path, the packages cleared first
 mkdir -p "$HOME/Downloads"
 dl="$HOME/Downloads/Toy547-1.0.0-linux-x64-alpha.AppImage"
 cp "$src0" "$dl" && chmod +x "$dl"
-scenario "a versioned name in Downloads" "$dl"
+rm -f "$pk"/*.nupkg
+scenario "a versioned name in Downloads" "$dl" "--update $PWD/feed"
 
 mkdir -p "$HOME/OtherFs"
 sudo mount -t tmpfs -o "size=300m,uid=$(id -u),gid=$(id -g),mode=755" tmpfs "$HOME/OtherFs"
 echo "packages on: $(df --output=target /var/tmp | tail -1), the AppImage on: $(df --output=target "$HOME/OtherFs" | tail -1)"
 other="$HOME/OtherFs/Toy547.AppImage"
 cp "$src0" "$other" && chmod +x "$other"
-scenario "another filesystem than /var/tmp" "$other"
+rm -f "$pk"/*.nupkg
+scenario "another filesystem than /var/tmp" "$other" "--update $PWD/feed"
 
-sudo mkdir -p /opt/toy547
-sudo cp "$src0" /opt/toy547/Toy547.AppImage && sudo chmod 755 /opt/toy547/Toy547.AppImage
-echo "pkexec: $(command -v pkexec || echo none), sudo: $(command -v sudo)"
-scenario "a folder the user can't write" /opt/toy547/Toy547.AppImage
+# 4-5. A second learner on the same PC, with no sudo rights
+sudo useradd -m learner2
+sudo -u learner2 mkdir -p /tmp/learner2
+echo "learner2's sudo: $(sudo -n -u learner2 sudo -n true 2>&1 | head -1)"
+sudo cp "$src0" /home/learner2/Toy547.AppImage && sudo chown learner2: /home/learner2/Toy547.AppImage && sudo chmod 755 /home/learner2/Toy547.AppImage
+rm -f "$pk"/*.nupkg
+echo "the shared folders now: $(stat -c '%n %U %a' /var/tmp/velopack /var/tmp/velopack/Toy547 "$pk" 2>&1 | tr '\n' ';')"
+scenario "a second user, their own copy (Velopack's folders are the first user's)" /home/learner2/Toy547.AppImage "--update $PWD/feed" learner2
 
-echo "== where the 'staging userId' message comes from (strace, extract-and-run)"
+sudo mkdir -p /srv/toy547
+sudo setfacl -b /srv/toy547 2> /dev/null || true
+sudo chown root:root /srv/toy547 && sudo chmod 755 /srv/toy547
+sudo cp "$src0" /srv/toy547/Toy547.AppImage && sudo chmod 755 /srv/toy547/Toy547.AppImage
+echo "can learner2 write /srv/toy547? $(sudo -u learner2 test -w /srv/toy547 && echo yes || echo no); pkexec: $(command -v pkexec || echo none)"
+sudo rm -rf /var/tmp/velopack
+scenario "a folder the user can't write, no sudo rights" /srv/toy547/Toy547.AppImage "--update $PWD/feed" learner2
+
+echo "== where the 'staging userId' message comes from (strace, extract-and-run, --check only)"
 sudo apt-get install -y -qq strace > /dev/null 2>&1
+sudo rm -rf /var/tmp/velopack
 mkdir -p /tmp/st && cp "$src0" /tmp/st/Toy547.AppImage && chmod +x /tmp/st/Toy547.AppImage
-APPIMAGE_EXTRACT_AND_RUN=1 strace -f -e trace=%file -o /tmp/st/trace.txt /tmp/st/Toy547.AppImage --check "$PWD/feed"
-grep -i -E 'velopack|beta|stag|userid' /tmp/st/trace.txt | grep -E '= -1' | cut -c1-200 | sort -u | head -15
-grep -i -E 'velopack|beta|stag|userid' /tmp/st/trace.txt | grep -v -E '= -1' | grep -i -E 'O_CREAT|mkdir' | cut -c1-200 | sort -u | head -10
+APPIMAGE_EXTRACT_AND_RUN=1 strace -f -e trace=%file -o /tmp/st/trace.txt /tmp/st/Toy547.AppImage --check "$PWD/feed" 2>&1 | grep -v '^toy547 {'
+grep -i -E 'beta|stag|userid|/var/tmp/velopack|\.local/share|/velopack' /tmp/st/trace.txt | grep -v -E '_internal|\.so' | cut -c1-200 | sort -u | head -20
 
 cp "$TOY547_MARKER" out/marker.jsonl
+sudo cat /tmp/learner2/marker.jsonl > out/marker_learner2.jsonl 2>/dev/null || true
 cp /tmp/velopack_Toy547.log out/velopack_Toy547.log 2>/dev/null || true
 kill "$xvfb" 2>/dev/null || true
 exit $fail
