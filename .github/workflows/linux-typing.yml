@@ -1,0 +1,210 @@
+# Linux's fonts and typing Chinese and Japanese, proved on GitHub's own
+# Ubuntu runners (polyglotic-hq 546 section 1.7, 571): only on the public
+# Linux copy (a snapshot of a branch pushed to its `linux-copy-571-typing`
+# branch by 571's mirror571.sh), where GitHub's runners are free - never in
+# this private repo, whose runners are the PC's: every job checks the repo
+# is public. Nothing here reaches the live server: no invite, no token.
+#
+# - typing: the app's Words page from source on X11, Chinese and Japanese
+#   typed into its search box through IBus (pinyin; Anthy, else Mozc), then
+#   Chinese through Fcitx5 - the app asking for IBus, which Fcitx5's IBus
+#   frontend answers, and asking for Fcitx's own plugin as Kubuntu does
+#   (tools/linux_typing_session.sh, tools/linux_typing_check.py);
+# - fonts: the interface's words in every language, in the fonts Ubuntu
+#   24.04's desktop and Fedora 45 install, and with only DejaVu (`bare`),
+#   and what carrying Noto's CJK faces would cost (tools/linux_fonts_survey.sh);
+# - packed: the AppImage built as linux-package.yml builds it, its input
+#   method plugins checked by the build (tools/package/build.py's LINUX
+#   parts), and the packed app started on X11 with IBus, Qt saying which
+#   plugins it loaded.
+# What each found is kept a day as an artifact (reports and pictures only).
+name: Linux typing
+
+on:
+  push:
+    branches: ["linux-copy-571-typing"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-typing-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.12.15"
+  UV_PYTHON_PREFERENCE: only-managed
+
+jobs:
+  typing:
+    name: Typing Chinese and Japanese (IBus, Fcitx5)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OUT: ${{ github.workspace }}/out
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: X, the input methods and Qt's libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            xvfb xdotool dbus-bin dbus-daemon dbus-x11 \
+            ibus ibus-libpinyin ibus-anthy ibus-mozc mozc-server \
+            fcitx5 fcitx5-chinese-addons fcitx5-modules \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
+            libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-noto-core fonts-noto-cjk
+          mkdir -p "$OUT"
+          dpkg-query -W -f='${Package} ${Version}\n' ibus ibus-libpinyin ibus-anthy ibus-mozc \
+            fcitx5 fcitx5-chinese-addons xdotool | tee "$OUT/versions.txt"
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+          enable-cache: true
+
+      - name: Install (fails if uv.lock is out of date)
+        run: uv sync --locked
+
+      - name: Typed through IBus
+        if: ${{ !cancelled() }}
+        run: dbus-run-session -- bash tools/linux_typing_session.sh ibus "$OUT/ibus-session"
+
+      - name: Typed through Fcitx5
+        if: ${{ !cancelled() }}
+        run: dbus-run-session -- bash tools/linux_typing_session.sh fcitx5 "$OUT/fcitx5-session"
+
+      - name: What the typing found
+        if: ${{ always() }}
+        run: |
+          for found in "$OUT"/*-session/*/checks.json; do
+            echo "### $found" | tee -a "$GITHUB_STEP_SUMMARY"
+            python3 -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'], ensure_ascii=False)[:1500])" "$found" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          cat "$OUT"/*-session/engines.txt 2>/dev/null || true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          name: linux-typing-${{ github.run_id }}
+          path: |
+            ${{ env.OUT }}/versions.txt
+            ${{ env.OUT }}/*-session/*.txt
+            ${{ env.OUT }}/*-session/*.log
+            ${{ env.OUT }}/*-session/*/checks.json
+            ${{ env.OUT }}/*-session/*/*.png
+          retention-days: 1
+
+  fonts:
+    name: Fonts on ${{ matrix.which }}
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - which: ubuntu
+            image: ubuntu:24.04
+          - which: fedora
+            image: fedora:45
+          - which: bare
+            image: ubuntu:24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+
+      # a finding where the interface draws a box is said, not this run's
+      # failure: `bare` has no Chinese face on purpose
+      - name: The interface's words in ${{ matrix.which }}'s own fonts
+        continue-on-error: ${{ matrix.which == 'bare' }}
+        run: >-
+          mkdir -p out && docker run --rm -e GITHUB_ACTIONS=true -e UV_PYTHON -e UV_PYTHON_PREFERENCE
+          -v "$PWD:/w" -v "$(command -v uv):/usr/local/bin/uv:ro" -w /w ${{ matrix.image }}
+          bash tools/linux_fonts_survey.sh ${{ matrix.which }} /w/out/fonts-${{ matrix.which }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          name: linux-fonts-${{ matrix.which }}-${{ github.run_id }}
+          path: |
+            out/fonts-${{ matrix.which }}/*.txt
+            out/fonts-${{ matrix.which }}/*.md
+            out/fonts-${{ matrix.which }}/*.json
+            out/fonts-${{ matrix.which }}/*.log
+          retention-days: 1
+
+  packed:
+    name: The packed app's input methods
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OUT: build/linux
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+          enable-cache: true
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/dictionary-sources
+          key: dictionary-sources-${{ hashFiles('tools/dictionaries/sources.py') }}
+
+      - name: The dictionaries, from their pinned sources
+        run: |
+          uv sync --locked
+          uv run --no-sync python -m tools.dictionaries.build
+
+      - name: Built and packed in ubuntu:22.04 (its own check needs the input method plugins)
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w ubuntu:22.04 \
+            bash tools/package/linux_build.sh v0.0.1 linux-x64-alpha "$OUT" 0.0.1
+          mkdir -p "$OUT/reports"
+          {
+            echo "== Qt's input method plugins in the packed app"
+            ls -la "$OUT"/dist/Polyglotic/_internal/PySide6/Qt/plugins/platforminputcontexts/
+            ls -la "$OUT"/dist/Polyglotic/_internal/PySide6/Qt/lib/libQt6DBus.so* 2>&1
+            echo "== sizes"
+            du -sb "$OUT/dist/Polyglotic" "$OUT"/*.AppImage
+          } | tee "$OUT/reports/packed.txt"
+
+      - name: The packed app on X11 with IBus, Qt saying what it loads
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends xvfb dbus-bin dbus-daemon ibus ibus-libpinyin
+          dbus-run-session -- bash -c '
+            export XDG_RUNTIME_DIR="$(mktemp -d)" XDG_DATA_HOME="$(mktemp -d)" XDG_CONFIG_HOME="$(mktemp -d)"
+            Xvfb :96 -screen 0 1600x1000x24 -nolisten tcp & x=$!
+            export DISPLAY=:96; sleep 2
+            ibus-daemon --replace --panel=disable & i=$!; sleep 3
+            QT_IM_MODULE=ibus QT_QPA_PLATFORM=xcb QT_DEBUG_PLUGINS=1 timeout 25 \
+              "$OUT/dist/Polyglotic/Polyglotic" > "$OUT/reports/packed-start.log" 2>&1
+            kill $i $x 2>/dev/null; true'
+          grep -E "platforminputcontexts|inputcontext" "$OUT/reports/packed-start.log" | head -20 | tee "$OUT/reports/packed-plugins.txt"
+          grep -q "libibusplatforminputcontextplugin" "$OUT/reports/packed-plugins.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          name: linux-typing-packed-${{ github.run_id }}
+          path: ${{ env.OUT }}/reports
+          retention-days: 1
