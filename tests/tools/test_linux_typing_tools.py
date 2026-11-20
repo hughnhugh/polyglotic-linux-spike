@@ -6,7 +6,7 @@ from tools import linux_fonts_check, linux_typing_check
 
 
 def _case(name: str) -> linux_typing_check.Case:
-    return next(c for c in linux_typing_check.CASES["ibus"] if c.name == name)
+    return next(c for c in linux_typing_check.cases("ibus") if c.name == name)
 
 
 def test_chinese_counts_only_as_the_words_meant() -> None:
@@ -23,11 +23,12 @@ def test_japanese_counts_as_typed_in_kana_before_its_conversion() -> None:
     assert not linux_typing_check.typed("nihongo", japanese)
 
 
-def test_fcitx5_is_asked_both_ways() -> None:
-    assert (
-        linux_typing_check.CASES["fcitx5"]
-        == linux_typing_check.CASES["fcitx5-own-plugin"]
-    )
+def test_each_mode_types_its_frameworks_pinyin() -> None:
+    assert [c.name for c in linux_typing_check.cases("ibus")] == ["pinyin", "japanese"]
+    assert [c.name for c in linux_typing_check.cases("ibus-unnamed")] == ["pinyin"]
+    fcitx5 = linux_typing_check.cases("fcitx5-kubuntu")
+    assert fcitx5 == linux_typing_check.cases("fcitx5")
+    assert fcitx5[0].attempts[0].engine == (("fcitx5-remote", "-s", "pinyin"),)
 
 
 def test_a_languages_findings_name_boxes_and_the_wrong_face() -> None:

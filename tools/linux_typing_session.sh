@@ -60,18 +60,23 @@ export DISPLAY=:97
 for _ in $(seq 50); do [ -S /tmp/.X11-unix/X97 ] && break; sleep 0.1; done
 
 code=0
+check=(uv run --no-sync python -m tools.linux_typing_check)
 case "$im" in
 ibus)
+  # Mozc on in Hiragana from the start, as a learner who types Japanese
+  # sets it (Mozc's own setting; IBus's Mozc starts in direct input)
+  mkdir -p "$HOME/.config/mozc"
+  echo "active_on_launch: True" > "$HOME/.config/mozc/ibus_config.textproto"
   ibus-daemon --replace --panel=disable --xim > "$out/ibus.log" 2>&1 & started+=($!)
   for _ in $(seq 50); do ibus address > /dev/null 2>&1 && break; sleep 0.2; done
   sleep 2
   { echo "== $(ibus version 2>&1)"; ibus list-engine 2>&1 | grep -E -i "pinyin|anthy|mozc"; } \
     > "$out/engines.txt" 2>&1
-  QT_IM_MODULE=ibus uv run --no-sync python -m tools.linux_typing_check "$out/ibus" ibus || code=1
-  # what a session that names no input method gets (Qt's own compose):
-  # a finding, not this run's failure
-  env -u QT_IM_MODULE -u QT_IM_MODULES uv run --no-sync python -m tools.linux_typing_check \
-    "$out/ibus-unnamed" ibus-unnamed || true
+  QT_IM_MODULE=ibus "${check[@]}" "$out/ibus" ibus || code=1
+  # a session that names no input method: Qt's own pick (compose alone) is
+  # a finding; the app's own environment must type
+  env -u QT_IM_MODULE -u QT_IM_MODULES "${check[@]}" "$out/ibus-unnamed" ibus-unnamed || true
+  env -u QT_IM_MODULE -u QT_IM_MODULES "${check[@]}" "$out/ibus-unnamed-app" ibus-unnamed-app --app-env || code=1
   ;;
 fcitx5)
   mkdir -p "$HOME/.config/fcitx5"
@@ -97,16 +102,20 @@ PROFILE
   {
     echo "== fcitx5 $(fcitx5 --version 2>&1)"
     echo "== the ibus address file(s) Fcitx5 wrote:"; ls -la "$HOME/.config/ibus/bus" 2>&1
-    echo "== on the bus:"; dbus-send --session --print-reply --dest=org.freedesktop.DBus \
-      /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 | grep -E -o '"[^"]*(IBus|Fcitx|fcitx)[^"]*"'
+    echo "== on the bus:"; dbus-send --session --print-reply --dest=org.freedesktop.DBus       /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 | grep -E -o '"[^"]*(IBus|Fcitx|fcitx)[^"]*"'
   } > "$out/engines.txt" 2>&1
-  QT_IM_MODULE=ibus uv run --no-sync python -m tools.linux_typing_check "$out/fcitx5" fcitx5 || code=1
-  # what Kubuntu's own setting gets: Qt asked for Fcitx's plugin, which the
-  # app doesn't carry - a finding, not this run's failure
-  QT_IM_MODULE=fcitx uv run --no-sync python -m tools.linux_typing_check \
-    "$out/fcitx5-own-plugin" fcitx5-own-plugin || true
-  # and with IBus's plugin named after Fcitx's, Qt trying each in turn
-  QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" uv run --no-sync python -m tools.linux_typing_check     "$out/fcitx5-fallback" fcitx5-fallback || true
+  QT_IM_MODULE=ibus "${check[@]}" "$out/fcitx5" fcitx5 || code=1
+  # Kubuntu's own setting asks Qt for Fcitx's plugin, which the app doesn't
+  # carry: what Qt does alone is a finding; IBus's named after it types
+  QT_IM_MODULE=fcitx "${check[@]}" "$out/fcitx5-own-plugin" fcitx5-own-plugin || true
+  QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" "${check[@]}" "$out/fcitx5-fallback" fcitx5-fallback     || true
+  # Kubuntu has no IBus installed: hidden here (the container's own copy),
+  # Qt's IBus plugin gives up unless it's asked to use the portal's IBus,
+  # which Fcitx5 also answers; the app's own environment must type
+  mv /usr/bin/ibus-daemon /usr/bin/ibus-daemon.571
+  QT_IM_MODULE=fcitx QT_IM_MODULES="fcitx;ibus" "${check[@]}" "$out/fcitx5-no-ibus" fcitx5-no-ibus     || true
+  QT_IM_MODULE=fcitx "${check[@]}" "$out/fcitx5-kubuntu-app" fcitx5-kubuntu-app --app-env || code=1
+  mv /usr/bin/ibus-daemon.571 /usr/bin/ibus-daemon
   ;;
 *) echo "ibus or fcitx5"; code=2 ;;
 esac

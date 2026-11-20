@@ -925,6 +925,19 @@ def use_qt_platform(
     env["QT_QPA_PLATFORM"] = wanted
 
 
+def use_input_methods(platform: str | None) -> None:
+    """On X11 - Linux's `xcb` (`OsAdapters.qt_platform`) - Qt's input
+    method plugins asked for as the app carries them, before the
+    application is made: IBus's for Fcitx5 too, and where the session names
+    none (decision 0279, `platform/linux/input_method`). Elsewhere nothing."""
+    if platform != "xcb":
+        return
+    from polyglotic_desktop.platform.linux import input_method
+
+    if added := input_method.use_carried_plugins():
+        log.info("input methods: %s", ", ".join(f"{k}={v}" for k, v in added.items()))
+
+
 def os_adapters(system: str = sys.platform) -> OsAdapters:
     """The adapters of the OS this runs on (`system`: `sys.platform`'s
     name) - the one place that picks them, imported only now, so the rest
@@ -7321,6 +7334,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     threading.Thread(target=import_the_rest, name="imports", daemon=True).start()
     start_parts.done("logging_and_updates")
     use_qt_platform(system.qt_platform)  # Linux: X11, through XWayland (0258)
+    use_input_methods(system.qt_platform)  # Linux: IBus's for Fcitx5 too (0279)
     app = QApplication(sys.argv[:1])
     # Windows' fonts, read on a thread of their own from now - beside the
     # learner's data, not at Home's first label (about 0.3 s; polyglotic-hq

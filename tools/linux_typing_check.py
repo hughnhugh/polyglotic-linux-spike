@@ -4,24 +4,19 @@ runner, on X11, inside a session where an input method framework runs -
 IBus with a pinyin and a Japanese engine, or Fcitx5 with pinyin - and Qt
 reads it through its input method plugin (`QT_IM_MODULE`).
 
-    python -m tools.linux_typing_check OUT ibus|ibus-unnamed|fcitx5|fcitx5-own-plugin|fcitx5-fallback
+    python -m tools.linux_typing_check OUT MODE [--app-env]
 
 Shows the app's Words page, as the UI lab builds it (made-up words), in a
 real window; puts the keyboard in its search box; sets the engine; and
 presses the keys a learner would - `xdotool`, through the X server, as a
-keyboard does - then reads what the box holds:
-- `ibus`: "nihao" and Space with IBus's pinyin (libpinyin): 你好; "nihongo",
-  Space and Enter with a Japanese engine (Anthy, else Mozc): 日本語, or its
-  kana at least;
-- `fcitx5`: Fcitx5's pinyin, the app asking for IBus (`QT_IM_MODULE=ibus`) -
-  the app carries no Fcitx plugin, and Fcitx5 answers IBus's clients through
-  its IBus frontend;
-- `fcitx5-own-plugin`: the same with `QT_IM_MODULE=fcitx`, as Kubuntu sets
-  it: what a learner there gets without the app's help;
-- `fcitx5-fallback`: Kubuntu's setting with IBus's plugin named after it
-  (`QT_IM_MODULES="fcitx;ibus"`, Qt 6.7's list of plugins to try);
-- `ibus-unnamed`: IBus's pinyin with no `QT_IM_MODULE` at all, as a session
-  that names none: what Qt picks by itself.
+keyboard does - then reads what the box holds. MODE says which input
+method runs and what the session asked Qt for (the session script sets
+it): `ibus...` types "nihao" and Space with IBus's pinyin (libpinyin) and
+wants 你好 - plain `ibus` also "nihongo", Space and Enter with a Japanese
+engine (Anthy, else Mozc) and wants 日本語, or its kana at least;
+`fcitx5...` the same pinyin with Fcitx5's. `--app-env`: the environment
+as the app sets it before Qt starts (`platform/linux/input_method`), not
+as the session left it.
 
 OUT gets `checks.json` (checks and facts, as `tools.app_tour`'s) and the
 window's own picture after each typing (`grab()`, never the screen's).
@@ -69,29 +64,37 @@ class Case:
 PINYIN = tuple("nihao") + ("space",)
 JAPANESE = tuple("nihongo") + ("space", "Return")
 
-CASES: dict[str, tuple[Case, ...]] = {
-    "ibus": (
-        Case("pinyin", "你好", (Attempt((("ibus", "engine", "libpinyin"),), PINYIN),)),
-        Case(
-            "japanese",
-            "日本語",
-            (
-                Attempt((("ibus", "engine", "anthy"),), JAPANESE),
-                Attempt((("ibus", "engine", "mozc-jp"),), JAPANESE),
-                # Mozc may start in direct input: its own key turns it on
-                Attempt((("ibus", "engine", "mozc-jp"),), ("Hiragana", *JAPANESE)),
-            ),
-            accept_kana=True,
+IBUS = (
+    Case("pinyin", "你好", (Attempt((("ibus", "engine", "libpinyin"),), PINYIN),)),
+    Case(
+        "japanese",
+        "日本語",
+        (
+            Attempt((("ibus", "engine", "anthy"),), JAPANESE),
+            Attempt((("ibus", "engine", "mozc-jp"),), JAPANESE),
+            # Mozc may start in direct input: its own keys turn it on
+            Attempt((("ibus", "engine", "mozc-jp"),), ("Zenkaku_Hankaku", *JAPANESE)),
+            Attempt((("ibus", "engine", "mozc-jp"),), ("Hiragana_Katakana", *JAPANESE)),
         ),
+        accept_kana=True,
     ),
-    "fcitx5": (
-        Case(
-            "pinyin", "你好", (Attempt((("fcitx5-remote", "-s", "pinyin"),), PINYIN),)
-        ),
-    ),
-}
-CASES["fcitx5-own-plugin"] = CASES["fcitx5-fallback"] = CASES["fcitx5"]
-CASES["ibus-unnamed"] = CASES["ibus"][:1]
+)
+FCITX5 = (
+    Case("pinyin", "你好", (Attempt((("fcitx5-remote", "-s", "pinyin"),), PINYIN),)),
+)
+
+
+def cases(mode: str) -> tuple[Case, ...]:
+    """What `mode` types: IBus's pinyin (and Japanese, plain `ibus`), or
+    Fcitx5's pinyin."""
+    if mode == "ibus":
+        return IBUS
+    if mode.startswith("ibus-"):
+        return IBUS[:1]
+    if mode == "fcitx5" or mode.startswith("fcitx5-"):
+        return FCITX5
+    raise ValueError(f"571: no cases for {mode!r}")
+
 
 RESULTS: dict[str, Any] = {"checks": [], "facts": {}, "pictures": []}
 
@@ -129,8 +132,8 @@ def input_plugins() -> list[str]:
     return sorted(found)
 
 
-def run(out: Path, im: str) -> int:
-    from PySide6.QtWidgets import QApplication
+def run(out: Path, im: str, app_env: bool) -> int:
+    from PySide6.QtWidgets import QApplication, QScrollArea
 
     from polyglotic_desktop.ui import interface_language
     from polyglotic_desktop.ui_next import style
@@ -139,6 +142,10 @@ def run(out: Path, im: str) -> int:
     from tools.ui_lab.pages import made_up_tools, window_with
 
     out.mkdir(parents=True, exist_ok=True)
+    if app_env:  # as `main.use_input_methods` sets it, before Qt starts
+        from polyglotic_desktop.platform.linux import input_method
+
+        RESULTS["facts"]["app_env_added"] = input_method.use_carried_plugins()
     app = QApplication(["polyglotic-typing-check"])
     interface_language.install(app, interface_language.ENGLISH)
     style.use_interface_language(interface_language.ENGLISH)
@@ -159,11 +166,14 @@ def run(out: Path, im: str) -> int:
     RESULTS["facts"] |= {
         "im": im,
         "QT_IM_MODULE": os.environ.get("QT_IM_MODULE", ""),
+        "QT_IM_MODULES": os.environ.get("QT_IM_MODULES", ""),
+        "IBUS_USE_PORTAL": os.environ.get("IBUS_USE_PORTAL", ""),
+        "ibus_daemon_installed": bool(__import__("shutil").which("ibus-daemon")),
         "QT_QPA_PLATFORM": os.environ.get("QT_QPA_PLATFORM", ""),
         "qt": __import__("PySide6.QtCore").QtCore.qVersion(),
     }
     code = 0
-    for case in CASES[im]:
+    for case in cases(im):
         done = ""
         for n, attempt in enumerate(case.attempts):
             box.clear()
@@ -198,7 +208,15 @@ def run(out: Path, im: str) -> int:
         ):
             code = 1
         name = f"typing-{im}-{case.name}"
+        scrolled = (
+            page.findChild(QScrollArea) if not isinstance(page, QScrollArea) else page
+        )
+        if scrolled is not None:
+            scrolled.ensureWidgetVisible(box, 50, 200)
+        pump(0.5)
         window.grab().save(str(out / f"{name}.png"))
+        holder = box.parentWidget() or box
+        holder.grab().save(str(out / f"{name}-box.png"))
         RESULTS["pictures"].append({"file": f"{name}.png", "box": done})
     RESULTS["facts"]["input_plugins_loaded"] = input_plugins()
     window.close()
@@ -213,11 +231,10 @@ def main(argv: list[str]) -> int:
         "linux"
     ):
         sys.exit("571: this runs only on GitHub's Linux runners")
-    out, im = Path(argv[0]), argv[1]
-    if im not in CASES:
-        sys.exit(f"571: no cases for {im!r}: {', '.join(CASES)}")
+    out, im, app_env = Path(argv[0]), argv[1], "--app-env" in argv[2:]
+    cases(im)  # an unknown mode stops here
     try:
-        code = run(out, im)
+        code = run(out, im, app_env)
     except Exception as error:  # noqa: BLE001 - said in checks.json, not lost
         check(f"{im}: the check ran", False, repr(error))
         code = 1
