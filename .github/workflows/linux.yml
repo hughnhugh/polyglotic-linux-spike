@@ -1,0 +1,133 @@
+# Linux, proved on GitHub's own Ubuntu runners (polyglotic-hq 546, 550):
+# only on the public Linux copy (a snapshot of a branch, pushed to a
+# `linux-copy*` branch of hughnhugh/polyglotic-linux-spike by 550's
+# mirror550.sh), where GitHub's runners are free - never in this private
+# repo, whose runners are the PC's: every job checks the repo is public.
+#
+# One job on `ubuntu-24.04` (PipeWire 1.0.5 and WirePlumber 0.4.17, as
+# Ubuntu 24.04 ships them), in a desktop session made for it
+# (tools/linux_session.sh: the sound server with a default output and a
+# default mic, gnome-keyring's Secret Service unlocked, an X screen):
+# - tests: the whole suite (Windows' and the Mac's own skipped), the
+#   `linux_desktop` tests among them - libpulse and the Secret Service for
+#   real; mypy as Linux sees the code; the import rule;
+# - tour: the app from source on X11 (xcb), signed in to a stand-in server
+#   on the machine with its token in the keyring, captioning a FLEURS
+#   recording played through the sound server - everything the PC plays,
+#   and a second one into the mic (tools/app_tour.py --real-capture);
+#   pictures by each window's own grab() and checks.json.
+#
+# Nothing here reaches the live server: no invite, no token, no secret
+# (polyglotic-hq 550's brief). The artifact `linux-<run id>` is kept 1 day.
+name: Linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["linux-copy", "linux-copy-*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    name: A Linux desktop (Ubuntu 24.04)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      OUT: ${{ github.workspace }}/out
+      POLYGLOTIC_LINUX_DESKTOP: "1"
+      UV_PYTHON: "3.12.15"
+      UV_PYTHON_PREFERENCE: only-managed
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # tags and main, for tests/test_schema_versions.py
+
+      - name: A desktop's parts (the sound server, the keyring, X and Qt's libraries)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            pipewire pipewire-pulse pipewire-bin wireplumber libpulse0 pulseaudio-utils \
+            dbus-bin dbus-daemon gnome-keyring xvfb \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
+            libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-noto-core fonts-wqy-microhei
+          {
+            . /etc/os-release; echo "$PRETTY_NAME, kernel $(uname -r)"
+            dpkg-query -W -f='${Package} ${Version}\n' pipewire pipewire-pulse wireplumber \
+              libpulse0 gnome-keyring xvfb libxcb-cursor0
+          } | tee versions.txt
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+          enable-cache: true
+
+      - name: Install (fails if uv.lock is out of date)
+        run: uv sync --locked
+
+      - name: The interface's translations (.qm)
+        run: uv run --no-sync python -m tools.i18n build
+
+      - name: Types as Linux sees them (mypy --platform linux)
+        run: uv run --no-sync python -m tools.mypy_platforms linux
+
+      - name: Import rule (import-linter)
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync lint-imports
+
+      - name: Tests in a desktop session (pytest; Windows' and the Mac's own skipped)
+        if: ${{ !cancelled() }}
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: dbus-run-session -- bash tools/linux_session.sh "$OUT/session-tests" -- uv run --no-sync pytest -p no:cacheprovider -q
+
+      # The pinned sources are checked against their SHA-256 either way
+      # (tools/dictionaries/sources.py); the cache only saves downloading.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ !cancelled() }}
+        with:
+          path: build/dictionary-sources
+          key: dictionary-sources-${{ hashFiles('tools/dictionaries/sources.py') }}
+
+      - name: The dictionaries, from their pinned sources (the card and the app need them)
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync python -m tools.dictionaries.build
+
+      - name: The app on X11, captioning what the PC plays and the mic
+        if: ${{ !cancelled() }}
+        env:
+          QT_QPA_PLATFORM: xcb
+        run: >-
+          dbus-run-session -- bash tools/linux_session.sh "$OUT/session-tour" --
+          bash -c 'uv run --no-sync python -m tools.app_tour "$OUT/tour" --limit 300
+          --real-capture --mic-sink "$POLYGLOTIC_MIC_SINK"'
+
+      - name: What the tour found
+        if: ${{ always() }}
+        run: |
+          cp versions.txt "$OUT/" 2>/dev/null || true
+          if [ -f "$OUT/tour/checks.json" ]; then
+            uv run --no-sync python -c "import json,sys; d=json.load(open(sys.argv[1])); [print(('- pass ' if c['ok'] else '- **FAIL** ') + c['check'] + ' ' + c['detail'][:160]) for c in d['checks']]; print('- facts:', json.dumps(d['facts'])[:2000])" "$OUT/tour/checks.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          name: linux-${{ github.run_id }}
+          path: |
+            ${{ env.OUT }}/versions.txt
+            ${{ env.OUT }}/tour/*.png
+            ${{ env.OUT }}/tour/checks.json
+            ${{ env.OUT }}/tour/data/logs/*.log
+            ${{ env.OUT }}/session-*/*.txt
+            ${{ env.OUT }}/session-*/*.log
+          retention-days: 1
