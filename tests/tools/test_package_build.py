@@ -393,5 +393,5 @@ def test_linux_is_packed_as_one_unversioned_appimage() -> None:
     linux = script[script.index("linux-*)") :]
     linux = linux[: linux.index(";;")]
     assert "--runtime linux-x64" in linux and "--mainExe Polyglotic " in linux
-    assert '"$outdir/$id.AppImage"' in linux
+    assert 'mv -f "$outdir/$id-$channel.AppImage" "$outdir/$id.AppImage"' in linux
     assert "--aumid" not in linux  # Windows' taskbar ID only

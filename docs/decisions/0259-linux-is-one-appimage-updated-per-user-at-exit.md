@@ -1,4 +1,4 @@
-# 0258 Linux is one AppImage, built on Ubuntu 22.04, updated per user as it exits
+# 0259 Linux is one AppImage, built on Ubuntu 22.04, updated per user as it exits
 
 - **Status:** accepted
 - **Date:** 2026-11-20

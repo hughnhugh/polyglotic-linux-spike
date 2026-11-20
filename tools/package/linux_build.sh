@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Linux build (polyglotic-hq 550; desktop decision 0258): the app packed
+# The Linux build (polyglotic-hq 550; desktop decision 0259): the app packed
 # as one Velopack AppImage, inside an Ubuntu 22.04 container so it runs on
 # glibc 2.35 and newer (Ubuntu 22.04+, Debian 12+, Fedora, Mint 21+). A
 # PyInstaller build runs only on the glibc it was built on or newer, and

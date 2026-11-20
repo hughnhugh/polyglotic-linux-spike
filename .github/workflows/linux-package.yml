@@ -1,5 +1,5 @@
 # The Linux package, proved on GitHub's own Ubuntu runner (polyglotic-hq
-# 550; desktop decision 0258): free on the public copy, where a snapshot of
+# 550; desktop decision 0259): free on the public copy, where a snapshot of
 # a branch is pushed to a `linux-copy...` branch (projects/550's
 # mirror550.sh). Never in the private repo: every job is for a public
 # repository only (GitHub's own runners cost money there, and the

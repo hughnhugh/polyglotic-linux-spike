@@ -22,7 +22,15 @@ the OS's own adapters (`main.os_adapters`), so on macOS this is the first
 look at `platform/macos` running.
 
 Run by `.github/workflows/macos.yml` on GitHub's macOS machine, which is
-signed in to a desktop session. Runs on Windows and Linux too: offscreen
+signed in to a desktop session.
+
+`--real-capture` (Linux, polyglotic-hq 550; `.github/workflows/linux.yml`
+on GitHub's Ubuntu runner): nothing is fed in. The recording is *played*
+through the sound server to its default output, and a second one into the
+input the session made the default mic, and the app captions everything
+the PC plays and the mic with the OS's own captures; the device token is
+kept in the OS's own keyring under an entry of the tour's (`--credentials`),
+deleted at the end. Runs on Windows and Linux too: offscreen
 with `QT_QPA_PLATFORM=offscreen` (how it was tried before its first macOS
 run), or on a private desktop on Windows (`tools/private_desktop.py`).
 """
@@ -65,6 +73,10 @@ TRANSLATION = "The weather is nice today; let's go for a walk in the park."
 not the recording's)."""
 TOKEN = DeviceCredentials("install-410-tour", "pgd_" + "t" * 43)
 """The stand-in server takes any token of the protocol's shape."""
+SYSTEM_KEY = "system"
+"""The caption window of everything the PC plays (`--real-capture`)."""
+REAL: dict[str, Any] = {"on": False}
+"""`--real-capture`: the OS's own captures and keyring, and the players."""
 PAGES = ("words", "settings")
 MORE_PAGES = ("learning", "account", "help")
 """Pictured too, never failing the tour: the rest of the sidebar."""
@@ -168,6 +180,22 @@ class NoLinks:
         return True
 
 
+def window_key() -> str:
+    """The caption window the tour looks at: the player's, or everything the
+    PC plays' with `--real-capture`."""
+    return SYSTEM_KEY if REAL["on"] else PLAYER
+
+
+def noted(make: Callable[..., Any]) -> Callable[..., Any]:
+    """The OS's own capture, its start noted for the tour's waits."""
+
+    def made(*args: Any, **kwargs: Any) -> Any:
+        STATE.setdefault("capture_started", time.monotonic())
+        return make(*args, **kwargs)
+
+    return made
+
+
 def adapters(real: Callable[[str], Any], audio: np.ndarray) -> Callable[..., Any]:
     def os_adapters(system: str = sys.platform) -> Any:
         found = real(system)
@@ -210,6 +238,11 @@ def adapters(real: Callable[[str], Any], audio: np.ndarray) -> Callable[..., Any
             from polyglotic_desktop.ports.capture import AppCaptureSupport
 
             swaps["app_capture_support"] = lambda: AppCaptureSupport("yes")
+        if REAL["on"]:  # the OS's own captures and keyring (550)
+            for kept in ("app_capture_support", "credentials", "app_list"):
+                swaps.pop(kept, None)
+            swaps["system_capture"] = noted(found.system_capture)
+            swaps["mic_capture"] = noted(found.mic_capture)
         return dataclasses.replace(
             found, **{k: v for k, v in swaps.items() if k in names}
         )
@@ -230,8 +263,52 @@ def seed_settings(data: Path) -> None:
         "whole_system": False,
         "caption_windows": {"windows": {PLAYER: window}, "last": dict(window)},
     }
+    if REAL["on"]:  # everything the PC plays, and the mic in its window
+        heard = dict(window, show_mic=True)
+        settings |= {
+            "apps": [],
+            "whole_system": True,
+            "caption_mic": True,
+            "caption_windows": {"windows": {SYSTEM_KEY: heard}, "last": heard},
+        }
     (data / "settings.json").write_text(json.dumps(settings, ensure_ascii=False),
                                         encoding="utf-8")  # fmt: skip
+
+
+class Players:
+    """`--real-capture`: each clip played again and again through the sound
+    server (`paplay`, else `pw-play`) to a device - the default output, or
+    a sink by name - until stopped."""
+
+    def __init__(self) -> None:
+        self._stop = threading.Event()
+        self._threads: list[threading.Thread] = []
+
+    def play(self, clip: Path, device: str | None) -> None:
+        import shutil
+        import subprocess
+
+        player = shutil.which("paplay") or shutil.which("pw-play")
+        if player is None:
+            check("a player for the sound server (paplay or pw-play)", False)
+            return
+        target = []
+        if device:
+            target = (
+                [f"--device={device}"] if "paplay" in player else ["--target", device]
+            )
+
+        def loop() -> None:
+            while not self._stop.is_set():
+                subprocess.run([player, *target, str(clip)], check=False, timeout=120)
+                self._stop.wait(0.5)
+
+        thread = threading.Thread(target=loop, name="tour player", daemon=True)
+        thread.start()
+        self._threads.append(thread)
+
+    def stop(self) -> None:
+        self._stop.set()
 
 
 # -- results -----------------------------------------------------------------------
@@ -374,7 +451,9 @@ def ready() -> bool:
 
 def caption_window() -> Any:
     return (
-        STATE["interface"].windows.windows.get(PLAYER) if "interface" in STATE else None
+        STATE["interface"].windows.windows.get(window_key())
+        if "interface" in STATE
+        else None
     )
 
 
@@ -392,6 +471,26 @@ def a_word(window: Any) -> QPointF | None:
             if marked is not None and window.canvas.shown_row(marked.key, marked.row):
                 return at
     return None
+
+
+def desk(name: str) -> Step:
+    """The desktop's own picture of its screen at this moment, where the
+    run has a window manager that takes one (POLYGLOTIC_DESK_PICTURES: a
+    folder `tools/linux_desktop_pictures.py serve` answers, 550) - asked
+    for, and waited for up to 40 s; never a failed check."""
+    folder = os.environ.get("POLYGLOTIC_DESK_PICTURES")
+    if not folder:
+        return
+    asked = Path(folder)
+    (asked / f"{name}.want").write_text("", encoding="utf-8")
+    for _ in range(80):
+        if (asked / f"{name}.png").exists() or (asked / f"{name}.failed").exists():
+            break
+        yield pause(0.5)
+    took = (asked / f"{name}.png").exists()
+    RESULTS["facts"].setdefault("desktop_pictures", []).append(
+        name if took else f"{name}: not taken"
+    )
 
 
 def tour() -> Step:
@@ -419,7 +518,7 @@ def tour() -> Step:
     yield pause(2.0)
     picture(window, "home", "Home")
 
-    if caption_window() is None:  # not opened from the settings: Home's picker
+    if caption_window() is None and not REAL["on"]:  # Home's picker
         button = window.findChild(QAbstractButton, f"picker.add.{PLAYER}")
         if button is not None:
             button.click()
@@ -432,6 +531,7 @@ def tour() -> Step:
           f"{len(finished_lines())} finished")  # fmt: skip
     captions = caption_window()
     picture(captions, "caption-window", "A caption window with captions")
+    yield from desk("captions")
 
     spot = a_word(captions) if captions is not None else None
     if check("a word on the caption window to look up", spot is not None) and spot:
@@ -440,6 +540,7 @@ def tour() -> Step:
         yield wait(lambda: card() is not None and card().isVisible(), 10, "the card")
         yield pause(1.5)
         picture(card(), "card", "The lookup card")
+        yield from desk("card")
         if card() is not None:
             QTest.keyClick(card(), Qt.Key.Key_Escape)
             card().hide()
@@ -523,7 +624,7 @@ def tour() -> Step:
             "menu-bar: no tray (none on this desktop)"
         )
 
-    STATE["interface"].transcripts.show(PLAYER)
+    STATE["interface"].transcripts.show(window_key())
     transcript = lambda: next(
         (w for w in QApplication.topLevelWidgets()
          if w.isVisible() and "Transcript" in type(w).__name__), None)  # fmt: skip
@@ -617,7 +718,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("out", type=Path)
     parser.add_argument("--dictionaries", default="build/dictionaries")
     parser.add_argument("--limit", type=float, default=300.0, help="seconds")
+    parser.add_argument(
+        "--real-capture",
+        action="store_true",
+        help="Linux (550): the samples played through the sound server, the"
+        " OS's own captures and keyring",
+    )
+    parser.add_argument("--mic-sink", help="with --real-capture: the mic's feed")
+    parser.add_argument(
+        "--credentials",
+        default="Polyglotic/tour-550",
+        help="with --real-capture: the keyring's entry for the tour's token",
+    )
     args = parser.parse_args(argv)
+    REAL["on"] = args.real_capture
     OUT = args.out
     OUT.mkdir(parents=True, exist_ok=True)
     data = OUT / "data"
@@ -628,6 +742,21 @@ def main(argv: list[str] | None = None) -> int:
         write_results()
         return 1
     audio = join([read_clip(sample)], gap=1.0)
+    players = Players()
+    store: Any = None
+    if REAL["on"]:
+        import soundfile
+
+        clip = OUT / "played-zh.wav"
+        soundfile.write(str(clip), audio, 16_000)
+        players.play(clip, None)  # everything the PC plays
+        mine = sample_file("en") or sample
+        spoken = OUT / "spoken-en.wav"
+        soundfile.write(str(spoken), join([read_clip(mine)], gap=1.0), 16_000)
+        players.play(spoken, args.mic_sink)  # the learner's own speech
+        store = app.os_adapters().credentials(args.credentials)
+        store.save(TOKEN)  # the keyring keeps it; the app reads it there
+        check("the keyring kept the tour's token", store.load() == TOKEN)
 
     fake_server.caption_for = caption_for
     server = fake_server.FakeServer()
@@ -664,9 +793,10 @@ def main(argv: list[str] | None = None) -> int:
     app.new_interface = new_interface
     app.DesktopApp = Recorded  # type: ignore[misc]
     began = time.monotonic()
+    given = ["--credentials", args.credentials] if REAL["on"] else []
     try:
         app.main(["--server", server.url, "--data", str(data),
-                  "--dictionaries", str(args.dictionaries)])  # fmt: skip
+                  "--dictionaries", str(args.dictionaries), *given])  # fmt: skip
     except SystemExit:
         pass
     except Exception:  # noqa: BLE001 - said in the results
@@ -678,6 +808,16 @@ def main(argv: list[str] | None = None) -> int:
         "os": [hello.get("os") for hello in server.hellos],
     }
     check("the stand-in server heard speech", server.speech, len(server.speech))
+    if REAL["on"]:
+        players.stop()
+        heard = sorted({str(header.source.id) for header, _ in server.speech})
+        RESULTS["facts"]["sources_heard"] = heard
+        check("everything the PC plays was captioned", "system" in heard, heard)
+        check("the mic was captioned", "mic" in heard, heard)
+        try:
+            store.delete()
+        except OSError as error:
+            check("the tour's token deleted from the keyring", False, error)
     write_results()
     server.stop()
     failed = [c["check"] for c in RESULTS["checks"] if not c["ok"]]

@@ -3271,6 +3271,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
+        <source>instead of apps (the only choice on Linux for now)</source>
+        <translation type="unfinished">al posto delle app (per ora l&apos;unica scelta su Linux)</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>instead of apps (the only choice on this version of Windows)</source>
         <translation type="unfinished">al posto delle app (l&apos;unica scelta in questa versione di Windows)</translation>
     </message>

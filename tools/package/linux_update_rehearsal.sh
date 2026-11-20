@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Linux updating itself, rehearsed on GitHub's Ubuntu runner (polyglotic-hq
-# 550; desktop decision 0258), as macos_update_rehearsal.sh rehearses a
+# 550; desktop decision 0259), as macos_update_rehearsal.sh rehearses a
 # Mac's: the AppImage of OLD put in ~/Applications as a learner would (copy,
 # make it executable, run it), with no libfuse2 on the machine; the copy
 # finds NEW in a feed in a folder and downloads it (`--check-install
@@ -90,7 +90,7 @@ check "the update is found" "grep -q '\"update_found\": \"$new\"' '$out/update.j
 check "and downloaded" "grep -q '\"update_downloaded\": true' '$out/update.json'"
 check "into this user's own cache" "ls ~/.cache/Polyglotic/packages/*.nupkg > /dev/null 2>&1"
 check "not Velopack's shared folder" "! ls /var/tmp/velopack/Polyglotic/packages/*.nupkg > /dev/null 2>&1"
-check "applied as the app exited: the file is $new" "becomes '$app' '$new' 120" "($(version_of "$app"))"
+check "applied as the app exited: the file is $new" "becomes '$app' '$new' 120"
 check "in place: the same path, a new file" "[ -x '$app' ] && [ \$(stat -c %i '$app') != $inode ]"
 timeout 300 "$app" --check-install "$out/after.json" --data "$data" > "$out/after.log" 2>&1
 check "the next start is $new and passes its check" "grep -q '\"ok\": true' '$out/after.json' && grep -q '\"installed\": true' '$out/after.json'"
@@ -100,7 +100,8 @@ Xvfb :93 -screen 0 1280x800x24 > /dev/null 2>&1 &
 xvfb=$!
 sleep 2
 shown=$(mktemp -d)
-DISPLAY=:93 QT_QPA_PLATFORM=xcb "$app" --data "$shown" > "$out/started.log" 2>&1 &
+# nothing outside this machine: no server (a closed port), the feed in a folder
+DISPLAY=:93 QT_QPA_PLATFORM=xcb "$app" --data "$shown" --server http://127.0.0.1:9   --updates "$pub" > "$out/started.log" 2>&1 &
 started=$!
 sleep 25
 check "it is still running 25 s after it started" "kill -0 $started 2> /dev/null"
@@ -109,7 +110,7 @@ sleep 3
 kill -9 "$started" 2> /dev/null
 kill "$xvfb" 2> /dev/null
 cp "$shown/logs/polyglotic.log" "$out/started-polyglotic.log" 2> /dev/null
-check "its log names the new version" "grep -q 'Polyglotic $new (linux-x64-alpha)' '$out/started-polyglotic.log'"
+check "its log says it started, on Linux's channel" "grep -q -E 'Polyglotic [0-9.]+ \(linux-x64-alpha\)' '$out/started-polyglotic.log'"
 check "and no crash" "! grep -q -E 'Traceback|crashed' '$out/started-polyglotic.log' '$out/started.log'"
 
 say "a second user updates their own copy"

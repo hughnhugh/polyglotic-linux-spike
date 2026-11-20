@@ -68,19 +68,19 @@ macos-*)
 # is built there): one AppImage, the full package and the channel's feed.
 # Velopack's AppImage carries the static AppImage runtime, so it runs with
 # no libfuse2 (only fusermount3), and updates itself by moving the new file
-# over its own. vpk names the AppImage after the pack ID; it's then called
-# Polyglotic.AppImage whatever the version, so the file a learner has, a
-# menu entry or a shortcut pointing at it keep working after each update.
+# over its own. It's called Polyglotic.AppImage whatever the version, so the
+# file a learner has, and a menu entry or a shortcut pointing at it, keep
+# working after each update.
 linux-*)
   dotnet vpk pack --packId "$id" --packVersion "$version" \
     --packTitle Polyglotic --packAuthors Polyglotic \
     --packDir "$packdir" --mainExe Polyglotic \
     ${icon:+--icon "$icon"} ${notes:+--releaseNotes "$notes"} --runtime linux-x64 \
     --channel "$channel" --outputDir "$outdir"
-  if [ ! -f "$outdir/$id.AppImage" ]; then
-    made=$(find "$outdir" -maxdepth 1 -name '*.AppImage')
-    [ "$(printf '%s' "$made" | grep -c .)" = 1 ] && mv -f "$made" "$outdir/$id.AppImage"
-  fi
+  # vpk names it after the channel too (Polyglotic-linux-x64-alpha.AppImage),
+  # the same at every version: renamed, so each pack's is the one left
+  rm -f "$outdir/$id.AppImage"
+  mv -f "$outdir/$id-$channel.AppImage" "$outdir/$id.AppImage"
   [ -f "$outdir/$id.AppImage" ] || { echo "vpk made no AppImage in $outdir" >&2; exit 1; }
   exit
   ;;
