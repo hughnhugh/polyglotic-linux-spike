@@ -147,6 +147,9 @@ def main() -> None:
         ("x11fs-above-spot", "x11", ["--unlocked"], "spot", "caption"),
         ("wlfs-above-spotmap", "wayland", ["--unlocked"], "spotmap", "caption"),
         ("wlfs-bypass-spotmap", "wayland", ["--bypass", "--unlocked"], "spotmap", "caption"),
+        ("x11fs-above-toggle", "x11", ["--unlocked"], "toggle", "caption"),
+        ("x11fs-bypass-toggle", "x11", ["--bypass", "--unlocked"], "toggle", "caption"),
+        ("wlfs-above-toggle", "wayland", ["--unlocked"], "toggle", "caption"),
     ]
     results = []
     for name, fs_platform, opts, mid, first in scenarios:
@@ -234,7 +237,33 @@ def main() -> None:
                 session.picture(shot)
                 r["picture_4_after_mid"] = pixels(shot)
                 r["x_stack_4"] = x_stacking()
+                if stacking:
+                    r["stack_4"] = stacking(f"{name}-4")
+                if not r["picture_4_after_mid"]["caption_on_top"]:  # does the app's own raise put it back?
+                    cap.send("raise")
+                    time.sleep(0.8)
+                    shot = out / f"{name}-5-after-raise.png"
+                    session.picture(shot)
+                    r["picture_5_after_mid_raise"] = pixels(shot)
                 pointer_round("2_after_mid", spot=mid.startswith("spot"))
+            if mid == "toggle":  # lock and unlock 8 times over the focused full-screen window
+                toggles = []
+                for i in range(8):
+                    cmd = "lock" if i % 2 == 0 else "unlock"
+                    cap.send(cmd)
+                    time.sleep(1.0)
+                    shot = out / f"{name}-t{i}-{cmd}.png"
+                    session.picture(shot)
+                    on_top = pixels(shot)["caption_on_top"]
+                    raised = None
+                    if not on_top:
+                        cap.send("raise")
+                        time.sleep(0.8)
+                        shot = out / f"{name}-t{i}-{cmd}-raised.png"
+                        session.picture(shot)
+                        raised = pixels(shot)["caption_on_top"]
+                    toggles.append([cmd, on_top, raised])
+                r["toggles"] = toggles
             if stacking:
                 r["stack_end"] = stacking(f"{name}-end")
         except Exception as exc:  # noqa: BLE001 - a scenario's failure is a result too
@@ -269,6 +298,12 @@ def main() -> None:
             rounds += f"; on the spot: {r['pointer_2_after_mid_spot']['caption_saw_pointer_on_spot']}"
         if "picture_4_after_mid" in r:
             pb = {"caption_on_top": f"after {r['mid']}: {r['picture_4_after_mid'].get('caption_on_top')}"}
+            if "picture_5_after_mid_raise" in r:
+                pb["caption_on_top"] += f", raised: {r['picture_5_after_mid_raise'].get('caption_on_top')}"
+        if "toggles" in r:
+            t = r["toggles"]
+            pb = {"caption_on_top": f"toggles on top {sum(1 for x in t if x[1])}/{len(t)}; raised back "
+                                    f"{sum(1 for x in t if x[2])}/{sum(1 for x in t if not x[1])}"}
         summary.append(f"| {r['scenario']} | {p1.get('caption_on_top')} | {pb.get('caption_on_top', '-')} | "
                        f"{pr.get('caption_on_top')} | {p1.get('translucent')} | {rounds} | {to} |")
     text = f"### {de}\n\n" + "\n".join(summary) + "\n"
