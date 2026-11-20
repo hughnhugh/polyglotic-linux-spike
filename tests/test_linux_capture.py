@@ -588,12 +588,24 @@ def test_an_app_whose_process_changed_hasnt_closed() -> None:
 
 
 def test_an_apps_processes_are_found_by_executable_or_own_name(tmp_path: Path) -> None:
-    for pid, comm in ((10, "bash"), (11, "eldenring.exe"), (12, "ts3client_linux")):
+    """A zombie (ended, not yet collected by its parent) runs no more: the
+    first run on GitHub's runner kept a capture open on one (561)."""
+    for pid, comm, state in (
+        (10, "bash", "S"),
+        (11, "eldenring.exe", "R"),
+        (12, "ts3client_linux", "S"),
+        (13, "pw-cat", "Z"),
+    ):
         (tmp_path / str(pid)).mkdir()
         (tmp_path / str(pid) / "comm").write_text(comm + "\n", encoding="utf-8")
+        stat = f"{pid} ({comm}) {state} 1 {pid} {pid} 0 -1 4194560"
+        (tmp_path / str(pid) / "stat").write_text(stat, encoding="utf-8")
     assert apps.running("eldenring.exe", tmp_path)
     assert apps.running("ts3client_linux_amd64", tmp_path)  # the kernel keeps 15
     assert not apps.running("firefox", tmp_path)
+    assert not apps.running("pw-cat", tmp_path)  # a zombie
+    assert apps.alive(11, tmp_path) and not apps.alive(13, tmp_path)
+    assert not apps.alive(99, tmp_path) and not apps.alive(0, tmp_path)
 
 
 def test_everything_else_leaves_out_the_app_and_polyglotic() -> None:
@@ -759,7 +771,9 @@ def test_one_app_is_heard_alone_through_the_real_server() -> None:
     try:
         app = listed_app("pw-cat")  # pw-play is a link to pw-cat
         assert app.process_id == native.pid and app.playing
-        assert listed_app("pacat").process_id == pulse_player.pid  # paplay: pacat
+        # paplay is a link to pacat; the session's mic feed is a pacat too, so
+        # the app's process is the older of the two (561's first run)
+        assert listed_app("pacat").playing
         one = capture.AppCapture(app.process_id, app.name)
         rest = capture.EverythingElseCapture(app.process_id)
         one.start(lambda at, data: heard["app"].append((at, data)))
@@ -771,8 +785,9 @@ def test_one_app_is_heard_alone_through_the_real_server() -> None:
             one.stop()
             rest.stop()
     finally:
-        native.kill()
-        pulse_player.kill()
+        for player in (native, pulse_player):
+            player.kill()
+            player.wait(5)  # collected: no zombie left for the next test
     alone = np.frombuffer(b"".join(d for _, d in heard["app"]), "<f4")[-32_000:]
     others = np.frombuffer(b"".join(d for _, d in heard["else"]), "<f4")[-32_000:]
     assert len(alone) == len(others) == 32_000  # two seconds each
@@ -797,11 +812,21 @@ def test_one_apps_capture_ends_when_the_app_closes() -> None:
             wait_for(lambda: one.capturing, 10)
             native.kill()
             native.wait(5)
-            wait_for(lambda: one.error == capture.APP_CLOSED, 5)
+            end = time.monotonic() + 5
+            while one.error != capture.APP_CLOSED and time.monotonic() < end:
+                time.sleep(0.05)
+            assert one.error == capture.APP_CLOSED, (
+                one.error,
+                one.capturing,
+                apps.alive(app.process_id),
+                apps.running(app.name),
+                [a.name for a in apps.LinuxAppList().playing_apps()],
+            )
         finally:
             one.stop()
     finally:
         native.kill()
+        native.wait(5)
 
 
 # --- the known apps (561) ---------------------------------------------------------

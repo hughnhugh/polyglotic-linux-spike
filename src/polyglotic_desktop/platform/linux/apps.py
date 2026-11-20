@@ -97,12 +97,23 @@ def executable(process_id: int) -> str | None:
         return None
 
 
-def alive(process_id: int) -> bool:
-    """Whether the process is still running: its folder in `/proc` (never a
-    signal - on Windows `os.kill` ends a process: polyglotic-hq 411)."""
-    if not sys.platform.startswith("linux"):
+def ended(folder: Path) -> bool:
+    """Whether the process in `folder` (`/proc/<pid>`) has ended: gone, or a
+    zombie its parent hasn't collected yet (state Z, after the name's ")")."""
+    try:
+        stat = (folder / "stat").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return True
+    return stat.rpartition(")")[2].split()[:1] == ["Z"]
+
+
+def alive(process_id: int, proc: Path = Path("/proc")) -> bool:
+    """Whether the process is still running: in `/proc`, and not a zombie
+    (never a signal - on Windows `os.kill` ends a process: polyglotic-hq
+    411)."""
+    if proc == Path("/proc") and not sys.platform.startswith("linux"):
         raise OSError("Linux only")
-    return bool(process_id) and Path(f"/proc/{process_id}").exists()
+    return bool(process_id) and not ended(proc / str(process_id))
 
 
 COMM_CHARS = 15
@@ -121,13 +132,14 @@ def running(key: str, proc: Path = Path("/proc")) -> bool:
             name = (folder / "comm").read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if name.strip().lower() == wanted[:COMM_CHARS]:
-            return True
         try:
-            if os.path.basename(os.readlink(folder / "exe")).lower() == wanted:
-                return True
+            mine = name.strip().lower() == wanted[:COMM_CHARS] or (
+                os.path.basename(os.readlink(folder / "exe")).lower() == wanted
+            )
         except OSError:
             continue
+        if mine and not ended(folder):
+            return True
     return False
 
 
