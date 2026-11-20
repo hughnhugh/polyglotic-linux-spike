@@ -147,6 +147,12 @@ def main() -> None:
             win.set_flag(Qt.WindowType.WindowTransparentForInput, True)
         elif line == "unlock":
             win.set_flag(Qt.WindowType.WindowTransparentForInput, False)
+        elif line in ("qlock", "qunlock"):  # the input shape changed live: no re-create, no re-map
+            win.windowHandle().setFlag(Qt.WindowType.WindowTransparentForInput, line == "qlock")
+        elif line in ("mlock", "munlock"):  # the same window unmapped, changed, mapped again
+            win.hide()
+            win.windowHandle().setFlag(Qt.WindowType.WindowTransparentForInput, line == "mlock")
+            win.show()
         elif line == "spot":
             win.input_spot()
         elif line == "spotmap":  # the same spot, cut while the window is unmapped

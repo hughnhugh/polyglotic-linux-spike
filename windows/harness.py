@@ -150,6 +150,11 @@ def main() -> None:
         ("x11fs-above-toggle", "x11", ["--unlocked"], "toggle", "caption"),
         ("x11fs-bypass-toggle", "x11", ["--bypass", "--unlocked"], "toggle", "caption"),
         ("wlfs-above-toggle", "wayland", ["--unlocked"], "toggle", "caption"),
+        ("x11fs-above-toggle-live", "x11", ["--unlocked"], "toggle-q", "caption"),
+        ("wlfs-above-toggle-live", "wayland", ["--unlocked"], "toggle-q", "caption"),
+        ("x11fs-above-toggle-remap", "x11", ["--unlocked"], "toggle-m", "caption"),
+        ("wlfs-above-toggle-remap", "wayland", ["--unlocked"], "toggle-m", "caption"),
+        ("wlfs-bypass-toggle-live", "wayland", ["--bypass", "--unlocked"], "toggle-q", "caption"),
     ]
     results = []
     for name, fs_platform, opts, mid, first in scenarios:
@@ -246,10 +251,11 @@ def main() -> None:
                     session.picture(shot)
                     r["picture_5_after_mid_raise"] = pixels(shot)
                 pointer_round("2_after_mid", spot=mid.startswith("spot"))
-            if mid == "toggle":  # lock and unlock 8 times over the focused full-screen window
+            if mid and mid.startswith("toggle"):  # lock and unlock over the focused full-screen window, ending locked
+                prefix = {"toggle": "", "toggle-q": "q", "toggle-m": "m"}[mid]
                 toggles = []
-                for i in range(8):
-                    cmd = "lock" if i % 2 == 0 else "unlock"
+                for i in range(7):
+                    cmd = prefix + ("lock" if i % 2 == 0 else "unlock")
                     cap.send(cmd)
                     time.sleep(1.0)
                     shot = out / f"{name}-t{i}-{cmd}.png"
@@ -264,6 +270,7 @@ def main() -> None:
                         raised = pixels(shot)["caption_on_top"]
                     toggles.append([cmd, on_top, raised])
                 r["toggles"] = toggles
+                pointer_round("2_after_toggles")  # locked now: does the click pass?
             if stacking:
                 r["stack_end"] = stacking(f"{name}-end")
         except Exception as exc:  # noqa: BLE001 - a scenario's failure is a result too
@@ -300,6 +307,9 @@ def main() -> None:
             pb = {"caption_on_top": f"after {r['mid']}: {r['picture_4_after_mid'].get('caption_on_top')}"}
             if "picture_5_after_mid_raise" in r:
                 pb["caption_on_top"] += f", raised: {r['picture_5_after_mid_raise'].get('caption_on_top')}"
+        if "pointer_2_after_toggles" in r:
+            p2 = r["pointer_2_after_toggles"]
+            to += "; locked at the end: " + ("caption" if p2.get("caption_presses") else ("full-screen" if p2.get("fullscreen_presses") else "nobody"))
         if "toggles" in r:
             t = r["toggles"]
             pb = {"caption_on_top": f"toggles on top {sum(1 for x in t if x[1])}/{len(t)}; raised back "
