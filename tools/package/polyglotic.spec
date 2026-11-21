@@ -84,13 +84,19 @@ EXCLUDES = [
 # Linux the windowing plugin is xcb (libqxcb), and the input methods
 # (platforminputcontexts: IBus, compose) stay.
 INPUT_METHODS = "" if LINUX else "|platforminputcontexts"
+# Linux's file dialogs (polyglotic-hq 574, decision 0280): Qt's platform
+# theme for the desktop portal stays, so Save transcript and the export for
+# Anki open the desktop's own dialog through the portal; Qt's GTK 3 theme
+# doesn't (it would load the system's GTK beside the app's own GLib)
+PLATFORM_THEMES = "" if LINUX else "|platformthemes"
 DROP = [
     r"(^|[\\/])opengl32sw\.dll$",
     r"PySide6[\\/](Qt[\\/])?translations[\\/](?!qtbase_("
     + "|".join(re.escape(q) for q in QT_LANGUAGES)
     + r")\.qm$)",
     r"PySide6[\\/](Qt[\\/])?plugins[\\/](tls|networkinformation|generic"
-    r"|imageformats|iconengines" + INPUT_METHODS + r"|platformthemes)[\\/]",
+    r"|imageformats|iconengines" + INPUT_METHODS + PLATFORM_THEMES + r")[\\/]",
+    r"PySide6[\\/](Qt[\\/])?plugins[\\/]platformthemes[\\/](?!libqxdgdesktopportal)",
     r"PySide6[\\/](Qt[\\/])?plugins[\\/]platforms[\\/]"
     r"(?!qwindows|qoffscreen|libqcocoa|libqoffscreen|libqxcb)",
     # (not Qt6Svg: the icons are drawn from their SVG masters, ui.icons)

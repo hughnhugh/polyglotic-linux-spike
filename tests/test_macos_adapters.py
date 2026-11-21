@@ -64,6 +64,8 @@ def test_macos_gets_a_whole_record() -> None:
             assert isinstance(piece, mic_permission.Permission)
         elif field.name in ("qt_platform", "system_mode"):  # Qt's own (550, 571)
             assert piece is None
+        elif field.name == "dictation":  # offered on a Mac (574: not on Linux yet)
+            assert piece is True
         else:
             assert callable(piece), field.name
             assert "windows" not in getattr(piece, "__module__", ""), field.name

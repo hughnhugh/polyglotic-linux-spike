@@ -620,6 +620,13 @@ class DesktopApp(QObject):
                 self.tr("Restart to install version {version}").format(version=version)
             )
 
+    def offer_dictation(self, offered: bool) -> None:
+        """Dictation in the tray's menu, with its languages - or neither, on
+        an OS that has no dictation yet (Linux, until polyglotic-hq 546's
+        slice 8: its key would be said to be another program's; 574)."""
+        self.dictation.setVisible(offered)
+        self.dictation_language_menu.menuAction().setVisible(offered)
+
     def show_dictation_key(self, key: str) -> None:
         """Dictation's key, in words ("Right Ctrl"), at the right of its
         line in the tray menu, as a hotkey is (polyglotic-hq 289)."""

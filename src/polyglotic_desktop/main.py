@@ -911,6 +911,10 @@ class OsAdapters:
     X11 program, through XWayland on a Wayland desktop, where a window can
     stay on top, place itself and let clicks through (decision 0258); the
     packed app carries no other. None: Qt's own choice (Windows, a Mac)."""
+    dictation: bool = True
+    """Whether dictation is offered at all: False where the OS has none yet
+    (Linux, until polyglotic-hq 546's slice 8) - the tray, Settings and Help
+    don't show it and its key isn't taken (574)."""
 
 
 QT_PLATFORM_KEPT = ("offscreen", "minimal")
@@ -941,6 +945,19 @@ def use_input_methods(platform: str | None) -> None:
 
     if added := input_method.use_carried_plugins():
         log.info("input methods: %s", ", ".join(f"{k}={v}" for k, v in added.items()))
+
+
+def use_file_dialogs(platform: str | None) -> None:
+    """On X11 - Linux's `xcb` (`OsAdapters.qt_platform`) - the desktop's own
+    file dialogs, through its portal, asked for before the application is
+    made: Qt's portal theme, which the packed app carries (decision 0280,
+    `platform/linux/file_dialogs`). Elsewhere nothing."""
+    if platform != "xcb":
+        return
+    from polyglotic_desktop.platform.linux import file_dialogs
+
+    if added := file_dialogs.use_portal_dialogs():
+        log.info("file dialogs: %s", ", ".join(f"{k}={v}" for k, v in added.items()))
 
 
 def leave_packed_environment(
@@ -1234,6 +1251,7 @@ def linux_adapters() -> OsAdapters:
         read_fonts=not_yet.not_done,
         make_native_window=not_yet.not_made,
         hold_key=not_yet.NoHoldKey,
+        dictation=False,  # slice 8 (574: the tray offered it, its key "taken")
         type_text=not_yet.type_nothing,
         keyboard_window=not_yet.no_window,
         metered=hints.metered,
@@ -6750,6 +6768,10 @@ def check_install(
         found["qt"] = qVersion()
         # a link's browser loads the system's libraries, not the app's (561)
         found["programs_library_path"] = programs_library_path()
+        if sys.platform.startswith("linux"):  # and none of the loader's own (574)
+            from polyglotic_desktop.platform.linux import system as linux
+
+            found["programs_loader_variables"] = linux.loader_variables()
         # the learning stores are closed before the folder is removed, even
         # when a step fails (Windows can't delete an open SQLite file);
         # anything still open is left to Windows' temporary-files clean-up
@@ -7423,6 +7445,9 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     start_parts.done("logging_and_updates")
     use_qt_platform(system.qt_platform)  # Linux: X11, through XWayland (0258)
     use_input_methods(system.qt_platform)  # Linux: IBus's for Fcitx5 too (0279)
+    use_file_dialogs(
+        system.qt_platform
+    )  # Linux: the desktop's own, by its portal (0280)
     app = QApplication(sys.argv[:1])
     # Windows' fonts, read on a thread of their own from now - beside the
     # learner's data, not at Home's first label (about 0.3 s; polyglotic-hq
@@ -8284,7 +8309,9 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         named: Settings, the tray, the sign, Help (polyglotic-hq 289)."""
         nonlocal dictation_was_on
         value = desktop.settings.value
-        changed = dictation_key.follow(value.dictation, value.dictation_key)
+        changed = dictation_key.follow(
+            value.dictation and system.dictation, value.dictation_key
+        )
         if changed and not value.dictation:
             dictating.stop()
         words = key_words(value.dictation_key)
@@ -8325,6 +8352,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     desktop.set_dictation_languages(dictation_choices(DICTATION_LANGUAGES))
     desktop.dictation_settings_wanted.connect(hub.open_dictation_settings)
     follow_dictation()
+    if not system.dictation:  # none on this OS yet: never offered (574)
+        desktop.offer_dictation(False)
+        settings_page.offer_dictation(False)
+        hub.help.offer_dictation(False)
 
     def listened(update: CaptionUpdate) -> None:
         """Listening time, from finished captions of what the PC played in

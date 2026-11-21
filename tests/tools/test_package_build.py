@@ -362,6 +362,10 @@ def test_a_linux_build_carries_qts_x11_plugin_and_libxcb_cursor(
     assert f"{contexts}/libibusplatforminputcontextplugin.so" in needed
     assert f"{contexts}/libcomposeplatforminputcontextplugin.so" in needed
     assert "_internal/PySide6/Qt/lib/libQt6DBus.so.6" in needed
+    # 574: without Qt's portal theme, Save transcript and the export for
+    # Anki opened Qt's own dialog, never the desktop's (decision 0280)
+    themes = "_internal/PySide6/Qt/plugins/platformthemes"
+    assert f"{themes}/libqxdgdesktopportal.so" in needed
     folder = tmp_path / "Polyglotic"
     for need in needed:
         (folder / need).parent.mkdir(parents=True, exist_ok=True)

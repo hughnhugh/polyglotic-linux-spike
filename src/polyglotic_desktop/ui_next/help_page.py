@@ -372,6 +372,11 @@ class HelpPage(Page):
         if self.isVisible():
             self.refresh()
 
+    def offer_dictation(self, offered: bool) -> None:
+        """Dictation's topic, or none on an OS that has no dictation yet
+        (Linux, until polyglotic-hq 546's slice 8; 574)."""
+        self.dictation.setVisible(offered)
+
     def show_dictation_key(self, key: str) -> None:
         """Dictation's key, in words ("Right Ctrl"), as its topic names it."""
         self.dictation.text.setText(dictation_topic(key)[1])
