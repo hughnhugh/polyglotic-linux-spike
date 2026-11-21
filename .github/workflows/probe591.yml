@@ -1,0 +1,49 @@
+# 591: speech-dispatcher over its socket on Ubuntu 24.04, measured at the
+# default output's monitor (only on the public copy).
+name: Probe 591
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["linux-copy-591-probe"]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: speech-dispatcher (Ubuntu 24.04)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: A desktop's sound parts and speech-dispatcher
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            pipewire pipewire-pulse pipewire-bin wireplumber libpulse0 pulseaudio-utils \
+            dbus-bin dbus-daemon gnome-keyring xvfb \
+            speech-dispatcher speech-dispatcher-espeak-ng speech-dispatcher-audio-plugins
+          dpkg-query -W -f='${Package} ${Version}\n' speech-dispatcher speech-dispatcher-espeak-ng \
+            speech-dispatcher-audio-plugins libespeak-ng1 pipewire | tee versions.txt
+          grep -v '^#' /etc/speech-dispatcher/speechd.conf | grep -v '^$' | head -40
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+          enable-cache: true
+      - name: Install
+        env:
+          UV_PYTHON: "3.12.15"
+          UV_PYTHON_PREFERENCE: only-managed
+        run: uv sync --locked
+      - name: The app's playback stream, in a desktop session
+        run: dbus-run-session -- bash tools/linux_session.sh "$PWD/out/session" -- uv run --no-sync python probe591/playback.py "$PWD/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: probe591
+          path: out
+          retention-days: 1

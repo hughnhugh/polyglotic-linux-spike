@@ -1,0 +1,62 @@
+# 591: the voice's checks alone, as linux.yml's "The voice, heard at the
+# speakers" step runs them - quick to repeat (only on the public copy).
+name: Voice 591
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["linux-copy-591-voice"]
+
+permissions:
+  contents: read
+
+jobs:
+  voice:
+    name: The voice, heard (Ubuntu 24.04)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OUT: ${{ github.workspace }}/out
+      POLYGLOTIC_LINUX_DESKTOP: "1"
+      UV_PYTHON: "3.12.15"
+      UV_PYTHON_PREFERENCE: only-managed
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: A desktop's parts and speech-dispatcher
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            pipewire pipewire-pulse pipewire-bin wireplumber libpulse0 pulseaudio-utils \
+            dbus-bin dbus-daemon gnome-keyring xvfb \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
+            libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-noto-core fonts-wqy-microhei \
+            speech-dispatcher speech-dispatcher-espeak-ng speech-dispatcher-audio-plugins
+          mkdir -p "$OUT"
+          dpkg-query -W -f='${Package} ${Version}\n' speech-dispatcher speech-dispatcher-espeak-ng \
+            libespeak-ng1 pipewire | tee "$OUT/versions.txt"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked
+      - name: The interface's translations (.qm)
+        run: uv run --no-sync python -m tools.i18n build
+      - name: The voice, heard at the speakers
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: >-
+          dbus-run-session -- bash tools/linux_session.sh "$OUT/session-voice" --
+          uv run --no-sync pytest -p no:cacheprovider -q -rs -s
+          tests/test_linux_voices.py tests/test_linux_sound.py tests/test_linux_voices_heard.py
+          tests/test_linux_adapters.py tests/ui_next/test_say_it.py tests/ui_next/test_say_it_selection.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: voice591
+          path: out
+          retention-days: 1
