@@ -18,7 +18,10 @@ An app's stream exists only while it plays or holds its sound open, so an
 app that has stopped altogether is no longer listed; a paused one
 (`corked`) is listed as not playing. Polyglotic's own streams are never an
 app to caption (polyglotic-hq 368): this process's, and any copy of the
-app by its executable's name.
+app by its executable's name. Nor are the system voice's (591):
+speech-dispatcher, which the app starts to say a word, holds a stream for
+each of its voices ("speech-dispatcher-espeak-ng", and "-dummy" never
+paused) while it runs.
 """
 
 from __future__ import annotations
@@ -78,6 +81,18 @@ def is_polyglotic(key: str, members: Iterable[pulse.PlayingStream], this: int) -
     """Whether an app is Polyglotic: this process (from source, Python), or
     any copy of it by its executable's name."""
     return key.lower() == APP_EXECUTABLE or any(s.process_id == this for s in members)
+
+
+def is_system_voice(members: Iterable[pulse.PlayingStream]) -> bool:
+    """Whether an app is speech-dispatcher's: its voices' streams, named
+    "speech-dispatcher-<module>" by speech-dispatcher itself, or played by
+    a module of its own (`sd_*`) - as GitHub's Ubuntu 24.04 runner showed
+    them (591's probe)."""
+    return all(
+        (s.app_name or "").startswith("speech-dispatcher")
+        or (s.binary or "").startswith("sd_")
+        for s in members
+    )
 
 
 def process_of(members: Iterable[pulse.PlayingStream]) -> int:
@@ -155,6 +170,8 @@ def playing_apps(
     for key, members in grouped(streams).items():
         if is_polyglotic(key, members, this):
             continue  # its own sounds: never an app to caption (368)
+        if is_system_voice(members):
+            continue  # the voice that says a looked-up word (591)
         process = process_of(members)
         own_name = shown_name(key) or next(
             (s.app_name for s in members if s.app_name), key

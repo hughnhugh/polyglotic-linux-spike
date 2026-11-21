@@ -54,6 +54,14 @@ jobs:
           uv run --no-sync pytest -p no:cacheprovider -q -rs -s
           tests/test_linux_voices.py tests/test_linux_sound.py tests/test_linux_voices_heard.py
           tests/test_linux_adapters.py tests/ui_next/test_say_it.py tests/ui_next/test_say_it_selection.py
+      - name: speech-dispatcher's stream as the app sees it
+        if: ${{ always() }}
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONPATH: .
+        run: >-
+          dbus-run-session -- bash tools/linux_session.sh "$OUT/session-streams" --
+          uv run --no-sync python probe591/streams.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
         with:

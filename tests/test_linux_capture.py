@@ -468,6 +468,20 @@ def test_a_program_under_wine_is_known_by_its_own_name() -> None:
     assert named["notepad.exe"].category is SourceCategory.OTHER
 
 
+def test_speech_dispatchers_streams_are_never_an_app_to_caption() -> None:
+    """591: speech-dispatcher, started to say a word, keeps a stream for each
+    voice while it runs - its dummy's never paused - as GitHub's Ubuntu
+    24.04 runner listed them. Never on Home's list."""
+    espeak = pulse.PlayingStream(
+        71, 1, False, "speech-dispatcher-espeak-ng", "speech-dispatcher", 700
+    )
+    dummy = pulse.PlayingStream(
+        72, 1, False, "speech-dispatcher-dummy", "sd_dummy", 701
+    )
+    listed = apps.playing_apps([espeak, dummy, VLC], 1, lambda _pid: None)
+    assert [a.name for a in listed] == ["vlc"]
+
+
 def test_the_packed_app_is_never_listed_by_its_executable() -> None:
     packed = pulse.PlayingStream(61, 1, False, "Polyglotic", "Polyglotic", 999)
     assert apps.playing_apps([packed, VLC], 1, lambda _pid: None)[0].name == "vlc"

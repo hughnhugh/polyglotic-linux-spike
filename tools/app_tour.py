@@ -504,15 +504,20 @@ class VoiceStream:
         self.last: float | None = None
         self.peak = -120.0
         self.error = ""
+        self.seen: set[str] = set()
+        """Every stream's app seen meanwhile, paused or not: what the check
+        says when it fails."""
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
     @staticmethod
     def _ours(stream: Any) -> bool:
-        return (stream.binary or "").startswith("sd_") or (
-            stream.app_name or ""
-        ).startswith("speech-dispatcher")
+        """A voice's stream: "speech-dispatcher-espeak-ng" (played by
+        speech-dispatcher itself), never its dummy's, which is never paused
+        and never sounds (591's probe)."""
+        name = stream.app_name or ""
+        return name.startswith("speech-dispatcher") and not name.endswith("-dummy")
 
     def _run(self) -> None:
         from polyglotic_desktop.platform.linux import pulse
@@ -525,8 +530,13 @@ class VoiceStream:
         recording = None
         try:
             while not self._stop.is_set():
-                found = next((s for s in server.streams() if self._ours(s)), None)
-                if found is not None and not found.corked:
+                streams = server.streams()
+                self.seen.update(f"{s.app_name}{' (paused)' if s.corked else ''}"
+                                 for s in streams)  # fmt: skip
+                found = next(
+                    (s for s in streams if self._ours(s) and not s.corked), None
+                )
+                if found is not None:
                     now = time.perf_counter()
                     self.first = self.first or now
                     self.last = now
@@ -586,6 +596,7 @@ def say_it(card: Any) -> Step:
         ),
         "peak_dbfs": round(watched.peak, 1),
         "error": watched.error,
+        "streams_seen": sorted(watched.seen),
     }
     RESULTS["facts"]["say_it"] = said
     if voiced:
