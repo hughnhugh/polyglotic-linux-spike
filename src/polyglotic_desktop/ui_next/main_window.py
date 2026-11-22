@@ -6,16 +6,20 @@ project 109's structure, sections 7 and 10.5; wireframes 6 and 6.1).
   Words, Account; Settings and Help at its foot; the line saying captions
   and translations are made by machine; Quit.
 - **The pages** sit in one column at most 720 px wide, centred - the
-  extra width is margin (Words' table may use up to 960). The window's
-  minimum is 960 x 680 (248's section 2.1: a Settings section fits
-  without scrolling at the common sizes) - kept to a small screen, but
-  never under 760 x 520, where every page still fits without a
-  horizontal scrollbar. Switching pages keeps each page's scroll
-  position.
+  extra width is margin (Words' table may use up to 960). It opens at
+  1000 x 740, at least 960 x 680 times the text size (`roomy_size`, 248's
+  section 2.1: a Settings section fits without scrolling at the common
+  sizes), kept to the screen - or at the size the learner left it
+  (`fit_to`'s `kept`). Its minimum, what an edge can make it, is 760 x 520
+  (`minimum_size`), where every page still fits without a horizontal
+  scrollbar up to `FLOOR_SCALE` - wider with the text above that, and
+  kept to a small screen: a minimum of 960 x 680 times the text size was
+  the size it opened at from the Normal text size up, so the arrows
+  showed on every edge and none made it smaller (polyglotic-hq 586).
+  Switching pages keeps each page's scroll position.
 - **Text size** is Windows' times the app's own (`style.text_scale`):
-  the text, the sidebar (when wide), the columns and the minimum all grow with it -
-  the minimum is 960 x 680 times the text size, kept to the screen
-  (`fit_to`). While `main` lets it follow Windows (`follows_text_size`),
+  the text, the sidebar (when wide), the columns and the size it opens at
+  all grow with it. While `main` lets it follow Windows (`follows_text_size`),
   a change Qt reports restyles the window and is announced
   (`text_size_changed`); so does the app's own, chosen in Settings
   (`set_app_text_size`) - at once, no restart.
@@ -38,7 +42,9 @@ project 109's structure, sections 7 and 10.5; wireframes 6 and 6.1).
 `add_page` takes any widget: Home is the new interface's; until Words,
 Account, Settings and Help move over (109's step 6), `main` hands today's
 pages over. Closing the window keeps the app in the tray, as today, and
-says so (`hidden_to_tray`: `main` has the tray say it, once).
+says so (`hidden_to_tray`: `main` has the tray say it, once). Where the
+desktop has no tray (`no_tray`: GNOME without its extension), closing it
+is `main`'s to answer (`closed_without_tray`, polyglotic-hq 571).
 """
 
 from itertools import pairwise
@@ -76,14 +82,22 @@ from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.controls import label
 from polyglotic_desktop.ui_next.home import COLUMN
 
-MINIMUM = (960, 680)
-"""At 100 % text size (`minimum_size`), where the screen has room: 248's,
-so a Settings section fits (F11)."""
+ROOMY = (960, 680)
+"""The least it opens at, at 100 % text size (`roomy_size`), where the
+screen has room: 248's, so a Settings section fits (F11). Not its minimum
+(polyglotic-hq 586)."""
 FLOOR = (760, 520)
-"""The least it is kept to on a small screen (`fit_to`) - every page still
-fits it without a horizontal scrollbar: a 1920 x 1080 laptop at 150 % has
-1280 x 672 for it, too short for MINIMUM with the title bar (polyglotic-hq
-133: its foot went under the taskbar)."""
+"""Its minimum (`minimum_size`) up to `FLOOR_SCALE`, and the least it is
+kept to on a small screen (`fit_to`) - every page still fits it without a
+horizontal scrollbar: a 1920 x 1080 laptop at 150 % has 1280 x 672 for
+it, too short for ROOMY with the title bar (polyglotic-hq 133: its foot
+went under the taskbar)."""
+FLOOR_SCALE = 1.8
+"""The largest text size (Windows' times the app's) every page fits FLOOR
+at, the UI lab's `w4_pages_at_floor` checks: Windows' 150 % with the
+app's Larger, 125 % with its Largest. Larger still - Windows' 200 % - the
+Words tables and the caption preview are wider than the floor's page
+(polyglotic-hq 354's report): the minimum grows with the text there."""
 SIZE = (1000, 740)
 """Its size at first, if the screen has room (`fit_to`)."""
 FRAME = 40
@@ -106,9 +120,19 @@ class InParts(Protocol):
 
 
 def minimum_size() -> tuple[int, int]:
-    """The window's minimum at the text size now: every page fits it
-    without a horizontal scrollbar."""
-    return style.px(MINIMUM[0]), style.px(MINIMUM[1])
+    """The window's minimum at the text size now - what its edges can make
+    it - before it's kept to the screen: FLOOR, every page fitting it
+    without a horizontal scrollbar, up to FLOOR_SCALE; above it FLOOR's
+    width grown as the text grows past it. Never taller: every page and
+    the sidebar scroll down (polyglotic-hq 524)."""
+    grown = max(1.0, style.text_scale() / FLOOR_SCALE)
+    return round(FLOOR[0] * grown), FLOOR[1]
+
+
+def roomy_size() -> tuple[int, int]:
+    """The least it opens at, at the text size now (`fit_to`): ROOMY times
+    the text size, a Settings section fitting it without scrolling."""
+    return style.px(ROOMY[0]), style.px(ROOMY[1])
 
 
 def _tr(text: str) -> str:
@@ -166,6 +190,9 @@ class MainWindow(QMainWindow):
 
     hidden_to_tray = Signal()
     """Closed, not quit: it was hidden and the app runs on in the tray."""
+    closed_without_tray = Signal()
+    """Closed where the desktop has no tray (`no_tray`): still shown - `main`
+    asks the first time, then hides it or quits (polyglotic-hq 571)."""
     text_size_changed = Signal()
     """The text size changed while it ran - Windows' (`follows_text_size`)
     or the app's own (`set_app_text_size`): the window is restyled; `main`
@@ -174,6 +201,7 @@ class MainWindow(QMainWindow):
     def __init__(self, quit_action: QAction) -> None:
         super().__init__()
         self.keep_in_tray = False  # closing hides it (the tray sets this)
+        self.no_tray = False  # closing is `main`'s to answer (571)
         self.follows_text_size = False  # `main`: Windows' changes followed
         self.setWindowTitle("Polyglotic")
         self.setObjectName("main_window")
@@ -471,17 +499,20 @@ class MainWindow(QMainWindow):
 
     # -- the window ----------------------------------------------------------------------
 
-    def fit_to(self, area: QRect) -> None:
-        """Its first size and place: `SIZE` (or its minimum, at a large text
-        size), or less on a small screen - never under its minimum kept to
-        the screen (`FLOOR` at least) - in the
-        middle of `area` (a screen's work area, the taskbar left out). At 150 %, a 1920 x 1080 laptop has
-        1280 x 672 for it, and 1,000 x 740 put its foot - Help, Quit -
-        under the taskbar (polyglotic-hq 133)."""
+    def fit_to(self, area: QRect, kept: tuple[int, int] | None = None) -> None:
+        """Its first size and place: `kept` - the size the learner left it
+        at (polyglotic-hq 586) - or else `SIZE` (`roomy_size` at a large
+        text size), or less on a small screen - never under its minimum
+        kept to the screen (`FLOOR` at least) - in the middle of `area` (a
+        screen's work area, the taskbar left out). At 150 %, a 1920 x 1080
+        laptop has 1280 x 672 for it, and 1,000 x 740 put its foot - Help,
+        Quit - under the taskbar (polyglotic-hq 133)."""
         least = self._keep_minimum_to(area)
         room = area.width() - FRAME, area.height() - FRAME
-        width = max(least[0], min(max(SIZE[0], least[0]), room[0]))
-        height = max(least[1], min(max(SIZE[1], least[1]), room[1]))
+        roomy = roomy_size()
+        wanted = kept or (max(SIZE[0], roomy[0]), max(SIZE[1], roomy[1]))
+        width = max(least[0], min(wanted[0], room[0]))
+        height = max(least[1], min(wanted[1], room[1]))
         self.resize(width, height)
         self.move(
             area.x() + max(0, (area.width() - width) // 2),
@@ -534,6 +565,9 @@ class MainWindow(QMainWindow):
             event.ignore()
             self.hide()
             self.hidden_to_tray.emit()
+        elif self.no_tray:  # nowhere to run on in: `main` says (571)
+            event.ignore()
+            self.closed_without_tray.emit()
         else:
             event.accept()
 

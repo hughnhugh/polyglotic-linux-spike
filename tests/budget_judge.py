@@ -20,9 +20,10 @@ action, not the worst moment of a busy PC (polyglotic-hq project 140).
   runs (`Sampled.busy`). A failure where every reading was busy is its own
   outcome, "over on a busy PC", told apart from "over" (a calm PC: the code)
   at a glance - it still fails.
-- **Beside main's record** (decision 0136, polyglotic-hq 344): on Windows,
-  CI's runs on main keep every judgement's median and longest run
-  (`keep_mains_record`, `tools/timing_record.py`); on a pull request a test
+- **Beside main's record** (decision 0136, polyglotic-hq 344): on Windows
+  and Linux (`BESIDE_MAIN_ON`), CI's runs on main keep every judgement's
+  median and longest run (`keep_mains_record`, `tools/timing_record.py`),
+  each system its own record; on a pull request a test
   still over after its tries, but not `timing_record.SLOWER` than main's
   record, is "over its budget as main is" - named, a warning on the run's
   page, not failed. Main's own runs are held to the budget alone.
@@ -251,9 +252,17 @@ def within(
     )
 
 
-RECORD_KIND = "pytest-win32"
-"""Main's record of the budget tests: this PC's Windows runs only (the
-Linux job's are another machine's)."""
+BESIDE_MAIN_ON = ("win32", "linux")
+"""Where CI keeps main's record of the budget tests: the PC's Windows
+runners, and its Linux runner - a container on the same PC, 2 CPUs, where
+a look drag's step measured 7.4-10 ms against its 8 (polyglotic-hq 563:
+it failed four pull requests on 2026-11-20 that hadn't touched it, and
+main's own run passed it on a second try at 7.4)."""
+
+RECORD_KIND = f"pytest-{sys.platform}"
+"""Main's record of the budget tests on this system: Windows' and Linux's
+are kept apart (the drag's step: 5.9 ms on Windows, 7.4-10 on Linux, the
+same day)."""
 
 
 NOT_BESIDE_MAIN = (budgets.START_FROM_SOURCE, budgets.START_PACKED)
@@ -262,10 +271,14 @@ main's, a start 200 ms slower (304's first wheel guard) would barely fail."""
 
 
 def beside_main(test: str, budget: Budget, last: Sampled) -> str:
-    """For a test over its budget on a pull request, on Windows: main's
-    record of it, if the last try isn't `timing_record.SLOWER` - the words
-    for the verdict - else "" (it fails)."""
-    if sys.platform != "win32" or start_record.on_main() or budget in NOT_BESIDE_MAIN:
+    """For a test over its budget on a pull request, on Windows or Linux:
+    main's record of it, if the last try isn't `timing_record.SLOWER` - the
+    words for the verdict - else "" (it fails)."""
+    if (
+        sys.platform not in BESIDE_MAIN_ON
+        or start_record.on_main()
+        or budget in NOT_BESIDE_MAIN
+    ):
         return ""
     record = timing_record.load(RECORD_KIND)
     main = record.timings.get(test) if record else None
@@ -280,9 +293,9 @@ def beside_main(test: str, budget: Budget, last: Sampled) -> str:
 
 
 def keep_mains_record() -> bool:
-    """On CI's run of main, on Windows: every judgement's last try kept as
-    main's record (decision 0136). False if not kept."""
-    if sys.platform != "win32" or not start_record.on_main() or not JUDGED:
+    """On CI's run of main, on Windows or Linux: every judgement's last try
+    kept as main's record (decision 0136). False if not kept."""
+    if sys.platform not in BESIDE_MAIN_ON or not start_record.on_main() or not JUDGED:
         return False
     new = {
         j.test: timing_record.Timing(j.tries[-1].median, j.tries[-1].longest)

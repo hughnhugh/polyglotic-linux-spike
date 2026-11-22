@@ -8,6 +8,8 @@ the app's What's new, the website's What's new and the Discord post.
 - **A pull request people would notice** adds one line under Unreleased,
   in New, Better or Fixed (the pull request template asks; "none" is fine
   for the rest). Say what changed for the learner, not how it was done.
+  Its first sentence stands alone, in 110 characters at most: Home's
+  What's new shows only that, cut there (a test checks Unreleased).
   A server change people would notice (a better translator, a new
   language) gets a line too, in the next app release.
 - **No promise the work doesn't back:** no speed or accuracy figures
@@ -26,83 +28,292 @@ the app's What's new, the website's What's new and the Discord post.
 
 ### New
 
+- Polyglotic on Linux: one x86-64 AppImage (make it executable and run it,
+  no installer or libfuse2 needed). Tested on Ubuntu 24.04 and 26.04 and
+  Fedora 45 on GNOME, KDE Plasma 6 and Xfce. Captions everything the PC
+  plays, one app on its own, or your microphone over PipeWire or
+  PulseAudio; keeps your sign-in in your desktop's keyring; follows your
+  desktop's light or dark theme and native file dialogs; says words aloud
+  (with recordings or speech-dispatcher); supports global hotkeys
+  (Ctrl+Alt+Shift+L, P, H and J) on X11 and KDE Plasma 6, desktop shortcut
+  commands (`--lock`, `--pause`, `--hide`) and an unlock corner on Wayland
+  desktops including GNOME; and updates itself in place when you quit.
+  Dictation on Linux comes in a later update (and on GNOME Wayland, bind
+  `polyglotic --lock` in Settings or use the unlock corner or Home; the
+  tray needs the AppIndicator extension).
+- Settings > App has a Start at sign-in switch to turn automatic launch on
+  or off. Start Polyglotic with Windows (or at login on a Mac or Linux)
+  whenever you like.
+- A timing chip on each caption window's bar offers only the timings that
+  suit its preset. Video's Instant and Subtitle
+  blocks, Conversation's Instant and Steady, Learning's Instant, Steady and Calm,
+  and all four in Everyday. The paced modes in Learning can show the translation
+  after you've read the line or with it. Each says in a line what it does.
+- Re-speaking: hold F8 and repeat what they said to caption it in the window you're watching.
+  Point at a caption window, including Everything the PC plays, or use the last one
+  you visited. A sign appears beside the window while you speak. Change the key in
+  Settings > Dictation or Hotkeys, or choose the shared dictation key there.
+- Set caption and translation sizes independently in each window's gear menu and Settings > Look.
+  Changing one never moves the other; each shows its language and percentage, with a Match
+  button to set translation equal to caption, script-matched 100% heights, readings that
+  follow their own characters, and Learning starting with larger originals.
+- Click the microphone on any caption window's bar to turn captioning what you say on or off.
+  While on, it lights up with a live level meter as you speak; while off, it shows a
+  slash. Conversation windows turn your own speech on by default, Video windows keep it
+  off, and your own choices stay.
+- Settings > Hotkeys: every hotkey in one place, each one yours to change,
+  clear or reset. Click one and press the keys you want. New: Back to
+  live, Ctrl+Alt+J, takes every caption window and transcript back to the
+  newest line from anywhere - its key is on Back to live's tip. Give a key,
+  if you'd like, to copying the newest caption, the next preset, or the
+  captions' text size up and down. A key another program has, or one
+  Windows keeps, is said on its line.
+- Presets for what you're doing: Everyday, Conversation, Video, film & TV,
+  and Learning. Pick one from a caption window's bar. Video puts your
+  captions along the bottom of the screen, large and centred, with Instant
+  timing. Picking
+  another preset puts the window back where you had it. In the same
+  dropdown: show both lines, the original only or
+  the translation only, and add word links, the quiet view, readings or
+  your own speech. Bar changes save automatically to the active preset.
+  In Settings > Presets, use Save, Save as new preset or Discard changes
+  for Settings edits. Switching away from a draft offers Undo. A draft
+  survives a restart. Rename, restore or make your own in Settings > Presets. If you'd changed your settings before, they're
+  kept as your "Custom" preset.
 - Word lookups in Korean, with English meanings: download Korean's
   dictionary on Learning. A word is found under its particles and endings
   (학교에서 is 학교, "school"; 먹었는데 is 먹다, "to eat"), and a compound
   the dictionary hasn't got shows its parts (국립공원: 국립 "national" +
   공원 "park").
-- Chinese captions are in calligraphy: Simplified in Ma Shan Zheng, a
-  brush's regular script that comes with the app, and Traditional in LXGW
-  WenKai TC, downloaded the first time Traditional is captioned. Pinyin
-  and zhuyin over them stay in a plain face, easy to read. Settings >
-  Look > Fonts lists them under Calligraphy and Handwritten, with Noto
-  Sans and the others still there to choose.
-- Three recommended looks in Settings > Look - Quiet, Paper and Broadcast -
-  each setting the colours, caption text, readings and Chinese fonts
-  together in one click. Change anything after; your other choices stay.
+- Chinese captions are in calligraphy, Simplified and Traditional alike.
+  Simplified is in Ma Shan Zheng, a brush's regular script that comes with
+  the app, and Traditional in LXGW WenKai TC, downloaded the first time
+  Traditional is captioned. Pinyin and zhuyin over them stay in a plain
+  face, easy to read, and so do English words and numbers said among the
+  Chinese. Settings > Look > Fonts lists them under Calligraphy and
+  Handwritten, with Noto Sans and the others still there to choose.
+- Three recommended looks in Settings > Look: Quiet, Paper and Broadcast.
+  Each sets the colours, caption text, readings and Chinese fonts
+  together, in one click. Change anything after; your other choices stay.
   Quiet is the look from the first preview, with a more solid panel so
   busy windows behind it don't show through.
-- Steady is now word by word: captions appear a word at a time at the
-  speaker's own pace, a moment behind, and rarely change once
-  shown. It is the new default. In Settings > Timing you can show the
-  newest word too, or see the words that are waiting in faint text ahead.
+- Steady is now word by word: captions appear a word at a time, at the
+  speaker's own pace. They come a moment behind, and rarely change once
+  shown. It is the new default. The words already heard wait in faint
+  text ahead, each lighting up as it's said; Settings > Timing > Words
+  ahead turns that off, and there you can show the newest word too.
 - Calm: like Steady, with only the words the speech model is sure of.
-- What you read first, in Settings > Timing: Follow (the translation
-  leads), Acquisition (what was said first, its translation a moment
-  later) or Both.
-- Steady keeps the lines being spoken at the foot of the caption window,
-  and moves each caption up into a clean transcript above once you've
-  read it, with its translation. You can turn this off in Settings >
-  Timing.
+- Choose what you read first in Settings > Timing: Follow, Acquisition or
+  Both. In Follow the translation leads; in Acquisition what was said
+  comes first, its translation a moment later.
+- With the card stack off, Steady keeps the lines being spoken at the foot
+  of the caption window. Once you've read a caption, it moves up, with its
+  translation, into a clean transcript above. Each caption starts its own
+  line, a long one stays whole until it moves up, and when nobody is
+  talking the transcript has the whole window. You can turn this off in
+  Settings > Timing.
+- What's already said in your translation language now comes with an
+  English line under it. That's when your captions are in a language other
+  than English. Choose another language, or none, in a caption window's
+  settings ("When they already speak ...") or Settings > Speech.
+- Home has a Server status link when Polyglotic's server can't be reached
+  and the problem may be ours. It opens polyglotic.io/status, which says
+  whether the server is up. Help has it too, beside Check again.
+- Lyrics: turn it on to caption the singing in Spotify and other music players.
+  Off by default. With it on, a music player heard on Detect has its music
+  sent even while no speech is heard, a few seconds at a time, so sung
+  lines are captioned too; turn it on in the music player's caption
+  window (under They speak) or in Settings > Speech.
 
 ### Better
 
+- Video keeps captions and translations at the sizes you chose. Long subtitles
+  turn a page when they run out of room. Captions that arrive while you read
+  wait their turn.
+  Your own words and their translation appear on separate lines.
+
+- Video subtitle blocks write out word by word and glide up when finished. Your own speech appears in a separate strip above them.
+- Narrow caption bars group the language, preset and timing icons together. Preset and window names keep their ampersands in menus and buttons.
+  Set the Open caption bar controls shortcut in Settings > Hotkeys to use them by keyboard.
+- Instant is now the default caption timing. Steady and Calm remain available.
+  If several captions arrive while the mouse holds your place, Instant gives you
+  time to read the next one. Choose Back to live to skip ahead.
+
+- Captions are easier to read over bright, busy video. The panel behind them
+  is more solid by default, and the pinyin and the words still to come are
+  brighter. If you set how solid the panel is yourself, it stays as you set it.
+- A caption window's menu is down to seven rows. Its app, its languages on
+  one line ("Detect → English"), text size, Open transcript, Join windows,
+  Stop captioning and All caption settings. What left has its home in
+  Settings; the translation's size is now in Settings > Look, for every
+  window.
+- When Mandarin speech continues after a pause, the caption can show the whole sentence with one translation.
+
+- Caption timing and presets switch faster, and joined caption windows resize more smoothly.
+- Video uses Subtitle blocks if you chose Steady, and explains the change once.
+- In Everyday, translations glide with their cards as older captions roll up.
+- When captions are off, Home offers one click to caption a playing app or everything you hear.
+
+- Word links never take a colour close to the captions' own. On a look
+  whose translation is gold, a linked word is no longer orange or olive,
+  where it read as the line's other words: the next colour takes its turn.
+  Every look is checked, and the said and translated words of a link still
+  share one colour.
+- Steady moves smoothly: each line of captions is a card that keeps its
+  shape. A word stays where it first appeared, a translation arrives in
+  room already kept for it, and older lines turn away in one glide.
+  Settings > Timing has a "Card stack" switch to turn it off.
 - "Report a problem" now says how long each caption took to reach the
-  screen over the last 5 minutes, inside the app's log you can look at
-  before sending - so a caption that stalled comes with where it stalled.
-  Times only, never what was said.
-- The card that saves a phrase you drag across now has "Look it up": a
+  screen, over the last 5 minutes. It's in the app's log, which you can
+  look at before sending, so a caption that stalled comes with where it
+  stalled. Times only, never what was said.
+- The card that saves a phrase you drag across now has "Look it up". A
   set phrase of four characters or more, like 一石二鸟, opens its
   dictionary card from there.
-- The app's text is larger by default: Normal is now between the old
-  Larger and Largest, and every step moved up with it - Smaller is the
-  old Normal, Larger the old Largest, and a new Largest is bigger still
-  (Settings > App > Text size). If you never changed it, you get the new
+- The app's text is larger by default (Settings > App > Text size).
+  Normal is now between the old Larger and Largest, and every step moved
+  up with it: Smaller is the old Normal, Larger the old Largest, and a new
+  Largest is bigger still. If you never changed it, you get the new
   Normal; if you did, your text stays about the size it was. Captions keep
   their own size.
-- Pinyin and other readings are a quiet grey, so the words lead: in the
-  quiet view, and by default everywhere else, where a linked word's
-  reading still takes its link's colour. Settings > Look > Readings has
-  Grey beside Same as its line, Its word link's colour and Custom.
+- Pinyin and other readings are a quiet grey, so the words lead. Grey is
+  the quiet view's, and the default everywhere else, where a linked
+  word's reading still takes its link's colour. Settings > Look >
+  Readings has Grey beside Same as its line, Its word link's colour and
+  Custom.
 - In Steady, the language spoken is named when it changes, not over
   every caption.
+- Detect stays: a caption window no longer asks whether to always hear
+  its app in the language Detect has heard. You can still choose one in
+  the window's settings.
+- Fill the width is gone for now, from the caption window's bar and the
+  Lab: it didn't work well. If you had it on, captions are back on a
+  clause a row, with their arrows. A better way of using the window's
+  width is coming.
 - Chinese, Japanese and Korean captions are no longer slanted in the
-  quiet view or while a line is still being spoken.
+  quiet view or while a line is being spoken.
 - The caption timings have clearer names: the old Steady is Whole
   captions, Live updates is Instant. Quick preview is gone; if you chose
   it, you are on Steady.
+- A second caption window joins the first as it opens: one window, a
+  column each. A new window's question about its languages shows in its
+  column. Choose Separate windows and new ones open on their own from then
+  on.
+- Word links reach every word again in the languages you learn, not only
+  the words past what you know. If you chose to start them from a number
+  of words, or turned them off, that stays; Learning has the choice.
 
 ### Fixed
 
+- Holding F8 to re-speak stays steady until you release it and sends one caption.
+  On a real keyboard, key repeat no longer flickers between "Working..." and
+  "Hold the key while you speak" or splits a hold in two.
+- Home no longer shows a "Pause captions" button while nothing is captioned.
+- In Video, long subtitles fit the window and a translation can appear below the words you are reading.
+- Steady and Calm keep words on their cards as they light up and show ready translations with the line.
+
+- Video's large subtitles are sharp. Their outline no longer blurs the
+  letters, and the faint words still to come are a clear grey, not a smudge.
+- The main window can be made smaller again from any edge. Since the
+  larger default text it opened at its smallest, so its edges showed
+  arrows but didn't move. It now also opens at the size you left it.
+- A new caption window's set-up no longer covers its bottom edge. In a
+  window too short for it, it shows just above the window instead.
+- Joined caption windows stay centred when another app's window joins,
+  and can be widened from either side. They sat at the screen's left and
+  couldn't grow.
+- Joined caption windows always leave room for their buttons. After a
+  preset with a longer name, they could be dragged narrower.
+- A transcript window can always be made smaller, even at the largest
+  text on a small screen. It opens at the size you left it.
+- In a narrow caption window, the hint on its bar no longer covers the
+  preset button. It moves under the bar when there's no room beside it.
+- In Steady, words said with pauses between them now share a line until it's full.
+  Before, each short phrase got a line of its own down the window's left
+  edge. A pause of more than about 5 seconds, another speaker or another
+  language still starts a new line.
+- The mouse on the captions no longer holds new captions back.
+  While it's on the words, the lines under it stay still and "Back to live"
+  counts what's come; a moment after you move away, the window catches up
+  in one smooth move.
+- Resizing a caption window keeps your place. The lines you were reading
+  stay where they are, and the window no longer jumps back to live or to
+  the start.
+- On a Mac, opening the Speakers or Microphone list no longer freezes the
+  app for a couple of seconds. The lists (Home's Sound, or Settings >
+  Speech) are made in the background.
 - Captions in joined caption windows no longer stop for a few seconds
-  after the mouse passes over them: what waited under the mouse comes in
+  after the mouse passes over them. What waited under the mouse comes in
   as soon as it leaves, as in a window of its own.
+- Captions no longer stall while the mouse moves over a caption window.
+  They wait only while it's on their words, so the word you're about to
+  click stays put: for 2 seconds at most, or 1 second once the mouse is
+  still. They come in as soon as it moves off them.
+- Turning the quiet view off brings your word links back as they were,
+  instead of leaving them off.
+- Captions no longer stop for good after an unexpected error in the
+  connection to Polyglotic's server. It connects again by itself, within a
+  minute, as it does when the network drops. A saved lookup or statistic
+  it can't read is dropped instead of stopping captions each time
+  listening starts.
 - A long word or phrase on a dictionary card no longer runs under its
-  speaker and close buttons: it gets a little smaller, then wraps.
+  speaker and close buttons. It gets a little smaller, then wraps.
+- A line whose final version never came back from the server no longer
+  stays half-finished for good. Whether it failed there or was lost on the
+  way, it settles as it was shown, and is in the transcript and Copy all.
 - Settings > Look > Thickness no longer offers Light and Regular when the
-  captions' fonts haven't got them: they looked just like Medium. Choose
+  captions' fonts haven't got them. They looked just like Medium. Choose
   one of this PC's fonts with a Light weight and they come back.
-- If you learn two languages, the quiet view marks your words in the
-  line you're learning, not in its translation as well. Look has "Mark my
-  words in" to choose.
+- If you learn two languages, the quiet view marks your words only in the
+  line you're learning. It marked them in its translation as well. Look
+  has "Mark my words in" to choose.
+- Captions no longer stop for good when hearing an app, the PC or your
+  microphone hits an unexpected error. Hearing starts again by itself
+  within seconds, and an app Polyglotic couldn't start hearing is tried
+  again. Help's "No captions?" check says when Polyglotic has stopped
+  hearing something, instead of calling it quiet.
+- Speech over loud music was often missed for several seconds at a time.
+  That was a game's soundtrack, a video with a music bed, or music playing
+  on the PC while you caption everything - up to 20 s when the music was
+  as loud as the voices. The app now hears through a steady bed of music:
+  in our tests, speech 5 dB over music no longer goes unheard for more
+  than 2 s, and more of a song's singing is captioned. Your mic is
+  unchanged.
 - A song playing in Spotify or another app was captioned for its first
-  verse or so, then not at all: after a few seconds of music the app now
+  verse or so, then not at all. Now, after a few seconds of music, the app
   listens afresh, so sung lines later in a song are heard too. Songs are
   still captioned only in part - singing over a loud band is often
-  missed.
-- Planned maintenance times now say which time zone they're in, your
-  PC's: "until 7:30 AM (AEDT)", or "(UTC+9)" where your language has no
-  short name for the zone.
+  missed. Help's Questions now say so, and that songs work best with
+  Spoken language on Detect.
+- Music no longer turns into captions like "The.", "Music." or "Piano."
+  when you've chosen the language spoken. A caption of only such a word is
+  dropped.
+- Spotify, Apple Music and other music players are heard on Detect,
+  whatever language your other windows have. Told a language, music turned
+  into stray words. To hear a music player in a language, choose it in
+  that player's own caption window.
+- Planned maintenance times now name your PC's time zone, as in "until
+  7:30 AM (AEDT)". Where your language has no short name for the zone,
+  they give its offset, like "(UTC+9)". During it the caption windows say
+  until when too, not only that it's planned.
+- The card that saves a sentence now says "Add an English voice", not "Add
+  a English voice". That's with no English voice on the PC.
+- A language's name in the middle of a sentence is now in lower case where
+  the language writes it so. That's Spanish, French, Italian, Portuguese,
+  Czech, Polish, Russian, Ukrainian and Vietnamese ("Decirla en inglés",
+  not "en Inglés"). About 120 lines in 13 languages are reworded where a
+  name didn't fit the grammar around it: French's "le anglais", Russian's
+  "для языка английский", Korean's "영어을(를)" and others.
+- Help's "Caption your own microphone" no longer says the mic is off until
+  you turn it on. It says when it's heard: while a caption window shows
+  your speech (your first one does, from the start), and while you hold
+  your key to dictate or re-speak.
+- The caption windows no longer cover the app's own dialogs. While Save
+  transcript, the Anki export, the colour picker or a question is open,
+  they step out of the way and come back where they were when it closes.
+  Captions keep coming meanwhile.
+- The app now looks for updates only for its own system. It ignores an
+  update channel meant for another one, such as Windows' updates on a Mac.
 
 ## 0.1.9 - 2026-11-18
 

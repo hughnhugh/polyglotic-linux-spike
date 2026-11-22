@@ -111,6 +111,7 @@ def test_an_untouched_lab_keeps_a_clause_a_row() -> None:
     assert caption_style(CaptionLook()).fill is Fill.CLAUSES
 
 
+@pytest.mark.usefixtures("fill_the_width_on")
 def test_the_fill_is_saved_and_read_back_leniently() -> None:
     lab = CaptionLab(fill=Fill.STACKED, join=Join.LINE_ENDS)
     assert lab.to_stored() == {"fill": "stacked", "join": "line_ends"}
@@ -472,6 +473,7 @@ def test_line_by_line_a_word_is_found_where_it_was_poured(qapp: QApplication) ->
     assert abs(rect.left() - its[2]) < 1.0 or its[4] < start
 
 
+@pytest.mark.usefixtures("fill_the_width_on")
 def test_the_lab_offers_line_by_line_and_the_windows_follow(qapp: QApplication) -> None:
     assert CaptionLab.from_stored({"fill": "paired"}).fill is Fill.PAIRED
     window = window_of(qapp, captions=4, look=replace(POURED, lab=CaptionLab()))

@@ -21,7 +21,7 @@ from polyglotic_desktop.ui_next import caption_window as caption_window_module
 from polyglotic_desktop.ui_next.caption_window import LOCKED_SEC, lock_tip, locked_text
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
 from polyglotic_desktop.ui_next.os_words import hotkeys_here as keys
-from polyglotic_desktop.ui_next.os_words import pc_or_mac
+from polyglotic_desktop.ui_next.os_words import pc_mac_or_linux
 from polyglotic_desktop.ui_next.unlock_spot import REST_LOOKS, UnlockSpot
 from polyglotic_desktop.ui_next.views.placement import Rect
 
@@ -32,14 +32,19 @@ APP_LOCK_KEYS = "⌃⌘L" if sys.platform == "darwin" else "Ctrl+Alt+L"
 """The app's own lock hotkey as the OS writes it: on a Mac Control+Command
 (`DesktopApp`, polyglotic-hq 428)."""
 APP_HOTKEYS = (
-    "Meta+Ctrl+L, Meta+Ctrl+P, Meta+Ctrl+H"
+    "Meta+Ctrl+L, Meta+Ctrl+P, Meta+Ctrl+H, Meta+Ctrl+J"
     if sys.platform == "darwin"
-    else "Ctrl+Alt+L, Ctrl+Alt+P, Ctrl+Alt+H"
+    else "Ctrl+Alt+L, Ctrl+Alt+P, Ctrl+Alt+H, Ctrl+Alt+J"
 )
-"""The app's hotkeys as the log names them (Qt's portable text)."""
-LOCKED_SAID = pc_or_mac(
+"""The app's hotkeys as the log names them (Qt's portable text): those
+with a key - Back to live's too (polyglotic-hq 567)."""
+if sys.platform.startswith("linux"):  # Ctrl+Alt+Shift there (570)
+    APP_LOCK_KEYS = "Ctrl+Alt+Shift+L"
+    APP_HOTKEYS = ", ".join(f"Ctrl+Alt+Shift+{key}" for key in "LPHJ")
+LOCKED_SAID = pc_mac_or_linux(
     "Locked - unlock on Home or from the tray",
     "Locked - unlock on Home or from the menu bar",
+    "Locked - unlock on Home",  # GNOME has no tray without an extension (571)
 )
 """Where else a locked window unlocks: where the app's icon is, on each OS."""
 
@@ -103,7 +108,7 @@ def test_the_windows_say_the_app_s_hotkey_and_none_once_taken(
     desktop, windows = wired
     (window,) = windows.windows.values()
     assert window.unlock_keys == APP_LOCK_KEYS
-    desktop.hotkeys_not_working(["L"])  # another app has it
+    desktop.hotkeys_not_working(["lock"])  # another app has it
     assert window.unlock_keys == ""
     desktop.lock_windows.setChecked(True)
     assert window.notice.text() == LOCKED_SAID

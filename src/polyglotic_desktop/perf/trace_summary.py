@@ -12,18 +12,30 @@ Reads the records `perf.trace` makes (as JSON) - the session's, the last
   decision 0104, less its `processing_ms` only - its queue counted in
   here), `server_queue` (waiting behind other frames on the
   server), `server_work`, `interface_queue` (the answer waiting for the
-  interface thread), `apply`, `window_hold` (a caption window keeping it:
-  the mouse over it, the Lab's gap) and `paint`; and `total`, from the
-  sound to the screen.
+  interface thread), `apply`, `pace` (a paced mode's playout keeping it
+  for its words' moments: Steady's own delay, polyglotic-hq 551),
+  `window_hold` (a caption window keeping it: the mouse over it, the
+  Lab's gap) and `paint`; and `total`, from the sound to the screen.
 - **Hangs:** a source showing nothing new for over `HANG_SEC` while its
   speech went on - from the last update shown, or from the next one's
-  speech starting if that came later, until the next one shows. Each is
-  put down to one **cause**: `dropped` (an update in between never showed:
-  overtaken in the app or on the server, or lost), `not_asked` (nothing
-  was asked in between - the next one showed within `QUICK_SEC` of its
-  decision: the speech paused, or the caption mode's schedule, as
-  Steady's whole sentences), or the segment that held the next one
-  longest.
+  speech starting if that came later, until the next one shows. In a
+  paced mode a word is meant to show its pace after it was said: the
+  speech's start counts from then, so a hang is only what's beyond the
+  pace (551: Steady's 1.75 s at the start of every utterance had made
+  2.0-2.8 s "hangs" of the window's). A source's first update, with none
+  before it, is measured from its speech's start, and is a hang only when
+  something held it - any cause but `not_asked` (polyglotic-hq 566: a
+  problem report's first update on a source, held 20.8 s under the mouse,
+  was missed). Each is put down to one **cause**: `dropped` (an update in
+  between never showed: overtaken in the app or on the server, or lost),
+  `not_asked` (nothing was asked in between - the next one showed within
+  `QUICK_SEC` of its decision, its pace aside: the speech paused, or the
+  caption mode's schedule, as Steady's whole sentences), or the segment
+  that held the next one longest - never the pace. A stretch of **sound
+  without speech** (`perf.trace.Unheard`, polyglotic-hq 549) is a hang of
+  its own, put down to `sound_unheard`: sound went on and nothing was
+  heard as speech - music, a game's sound, or speech that detection
+  missed; the stretch's levels and resets help tell which.
 - **Bursts:** `BURST_SIZE` or more updates shown within `BURST_SEC`.
 - **Drops:** updates that ended without being shown, by why.
 
@@ -39,7 +51,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from polyglotic_desktop.perf.trace import APP_STAGES, Tracer
+from polyglotic_desktop.perf.trace import APP_STAGES, UNHEARD, Tracer
 
 HANG_SEC = 2.0
 """Nothing new shown for longer than this while the speech goes on."""
@@ -51,6 +63,13 @@ QUICK_SEC = 1.0
 a hang before it was nothing asked."""
 SAMPLES_KEPT = 4096
 """Each segment's values kept for its percentiles, at most."""
+MIN_UNHEARD_SEC = 3.0
+"""A stretch of sound without speech over this long counts
+(`platform.sound_unheard.MIN_SEC`, which this module can't import)."""
+HEARD_AFTER_RESET_SEC = 1.0
+"""A stretch of sound without speech that ended with speech this soon
+after speech detection forgot its state (decision 0254) was most likely
+speech the detector had stopped hearing."""
 
 SEGMENTS = (
     "pause",
@@ -64,6 +83,7 @@ SEGMENTS = (
     "server_work",
     "interface_queue",
     "apply",
+    "pace",
     "window_hold",
     "paint",
 )
@@ -78,7 +98,8 @@ _SPANS = {
     "send": ("taken", "sent"),
     "interface_queue": ("received", "handed"),
     "apply": ("handed", "applied"),
-    "window_hold": ("applied", "windowed"),
+    "pace": ("applied", "released"),
+    "window_hold": ("released", "windowed"),
     "paint": ("windowed", "painted"),
 }
 
@@ -99,6 +120,8 @@ def segments(record: Mapping[str, Any]) -> dict[str, float]:
     times: Mapping[str, float] = record.get("t") or {}
     found: dict[str, float] = {}
     for name, (start, end) in _SPANS.items():
+        if start == "released" and start not in times:
+            start = "applied"  # a mode without a pace: held by the window alone
         if start in times and end in times:
             found[name] = max(0.0, (times[end] - times[start]) * 1000)
     if "sent" in times and "received" in times:
@@ -157,6 +180,7 @@ class Summary:
     bursts: list[tuple[float, int]] = field(default_factory=list)
     drops: Counter[str] = field(default_factory=Counter)
     held: Counter[str] = field(default_factory=Counter)
+    unheard: "UnheardCounts" = field(default_factory=lambda: UnheardCounts())
     _seen: dict[str, int] = field(default_factory=dict)
     _last: dict[str, tuple[float, Mapping[str, Any]]] = field(default_factory=dict)
     _lost: dict[str, deque[float]] = field(default_factory=dict)
@@ -166,6 +190,9 @@ class Summary:
 
     def add(self, record: Mapping[str, Any]) -> None:
         """One done record."""
+        if record.get("kind") == UNHEARD:
+            self._unheard(record)
+            return
         self.updates += 1
         end = str(record.get("end") or "")
         source = str(record.get("src") or "")
@@ -200,22 +227,38 @@ class Summary:
             if slot < SAMPLES_KEPT:
                 values[slot] = ms
 
+    def _unheard(self, record: Mapping[str, Any]) -> None:
+        """A stretch of sound without speech: a hang put down to it."""
+        times = record.get("t") or {}
+        if "ended" not in times or "began" not in times:
+            return
+        ended, seconds = (
+            float(times["ended"]),
+            float(times["ended"]) - float(times["began"]),
+        )
+        self.unheard.add(record, seconds)
+        self.hangs.append(
+            Hang(ended, seconds, str(record.get("src") or ""), UNHEARD, None)
+        )
+
     def _hang(self, source: str, at: float, record: Mapping[str, Any]) -> None:
         last = self._last.get(source)
         if last is not None and at < last[0]:
             return  # done late (no window showed it): not in the source's line
         self._last[source] = (at, record)
-        if last is None:
-            return
         start = _speech_start(record)
         if start is None:
             return
+        start += float(record.get("pace") or 0.0)  # when it was meant to show
         # nothing new on the screen since the last update showed, or since
-        # this one's speech began, whichever came later
-        since = max(last[0], start)
+        # this one's speech began, whichever came later; the source's first
+        # from its speech's start (566)
+        since = start if last is None else max(last[0], start)
         if at - since <= HANG_SEC:
             return
         cause = _cause(record, since, at, self._lost.get(source, ()))
+        if last is None and cause == "not_asked":
+            return  # nothing held it: the caption mode's schedule, the speech
         self.hangs.append(Hang(at, at - since, source, cause, record.get("seq")))
 
     def _burst(self, at: float) -> None:
@@ -229,6 +272,45 @@ class Summary:
             self.bursts.append((within[0], len(within)))
         else:
             self.bursts[-1] = (self.bursts[-1][0], self.bursts[-1][1] + 1)
+
+
+@dataclass
+class UnheardCounts:
+    """The stretches of sound without speech in a stretch of timelines:
+    how many, their seconds, the longest; how many had speech detection
+    forget its state in them (`with_reset`, decision 0254), and how many
+    ended with speech within `HEARD_AFTER_RESET_SEC` of that
+    (`heard_after_reset`: the detector most likely deaf until then)."""
+
+    stretches: int = 0
+    seconds: float = 0.0
+    longest: float = 0.0
+    with_reset: int = 0
+    heard_after_reset: int = 0
+
+    def add(self, record: Mapping[str, Any], seconds: float) -> None:
+        self.stretches += 1
+        self.seconds += seconds
+        self.longest = max(self.longest, seconds)
+        if record.get("resets"):
+            self.with_reset += 1
+            after = record.get("after_reset")
+            if (
+                record.get("end") == "speech"
+                and after is not None
+                and float(after) <= HEARD_AFTER_RESET_SEC
+            ):
+                self.heard_after_reset += 1
+
+    def said(self) -> str:
+        """In a few words, for a summary line."""
+        if not self.stretches:
+            return "sound unheard: none"
+        return (
+            f"sound unheard {self.stretches} over 3 s ({self.seconds:.0f} s,"
+            f" longest {self.longest:.1f} s; {self.with_reset} with the reset,"
+            f" {self.heard_after_reset} heard just after it)"
+        )
 
 
 def summarise(records: Iterable[Mapping[str, Any]]) -> Summary:
@@ -257,15 +339,17 @@ def _cause(
 ) -> str:
     """Why nothing new showed from `since` until `b` did at `shown` (module
     docstring): an update in between dropped; nothing asked (`b` itself
-    showed within `QUICK_SEC` of its decision); or `b`'s longest segment."""
+    showed within `QUICK_SEC` of its decision, its pace aside); or `b`'s
+    longest segment but its pace."""
     times = b.get("t") or {}
     if any(since < c < shown for c in lost):
         return "dropped"
     # the frame that decided it; an older log has only the send, just after
     decided = float(times.get("heard", times.get("sent", times.get("captured", shown))))
-    if shown - decided < QUICK_SEC:
-        return "not_asked"
     parts = segments(b)
+    paced = parts.pop("pace", 0.0) / 1000
+    if shown - decided - paced < QUICK_SEC:
+        return "not_asked"
     parts.pop("total", None)
     if not parts:
         return "unknown"
@@ -285,7 +369,15 @@ USAGE_SEGMENTS = (
 )
 """The segments the usage statistics carry, p50 and p95 each."""
 
-HANG_CAUSES = ("dropped", "not_asked", *SEGMENTS, "unknown")
+HANG_CAUSES = (
+    "dropped",
+    "not_asked",
+    *(s for s in SEGMENTS if s != "pace"),
+    "unknown",
+    UNHEARD,
+)
+"""A hang's causes - never the pace (a paced mode's own; polyglotic-server's
+tracking plan has no `hangs_pace`)."""
 
 
 def usage_properties(found: Summary, stalls: int) -> dict[str, int]:
@@ -332,7 +424,9 @@ class SessionTimelines:
     def stop(self) -> None:
         """The session's end: its updates already shown but not done yet
         (waiting for a paint, or no window showed their source) are counted
-        as they stand; those still on their way aren't."""
+        as they stand; those still on their way aren't. So is a stretch of
+        sound without speech going on, from the session's start at the
+        earliest."""
         if self.started is None or self.stopped is not None:
             return
         self.stopped = self._tracer.clock()
@@ -345,6 +439,11 @@ class SessionTimelines:
                 and taken >= self.started
             ):
                 self._add(record)
+        for record in self._tracer.sounding_now():
+            times = record.get("t") or {}
+            if float(times.get("ended", 0.0)) - self.started > MIN_UNHEARD_SEC:
+                began = max(float(times.get("began", 0.0)), self.started)
+                self._add({**record, "t": {**times, "began": began}})
 
     def stalls(self) -> int:
         """The interface thread's stalls while the session listened."""
@@ -373,8 +472,21 @@ REPORT_HEADER = "--- caption timelines (perf.trace): times and counts only ---"
 def compact(record: Mapping[str, Any]) -> list[Any]:
     """One record as a short JSON array for a problem report: `[seq,
     caption, kind, section, source, audio, end, held, captured, [each
-    APP_STAGES' milliseconds after captured, or null], server]`."""
+    APP_STAGES' milliseconds after captured, or null], server, pace]`; a
+    stretch of sound without speech as `["sound_unheard", source, began,
+    ended, [dBFS p10, p50, p90], resets, after_reset, end]`."""
     times: Mapping[str, float] = record.get("t") or {}
+    if record.get("kind") == UNHEARD:
+        return [
+            UNHEARD,
+            record.get("src"),
+            round(float(times.get("began", 0.0)), 3),
+            round(float(times.get("ended", 0.0)), 3),
+            record.get("dbfs"),
+            record.get("resets"),
+            record.get("after_reset"),
+            record.get("end"),
+        ]
     zero = times.get("captured")
     offsets = [
         None
@@ -394,15 +506,34 @@ def compact(record: Mapping[str, Any]) -> list[Any]:
         None if zero is None else round(float(zero), 3),
         offsets,
         record.get("srv") or {},
+        record.get("pace"),
     ]
 
 
+_BEFORE_PACE = tuple(stage for stage in APP_STAGES if stage != "released")
+"""The stages a report's rows have from an app before 551's `released`."""
+
+
 def expand(row: Sequence[Any]) -> dict[str, Any]:
-    """A `compact` row back as a record."""
-    seq, cap, kind, sec, src, audio, end, held, zero, offsets, server = row
+    """A `compact` row back as a record - an older app's too (no pace)."""
+    if row and row[0] == UNHEARD:
+        _, src, began, ended, levels, resets, after, end = row
+        return {
+            "kind": UNHEARD,
+            "src": src,
+            "t": {"began": began, "ended": ended},
+            "len": round(ended - began, 2),
+            "dbfs": levels,
+            "resets": resets,
+            "after_reset": after,
+            "end": end,
+        }
+    seq, cap, kind, sec, src, audio, end, held, zero, offsets, server = row[:11]
+    pace = row[11] if len(row) > 11 else None
+    stages = APP_STAGES if len(offsets) == len(APP_STAGES) else _BEFORE_PACE
     times: dict[str, float] = {}
     if zero is not None:
-        for stage, ms in zip(APP_STAGES, offsets, strict=False):
+        for stage, ms in zip(stages, offsets, strict=False):
             if ms is not None:
                 times[stage] = float(zero) + ms / 1000
     found: dict[str, Any] = {
@@ -419,6 +550,8 @@ def expand(row: Sequence[Any]) -> dict[str, Any]:
         found["srv"] = dict(server)
     if held is not None:
         found["held"] = held
+    if pace is not None:
+        found["pace"] = pace
     return found
 
 
@@ -433,7 +566,8 @@ def report_text(records: Sequence[Mapping[str, Any]], limit: int) -> str:
         f"# {found.updates} updates, {found.shown} shown,"
         f" {len(found.hangs)} hangs ({causes or 'none'}), {len(found.bursts)} bursts,"
         f" {sum(found.drops.values())} drops;"
-        f" sound to screen p50 {_ms(total50)} p95 {_ms(total95)}"
+        f" sound to screen p50 {_ms(total50)} p95 {_ms(total95)};"
+        f" {found.unheard.said()}"
     )
     head = [REPORT_HEADER, said]
     rows: list[str] = []
@@ -441,10 +575,17 @@ def report_text(records: Sequence[Mapping[str, Any]], limit: int) -> str:
     for record in reversed(records):
         line = json.dumps(compact(record), separators=(",", ":"))
         if size + len(line) + 1 > limit:
-            head.append(f"# the oldest {len(records) - len(rows)} left out (size)")
             break
         rows.append(line)
         size += len(line) + 1
+    if len(rows) < len(records):  # the note of what's left out fits too
+        note = ""
+        while rows:
+            note = f"# the oldest {len(records) - len(rows)} left out (size)"
+            if size + len(note) + 1 <= limit:
+                break
+            size -= len(rows.pop()) + 1  # the oldest kept
+        head.append(note or f"# the oldest {len(records)} left out (size)")
     return "\n".join([*head, *reversed(rows)]) + "\n"
 
 

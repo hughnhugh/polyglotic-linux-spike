@@ -54,7 +54,13 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.core.learning.saved_words import Category, CategoryId
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.languages import learned_name, own_name
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL
+from polyglotic_desktop.ui_next.languages import (
+    an_before,
+    in_sentence,
+    learned_name,
+    own_name,
+)
 from polyglotic_desktop.ui_next.lookup_card import (
     better_voice_steps,
     dismiss_text,
@@ -108,13 +114,18 @@ def stop_text() -> str:
 def say_in_text(language: str) -> str:
     """A side's button in words, for its tooltip and a screen reader."""
     name = learned_name(_learned(language))
-    return _tr("Say it in {language}").format(language=name)
+    return in_sentence(_tr("Say it in {language}"), language=name)
 
 
 def add_voice_text(language: str) -> str:
     """A side's button when the PC has no voice for its language."""
     name = learned_name(_learned(language))
-    return _tr("Add a {language} voice").format(language=name)
+    if an_before(name):
+        #: "an" before a language name said with a vowel first: "Add an English voice". Translate as "Add a {language} voice"
+        said = _tr("Add an {language} voice")
+    else:
+        said = _tr("Add a {language} voice")
+    return in_sentence(said, language=name)
 
 
 def _learned(language: str) -> str:
@@ -177,7 +188,8 @@ class SentenceCard(QWidget):
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.WindowDoesNotAcceptFocus,
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | ABOVE_ALL,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
@@ -329,7 +341,7 @@ class SentenceCard(QWidget):
             state = reading.state(self._owner, side)
             button.setText(side_text(state, side.language))
             if state is Say.NO_VOICE:
-                tip = no_voice_steps(side.language)
+                tip = no_voice_steps(side.language, reading.system_voice())
             elif state is Say.SPEAKING:
                 tip = f"{stop_text()} (Esc)"
             else:

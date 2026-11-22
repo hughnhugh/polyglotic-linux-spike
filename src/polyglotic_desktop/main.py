@@ -21,9 +21,11 @@ then connects them:
   and are applied on the Qt thread without being sent back (`QtExchange`);
   finished days' exposure counts are handed over at start and hourly -
   kept only with their consent;
-- **hotkeys**: Ctrl+Alt+L, P and H (lock, pause, hide) registered with
-  Windows on a thread of their own; each press goes to the interface's
-  thread;
+- **hotkeys**: Ctrl+Alt+L, P, H and J (lock, pause, hide, back to live),
+  or the keys the learner chose in Settings > Hotkeys, and those they gave
+  the rest (polyglotic-hq 567), registered with Windows on a thread of
+  their own - again when a key changes, and let go while Settings listens
+  for one (`AppHotkeys`); each press goes to the interface's thread;
 - **feedback** (project 053): "Report a problem" and "Suggest something"
   open the form - and, if the app hit an error nothing caught last time
   (`CrashLog` leaves `crashed.json` in the data folder), Home offers once
@@ -104,7 +106,14 @@ import threading
 import time
 import traceback
 import uuid
-from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+from collections.abc import (
+    Callable,
+    Collection,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
@@ -122,13 +131,15 @@ from PySide6.QtCore import (
     Qt,
     QTimer,
     QTranslator,
+    QUrl,
     Signal,
     Slot,
     qVersion,
 )
-from PySide6.QtGui import QAction, QGuiApplication, QKeySequence
+from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 
+from polyglotic_desktop import tunable_config
 from polyglotic_desktop.adapters.anki_package import GenankiDeckWriter
 from polyglotic_desktop.adapters.app_log import LIMIT as LOG_LIMIT
 from polyglotic_desktop.adapters.app_log import read_log
@@ -161,11 +172,15 @@ from polyglotic_desktop.adapters.sqlite_learning import (
 )
 from polyglotic_desktop.adapters.sqlite_outbox import open_outbox
 from polyglotic_desktop.adapters.velopack_updates import (
+    AppImage,
     VelopackUpdater,
+    cache_folder,
     run_installer_hooks,
+    this_appimage,
 )
 from polyglotic_desktop.connection.app import (
     FIRST_CHANNEL,
+    LINUX_FIRST_CHANNEL,
     MAC_FIRST_CHANNEL,
     AppInfo,
     Release,
@@ -231,6 +246,7 @@ from polyglotic_desktop.core.listening.captions import (
     mandarin_written,
 )
 from polyglotic_desktop.core.listening.delays import CAPTION_LOG
+from polyglotic_desktop.core.listening.dictation_keys import DictationKey
 from polyglotic_desktop.core.listening.display import (
     READING_LANGUAGES,
     LinkDetail,
@@ -243,6 +259,15 @@ from polyglotic_desktop.core.listening.display import (
     WordLinks,
 )
 from polyglotic_desktop.core.listening.hidden import Sight
+from polyglotic_desktop.core.listening.history import copied_text, newest_finished
+from polyglotic_desktop.core.listening.hotkeys import (
+    DICTATE,
+    RESPEAK,
+    Hotkey,
+    Platform,
+    clashes,
+)
+from polyglotic_desktop.core.listening.hotkeys import keys as hotkey_keys
 from polyglotic_desktop.core.listening.maintenance import (
     SOON,
     Maintenance,
@@ -266,6 +291,9 @@ from polyglotic_desktop.core.listening.problem_report import (
     speech_by_source,
 )
 from polyglotic_desktop.core.listening.recheck import (
+    ANSWER_WITHIN_SEC,
+    RecheckOutcome,
+    RecheckRequest,
     RecheckResult,
 )
 from polyglotic_desktop.core.listening.settings import (
@@ -284,9 +312,10 @@ from polyglotic_desktop.core.listening.sources import (
     capture_of,
     known_app_id,
 )
-from polyglotic_desktop.core.listening.summary import SessionAction
+from polyglotic_desktop.core.listening.summary import PresetStep, SessionAction
 from polyglotic_desktop.core.listening.timing import (
     VAD_SAMPLE_RATE,
+    CaptionId,
     CaptionMode,
     CaptionTiming,
     Decision,
@@ -365,9 +394,11 @@ from polyglotic_desktop.ui import (
     move_to_applications,
     one_copy,
     theme,
+    use_presets,
 )
 from polyglotic_desktop.ui.app import ConnectionState, DesktopApp
 from polyglotic_desktop.ui.apps_with_sound import AppsWithSound
+from polyglotic_desktop.ui.captions import CaptionFeed
 from polyglotic_desktop.ui.consent import ConsentDialog, agreement_needed
 from polyglotic_desktop.ui.delete_learning import DeleteLearningDialog
 from polyglotic_desktop.ui.feedback import FeedbackDialog
@@ -395,12 +426,12 @@ from polyglotic_desktop.ui.settings import (
     SOURCE_KEY_SYSTEM,
     AppSettings,
     Settings,
-    added_language_changes,
     introductions_changes,
     language_choices_changes,
     learning_changes,
     load_rules_changes,
     reset_point_changes,
+    second_languages_changes,
 )
 from polyglotic_desktop.ui.sign_in import (
     Redeem,
@@ -415,30 +446,42 @@ from polyglotic_desktop.ui_next import maintenance as maintenance_words
 from polyglotic_desktop.ui_next.account_page import AccountPage as NextAccountPage
 from polyglotic_desktop.ui_next.caption_window import notice_text
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.dictation_key import key_words
 from polyglotic_desktop.ui_next.first_window import made_ahead
 from polyglotic_desktop.ui_next.fonts_ahead import FontsAhead
 from polyglotic_desktop.ui_next.help_page import HelpPage as NextHelpPage
-from polyglotic_desktop.ui_next.home import WHATS_NEW_ON_HOME, HomePage, hotkey_works
+from polyglotic_desktop.ui_next.home import WHATS_NEW_ON_HOME, HomePage, own_hotkey
 from polyglotic_desktop.ui_next.known_map_card import MapWords, WordsReader
 from polyglotic_desktop.ui_next.languages import (
+    in_sentence,
     language_name,
     learned_name,
     own_targets,
     show_mandarin_in_traditional,
     taken_off_note,
+    target_languages,
 )
 from polyglotic_desktop.ui_next.learning_page import LearningPage, reset_question
 from polyglotic_desktop.ui_next.main_window import MainWindow as NextMainWindow
-from polyglotic_desktop.ui_next.os_words import pc_or_mac
+from polyglotic_desktop.ui_next.no_tray import keep_running
+from polyglotic_desktop.ui_next.os_words import (
+    on_linux,
+    pc_mac_or_linux,
+    pc_or_mac,
+    platform,
+)
 from polyglotic_desktop.ui_next.pack_row import (
     failed_notice,
     ready_notice,
     remove_question,
 )
 from polyglotic_desktop.ui_next.plan import plan_text
+from polyglotic_desktop.ui_next.preset_popover import preset_name, undo_note
+from polyglotic_desktop.ui_next.presets_card import change_words
 from polyglotic_desktop.ui_next.save_folder import SaveFolder
 from polyglotic_desktop.ui_next.selection_reading import SelectionReading
 from polyglotic_desktop.ui_next.settings_page import SettingsPage
+from polyglotic_desktop.ui_next.timing_popover import fallback_note
 from polyglotic_desktop.ui_next.transcripts import Transcripts
 from polyglotic_desktop.ui_next.views import known_words
 from polyglotic_desktop.ui_next.views.app_choices import AppChoice, app_choices
@@ -485,6 +528,13 @@ from polyglotic_desktop.ui_next.views.panels import (
 )
 from polyglotic_desktop.ui_next.views.placement import Rect
 from polyglotic_desktop.ui_next.views.plan import PlanLine, PlanShown, plan_line
+from polyglotic_desktop.ui_next.views.preset_menu import (
+    PresetItem,
+    PresetMenu,
+    PresetsView,
+    Show,
+    Undo,
+)
 from polyglotic_desktop.ui_next.views.sound import Sound, SoundView
 from polyglotic_desktop.ui_next.views.speech import BetterVoice
 from polyglotic_desktop.ui_next.views.transcript import TranscriptLength
@@ -598,6 +648,17 @@ def release_notes() -> str:
         return ""
 
 
+def show_keys_in_help(page: NextHelpPage, value: AppSettings) -> None:
+    """Help's dictation and re-speaking topics as the settings have them:
+    their keys in words, dictation on or off, and how re-speaking is done -
+    a tap, then a hold of dictation's key; a hold of its own key; or off
+    (polyglotic-hq 289, 575, 576)."""
+    words = key_words(value.dictation_key)
+    page.show_dictation_key(words, value.dictation)
+    own = key_words(value.respeak_key) if value.respeak_key else ""
+    page.show_respeaking(words, value.respeaking, value.dictation, own)
+
+
 def show_whats_new(
     hub: Hub, settings: Settings, version: str, fresh: bool, english: bool
 ) -> None:
@@ -705,18 +766,24 @@ def this_copys_release(system: str = sys.platform) -> Release:
     """This copy's release (`this_release`): run from source, `0.0.0` on the
     first channel of this OS's builds (`system`: `sys.platform`'s name, as
     `os_adapters` takes it) - on a Mac `macos-arm64-alpha`, which Settings >
-    Updates names, not Windows' `win-x64-alpha` (polyglotic-hq 451). A
-    packed app reads its stamp, whatever the OS."""
-    return this_release(
-        first=MAC_FIRST_CHANNEL if system == "darwin" else FIRST_CHANNEL
-    )
+    Updates names, not Windows' `win-x64-alpha` (polyglotic-hq 451); on
+    Linux `linux-x64-alpha` (polyglotic-hq 550). A packed app reads its
+    stamp, whatever the OS."""
+    first = FIRST_CHANNEL
+    if system == "darwin":
+        first = MAC_FIRST_CHANNEL
+    elif system.startswith("linux"):
+        first = LINUX_FIRST_CHANNEL
+    return this_release(first=first)
 
 
 def updater(feed: str) -> VelopackUpdater:
     """The installer's updates from `feed`, checked against `FEED_KEYS` when
     it's the built-in feed and they're set. Checked packages are kept beside
     `current` in the install folder (Velopack's place for files that may go
-    with an uninstall) - on a Mac, outside the app (`verified_feed_folder`)."""
+    with an uninstall) - on a Mac and on Linux, outside the app
+    (`verified_feed_folder`). On Linux the AppImage's downloads are this
+    user's own, and apply as the app exits (polyglotic-hq 550)."""
     release = this_copys_release()
     signed = feed == UPDATES and bool(FEED_KEYS)
     return VelopackUpdater(
@@ -726,11 +793,15 @@ def updater(feed: str) -> VelopackUpdater:
         release.version,
         verified_feed_folder(),
         open_url=_open_url,
+        appimage=this_appimage(),
     )
 
 
 def verified_feed_folder(
-    executable: str | Path | None = None, home: Path | None = None
+    executable: str | Path | None = None,
+    home: Path | None = None,
+    system: str = sys.platform,
+    environ: Mapping[str, str] | None = None,
 ) -> Path:
     """Where the signed feed and its checked package wait for Velopack
     (decision 0019): beside `current` in Velopack's install folder on
@@ -738,8 +809,13 @@ def verified_feed_folder(
     `~/Library/Caches/Polyglotic/verified-feed` - never inside the app
     bundle, whose signature seals everything in it, so a file written there
     would break the signature macOS keeps the learner's permissions under
-    (polyglotic-hq 430, decision 0196). `executable`: the packed app's
-    (`sys.executable` unless given)."""
+    (polyglotic-hq 430, decision 0196). On Linux, in the user's cache
+    (`$XDG_CACHE_HOME/Polyglotic/verified-feed`): an AppImage is one
+    read-only file while it runs (polyglotic-hq 550). `executable`: the
+    packed app's (`sys.executable` unless given); `system`: `sys.platform`'s
+    name; `environ`: where `$XDG_CACHE_HOME` is read (`os.environ`)."""
+    if system.startswith("linux"):
+        return cache_folder(environ, home) / "Polyglotic" / "verified-feed"
     path = Path(executable if executable is not None else sys.executable)
     if path.parent.name == "MacOS" and path.parent.parent.name == "Contents":
         return (
@@ -865,16 +941,117 @@ class OsAdapters:
     Mac's (polyglotic-hq 478). None on Windows, which asks none."""
     common_apps: tuple[CommonApp, ...] = ()
     """Browsers and the main apps a caption window lists before they play."""
+    app_category: Callable[[str], SourceCategory] = lambda name: SourceCategory.OTHER
+    """The category of the app of a name (its executable's; a Mac's bundle
+    id) on the known-apps list, playing or not: a music player's window is
+    heard on Detect (polyglotic-hq 568)."""
     sound_devices: Callable[[], SoundDevices] = SoundDevices
     """The speakers and mics plugged in, for Home's Sound (polyglotic-hq 372)."""
     metered: Callable[[], bool] = lambda: False
     """Whether the OS calls the connection metered: a dictionary pack's
     download asks first on one (decision 0122), and an update found waits
     for the learner (polyglotic-hq 345)."""
+    system_mode: Callable[[], str | None] | None = None
+    """The OS's own light or dark ("light", "dark", None: no preference)
+    where Qt doesn't read it: Linux's settings portal (polyglotic-hq 571).
+    None: Qt's (Windows, the Mac). Like this PC follows it (`theme.os_mode`)."""
     translocation: Callable[[], Translocation] | None = None
     """Whether macOS runs the app from a temporary copy it can't update
     itself in, and the move to Applications (polyglotic-hq 433). None where
     an OS has no such thing (Windows)."""
+    unlock_spot: bool = False
+    """Whether a locked caption window's corner must keep taking the mouse
+    for resting on its lock to offer Unlock (`UnlockSpot.catch`): where the
+    app can't read the mouse over another app's window - Linux on a Wayland
+    desktop, where it's an X11 program (polyglotic-hq 547, 570). False: the
+    mouse is read anywhere (Windows, a Mac, an Xorg session)."""
+    qt_platform: str | None = None
+    """The Qt platform the app's windows need on this OS, whatever the
+    session would pick (`use_qt_platform`): Linux's `xcb` - the app is an
+    X11 program, through XWayland on a Wayland desktop, where a window can
+    stay on top, place itself and let clicks through (decision 0258); the
+    packed app carries no other. None: Qt's own choice (Windows, a Mac)."""
+    dictation: bool = True
+    """Whether dictation is offered at all: False where the OS has none yet
+    (Linux, until polyglotic-hq 546's slice 8) - the tray, Settings and Help
+    don't show it and its key isn't taken (574)."""
+    list_voices_at_start: bool = True
+    """Whether to list the OS's voices shortly after start
+    (`VOICES_AFTER_START_MS`): False on Linux (polyglotic-hq 646), where
+    listing them starts speech-dispatcher and its never-paused dummy stream -
+    instead, voices are listed only when a card first asks."""
+
+
+QT_PLATFORM_KEPT = ("offscreen", "minimal")
+"""Qt platforms asked for that `use_qt_platform` leaves alone: the tests',
+the install check's and CI's, which show no window."""
+
+
+def use_qt_platform(
+    wanted: str | None, environ: MutableMapping[str, str] | None = None
+) -> None:
+    """Qt's platform as the OS's adapters need it (`OsAdapters.qt_platform`),
+    set before the application is made - unless none is needed, or one that
+    shows no window was asked for."""
+    env = os.environ if environ is None else environ
+    if wanted is None or env.get("QT_QPA_PLATFORM", "") in QT_PLATFORM_KEPT:
+        return
+    env["QT_QPA_PLATFORM"] = wanted
+
+
+def use_input_methods(platform: str | None) -> None:
+    """On X11 - Linux's `xcb` (`OsAdapters.qt_platform`) - Qt's input
+    method plugins asked for as the app carries them, before the
+    application is made: IBus's for Fcitx5 too, and where the session names
+    none (decision 0279, `platform/linux/input_method`). Elsewhere nothing."""
+    if platform != "xcb":
+        return
+    from polyglotic_desktop.platform.linux import input_method
+
+    if added := input_method.use_carried_plugins():
+        log.info("input methods: %s", ", ".join(f"{k}={v}" for k, v in added.items()))
+
+
+def use_file_dialogs(platform: str | None) -> None:
+    """On X11 - Linux's `xcb` (`OsAdapters.qt_platform`) - the desktop's own
+    file dialogs, through its portal, asked for before the application is
+    made: Qt's portal theme, which the packed app carries (decision 0280,
+    `platform/linux/file_dialogs`). Elsewhere nothing."""
+    if platform != "xcb":
+        return
+    from polyglotic_desktop.platform.linux import file_dialogs
+
+    if added := file_dialogs.use_portal_dialogs():
+        log.info("file dialogs: %s", ", ".join(f"{k}={v}" for k, v in added.items()))
+
+
+def leave_packed_environment(
+    system: str = sys.platform, environ: MutableMapping[str, str] | None = None
+) -> None:
+    """First thing at a start, on Linux: every program the app starts - the
+    browser a link opens above all - gets the library path from outside
+    the packed app, not the app's own folder that PyInstaller's loader put
+    there (`platform.linux.system.leave_packed_environment`; polyglotic-hq
+    561). Nothing to do elsewhere: Windows and the Mac set no such path."""
+    if system.startswith("linux"):
+        from polyglotic_desktop.platform.linux import system as linux
+
+        linux.leave_packed_environment(environ)
+
+
+def programs_library_path(environ: Mapping[str, str] | None = None) -> str:
+    """Whose libraries a program the app starts would load, for the install
+    check: "the app's" while the library path names the packed app's own
+    folder, else "the system's"."""
+    path = (os.environ if environ is None else environ).get("LD_LIBRARY_PATH", "")
+    folder: str | None = getattr(sys, "_MEIPASS", None)
+    if not folder:
+        return "the system's"
+    mine = any(
+        part and os.path.realpath(part) == os.path.realpath(folder)
+        for part in path.split(os.pathsep)
+    )
+    return "the app's" if mine else "the system's"
 
 
 def os_adapters(system: str = sys.platform) -> OsAdapters:
@@ -882,13 +1059,16 @@ def os_adapters(system: str = sys.platform) -> OsAdapters:
     name) - the one place that picks them, imported only now, so the rest
     of the app (and its tests) load on any OS. Raises `NoOsAdapters` naming
     what's missing where there are none yet (polyglotic-hq 171: macOS and
-    Linux; macOS's since 409, capturing nothing until 411's)."""
+    Linux; macOS's since 409, capturing nothing until 411's; Linux's since
+    550)."""
     if system == "darwin":
         return macos_adapters()
+    if system.startswith("linux"):
+        return linux_adapters()
     if system != "win32":
         raise NoOsAdapters(
             f"Polyglotic has no adapters for this OS ({system}) yet:"
-            " platform/linux would provide ports/capture.py's,"
+            " a platform package would provide ports/capture.py's,"
             " ports/credentials.py's and ports/system.py's (decision 0038)"
         )
     from polyglotic_desktop.adapters import windows_credentials
@@ -967,6 +1147,7 @@ def os_adapters(system: str = sys.platform) -> OsAdapters:
         type_text=text_input.type_text,
         keyboard_window=text_input.keyboard_window,
         common_apps=categories.COMMON_APPS,
+        app_category=categories.category_of,
         sound_devices=devices.sound_devices,
         metered=metered,
     )
@@ -1062,8 +1243,110 @@ def macos_adapters() -> OsAdapters:
         mic_permission=mic_permission.Permission(),
         metered=not_yet.not_metered,
         common_apps=categories.COMMON_APPS,
+        app_category=categories.category_of,
         sound_devices=devices.sound_devices,
         translocation=translocation.MacTranslocation,
+    )
+
+
+def linux_adapters() -> OsAdapters:
+    """Linux's (polyglotic-hq 546, 547, 550, 561): its own system, the
+    desktop's keyring and one copy; one app at a time, everything else,
+    everything the PC plays and the mic through the sound server
+    (libpulse), with the apps playing, the known apps and the sound
+    devices; the caption windows above everything as override-redirect
+    windows; light or dark and a metered connection as the desktop says
+    them over D-Bus (571); the hotkeys where the session lets an X11 app
+    take them (570, decision 0293); a word said in a pack's recording, else
+    the system's basic voice, speech-dispatcher, and Home's sample played
+    aloud through the sound server (591); starting at sign-in as an XDG
+    autostart entry (571); and what the first Linux build doesn't have yet
+    saying so through its port (`platform/linux/not_yet`): dictation."""
+    from polyglotic_desktop.platform.linux import (
+        apps,
+        capture,
+        categories,
+        devices,
+        hints,
+        hotkeys,
+        menu_entry,
+        not_yet,
+        on_top,
+        one_copy,
+        secret_service,
+        startup,
+    )
+    from polyglotic_desktop.platform.linux import system as linux
+
+    def credentials(entry: str | None) -> CredentialStore:
+        store = secret_service.SecretServiceStore
+        return store(entry) if entry else store()
+
+    def start_at_sign_in(executable: str) -> StartWithWindows:
+        found = startup.XdgAutostart(executable)
+        found.follow()  # while it's on, a moved AppImage still starts (571)
+        return found
+
+    def speaker(recordings: Recordings) -> SpeakerThread:
+        """The recordings, then speech-dispatcher's voices (591), imported
+        only now: never on the start's path. Without speech-dispatcher the
+        recordings still play."""
+        from polyglotic_desktop.platform.linux import sound, voices
+        from polyglotic_desktop.platform.recorded_voices import RecordedVoices
+        from polyglotic_desktop.platform.speaking import SpeakerThread
+
+        said = RecordedVoices(voices.DispatcherVoices(), recordings)
+        return SpeakerThread(said, sound.PulseOutput)
+
+    def sound_out() -> SoundOut:
+        from polyglotic_desktop.platform.linux import sound
+
+        return sound.PlayAloud()
+
+    return OsAdapters(
+        app_list=apps.LinuxAppList,
+        app_capture_support=capture.app_capture_support,
+        app_capture_trial=capture.Trial,
+        app_capture=capture.AppCapture,
+        everything_else_capture=capture.EverythingElseCapture,
+        windows_build=capture.no_windows_build,
+        system_capture=capture.SystemCapture,
+        mic_capture=capture.MicCapture,
+        outputs_playing=devices.outputs_playing,
+        credentials=credentials,
+        hotkeys=hotkeys.for_this_session,
+        sound_out=sound_out,
+        speaker=speaker,
+        start_at_sign_in=start_at_sign_in,
+        copy_lock=one_copy.FileLock,
+        let_to_front=one_copy.let_to_front,
+        keys=not_yet.no_keys,
+        on_top=on_top.LinuxOnTop,
+        foreground_watch=not_yet.NoForegroundWatch,
+        light_taskbar=hints.light_panel,
+        # the menu entry and icon, written by the AppImage itself (561)
+        taskbar_identity=partial(
+            menu_entry.taskbar_identity, icon=icons.ICONS / "polyglotic.svg"
+        ),
+        store_package=not_yet.none_found,
+        os_name=linux.os_name,
+        os_version=linux.os_version,
+        data_folder=linux.data_folder,
+        show_error=linux.show_error,
+        seconds_since_launch=linux.seconds_since_launch,
+        read_fonts=not_yet.not_done,
+        make_native_window=not_yet.not_made,
+        hold_key=not_yet.NoHoldKey,
+        dictation=False,  # slice 8 (574: the tray offered it, its key "taken")
+        list_voices_at_start=False,  # 646: start speech-dispatcher on demand
+        type_text=not_yet.type_nothing,
+        keyboard_window=not_yet.no_window,
+        metered=hints.metered,
+        system_mode=hints.prefers,
+        sound_devices=devices.sound_devices,
+        common_apps=categories.COMMON_APPS,
+        unlock_spot=linux.wayland_session(os.environ),
+        qt_platform="xcb",
     )
 
 
@@ -1100,8 +1383,10 @@ def listening_settings(
         targets=targets,
         source_targets=source_targets,
         source_spoken=source_spoken,
+        # each target's: the learner's, or English for all but English (555)
         second_languages={
-            Language(t): Language(s) for t, s in value.second_languages.items()
+            Language(t): Language(s)
+            for t, s in value.second_languages_for(map(str, targets)).items()
         },
         spelling_hints=value.spelling_hints,
         # provisional lines are always translated (polyglotic-hq 268,
@@ -1253,7 +1538,9 @@ def caption_look(value: AppSettings, own: Iterable[str] = ()) -> CaptionLook:
         translation=value.translation_color,
         font=value.caption_font,
         faces=tuple(sorted(value.caption_faces.items())),
-        show_original=value.show_original,
+        # with no translation (a preset's Original only, 556) what was said
+        # always shows: else nothing would
+        show_original=value.show_original or not value.show_translation,
         show_language=value.show_language,
         show_source=value.show_source,
         show_delay=value.show_delay,
@@ -1291,16 +1578,24 @@ def caption_look(value: AppSettings, own: Iterable[str] = ()) -> CaptionLook:
 def second_language_chosen(
     value: AppSettings, target: str, second: str
 ) -> dict[str, object]:
-    """The settings change a window's "When they already speak ..." asks for: lines
-    already in `target` shown in `second` - "" (or `target` itself): left as
-    they are. Kept by language, so every window with `target` follows
-    (263)."""
-    seconds = dict(value.second_languages)
-    if second and second != target:
-        seconds[target] = second
-    else:
-        seconds.pop(target, None)
-    return {"second_languages": seconds}
+    """A preset's second-language choice for every window using `target`."""
+    return {
+        "preset_second_languages": {
+            **value.preset_second_languages,
+            target: "" if second == target else second,
+        }
+    }
+
+
+def second_languages(value: AppSettings) -> dict[Language, Language]:
+    """Each target's second language, for every language captions can be
+    translated into - a window can switch to any - and those chosen: the
+    learner's, or English for all but English (`AppSettings.
+    second_language_of`; polyglotic-hq 555). The server is sent those of
+    the session's targets alone (`connection.listening.settings`)."""
+    every = [str(code) for code in target_languages(())]
+    found = value.second_languages_for([*every, *value.targets])
+    return {Language(t): Language(s) for t, s in found.items()}
 
 
 def stop_captioning(value: AppSettings, key: str) -> dict[str, object]:
@@ -1517,6 +1812,28 @@ def mic_refused_text() -> str:
     )
 
 
+def follow_unlock_spot(windows: CaptionWindows, desktop: DesktopApp) -> None:
+    """A locked window's corner keeps taking the mouse while the setting is
+    on (`AppSettings.unlock_spot`; polyglotic-hq 570) - where the OS needs
+    it (`OsAdapters.unlock_spot`)."""
+
+    def follow() -> None:
+        on = desktop.settings.value.unlock_spot
+        if on != windows.unlock_spot:
+            windows.set_unlock_spot(on)
+
+    follow()
+    desktop.settings.changed.connect(follow)
+
+
+def tell_how_to_unlock(windows: CaptionWindows, desktop: DesktopApp) -> None:
+    """The first lock says at length how to unlock again, once (Linux:
+    polyglotic-hq 546, 570 - some desktops have no tray, GNOME's Wayland
+    session gives the app no hotkey; `AppSettings.unlock_told`)."""
+    windows.tell_how_to_unlock = not desktop.settings.value.unlock_told
+    windows.unlock_told.connect(lambda: desktop.settings.update(unlock_told=True))
+
+
 def wire_caption_windows(
     windows: CaptionWindows,
     desktop: DesktopApp,
@@ -1534,8 +1851,51 @@ def wire_caption_windows(
     window's close unticks its app; its timing chip sets the session's;
     each window's label follows its app's source as it's found;
     All caption settings... opens Settings > Captions (`Hub`) and Open transcript its
-    transcript window (`wire_transcripts`)."""
+    transcript window (`wire_transcripts`); a music player's Lyrics switch
+    is the learner's Lyrics setting (polyglotic-hq 595)."""
+
+    def explain_video_timing() -> None:
+        value = desktop.settings.value
+        requested, effective = value.requested_caption_mode, value.caption_mode
+        if (
+            requested is not effective
+            and value.video_timing_explained.get(requested.value) != effective.value
+            and any(window.isVisible() for window in windows.windows.values())
+        ):
+            windows.show_notice(fallback_note(requested, effective))
+            desktop.settings.update(
+                video_timing_explained={
+                    **value.video_timing_explained,
+                    requested.value: effective.value,
+                }
+            )
+
+    # After the preset and its windows have settled, including a window opened
+    # later or brought back from hiding. Multiple signals share the saved receipt.
+    desktop.settings.changed.connect(
+        explain_video_timing, Qt.ConnectionType.QueuedConnection
+    )
+    windows.window_shown.connect(
+        explain_video_timing, Qt.ConnectionType.QueuedConnection
+    )
     windows.languages_changed.connect(send_settings)
+    windows.lyrics_wanted.connect(
+        lambda on: desktop.settings.update_from_bar(lyrics=on)
+    )
+
+    def save_language(key: str, field: str, code: str) -> None:
+        value = desktop.settings.value
+        languages = dict(value.preset_languages)
+        languages[key] = {**languages.get(key, {}), field: code}
+        changes: dict[str, object] = {"preset_languages": languages}
+        if field == "translate_into" and code and not value.show_translation:
+            changes["show_translation"] = True
+        desktop.settings.update_from_bar(**changes)
+
+    windows.save_preset_language = save_language
+    desktop.settings.changed.connect(
+        lambda: windows.set_preset_languages(desktop.settings.value.preset_languages)
+    )
     asked = MicAsked(windows, desktop, mic_permission)
     windows.mic_wanted.connect(asked.wanted)
     desktop.caption_mic.toggled.connect(
@@ -1559,16 +1919,41 @@ def wire_caption_windows(
     desktop.hide_windows.toggled.connect(windows.set_hidden)
     windows.set_locked(desktop.lock_windows.isChecked())
     windows.set_hidden(desktop.hide_windows.isChecked())
+    # what only a hotkey does (polyglotic-hq 567): every window to its newest
+    # caption, as its Back to live does; their text a size up or down; the
+    # newest caption copied, said in every window
+    desktop.go_live.triggered.connect(windows.go_live)
+    live = desktop.go_live  # its hotkey on Back to live's tip, as it is now
+    windows.set_live_keys(shortcut_text(live))
+    live.changed.connect(lambda: windows.set_live_keys(shortcut_text(live)))
+    desktop.text_bigger.triggered.connect(lambda: windows.step_text(1))
+    desktop.text_smaller.triggered.connect(lambda: windows.step_text(-1))
+    desktop.caption_controls.triggered.connect(windows.open_bar_controls)
+
+    def copy_newest() -> None:
+        newest = newest_finished(desktop.feed.history.captions)
+        clipboard = QGuiApplication.clipboard()
+        if newest is None or clipboard is None:
+            return
+        clipboard.setText(copied_text(newest))
+        windows.show_notice(
+            QApplication.translate("CaptionWindows", "Copied the newest caption")
+        )
+
+    desktop.copy_caption.triggered.connect(copy_newest)
     windows.stop_wanted.connect(
         lambda key: desktop.settings.update(
             **stop_captioning(desktop.settings.value, key)
         )
     )
     windows.timing_wanted.connect(
-        lambda mode: desktop.settings.update(caption_mode_chosen=mode)
+        lambda mode: desktop.settings.update_from_bar(caption_mode_chosen=mode)
+    )
+    windows.path_wanted.connect(  # the timing chip's, Learning's (593)
+        lambda path: desktop.settings.update_from_bar(caption_path=path)
     )
     windows.second_language_wanted.connect(
-        lambda target, second: desktop.settings.update(
+        lambda target, second: desktop.settings.update_from_bar(
             **second_language_chosen(desktop.settings.value, target, second)
         )
     )
@@ -1580,6 +1965,7 @@ def wire_caption_windows(
     # an app's source found after its window opened (every start: the windows
     # open before capture starts): the window takes the app's name, not its file's
     desktop.labels_changed.connect(relabel)
+    desktop.feed.received.connect(windows.offer_respeaking)
     desktop.feed.applied.connect(windows.apply)
     desktop.feed.dictionary_ready.connect(windows.dictionary_ready)
     desktop.feed.checked.connect(windows.use_checked)
@@ -1615,6 +2001,10 @@ def wire_transcripts(transcripts: Transcripts, desktop: DesktopApp) -> None:
         lambda mode: desktop.settings.update(caption_mode_chosen=mode)
     )
     desktop.feed.applied.connect(transcripts.apply)
+    desktop.go_live.triggered.connect(transcripts.go_live)  # its hotkey (567)
+    live = desktop.go_live  # and on Back to live's tip, as it is now
+    transcripts.set_live_keys(shortcut_text(live))
+    live.changed.connect(lambda: transcripts.set_live_keys(shortcut_text(live)))
     desktop.feed.dictionary_ready.connect(transcripts.dictionary_ready)
     desktop.feed.checked.connect(transcripts.use_checked)
     desktop.pause.toggled.connect(transcripts.set_paused)
@@ -1666,24 +2056,112 @@ def follow_settings(
     second languages, labels, and which apps are captioned."""
     value = desktop.settings.value
     own = [str(t) for langs in windows.targets().values() for t in langs]
-    windows.set_look(caption_look(value, own))
-    windows.set_timing(value.caption_mode)
-    windows.set_playout(value.playout_rules)
-    windows.set_two_zones(value.steady_two_zones)
-    windows.set_path(ReadingPath(value.caption_path))
-    windows.set_longest_wait(value.max_wait_for_text)
-    windows.set_settle_after(value.text_settles_after)
-    desktop.feed.history.set_settle_after(value.text_settles_after)
-    windows.set_second_languages(
-        {Language(t): Language(s) for t, s in value.second_languages.items()}
+    with windows.batch_settings():
+        windows.set_look(caption_look(value, own))
+        windows.set_timing(value.caption_mode)
+        windows.set_playout(value.playout_rules)
+        windows.set_two_zones(value.steady_two_zones)
+        windows.set_cards(value.steady_cards)
+        windows.set_path(ReadingPath(value.caption_path))
+        windows.set_longest_wait(value.max_wait_for_text)
+        windows.set_settle_after(value.text_settles_after)
+        desktop.feed.history.set_settle_after(value.text_settles_after)
+        windows.set_second_languages(second_languages(value))
+        windows.set_lyrics(value.lyrics)  # songs mode's switch (595)
+        captioned = captioned_apps(value, sources.per_app, sources.app_id)
+        if sources.sample_shown and not value.source_chosen:  # an app chosen ends it
+            captioned.append((SOURCE_KEY_SAMPLE, SAMPLE))
+        desktop.set_app_sources(sources.shown())
+        labels = desktop.source_labels()
+        windows.set_labels(labels, labels[MIC].name)
+        windows.set_preset_my_speech(value.my_speech)
+        windows.set_captioned(captioned)
+        follow_presets(windows, value)
+
+
+def follow_presets(windows: CaptionWindows, value: AppSettings) -> None:
+    """The caption windows follow the chosen preset's window settings
+    (polyglotic-hq 556): the original only in every window, or not; and
+    Video's subtitles - every window along the bottom - or each where the
+    learner put it."""
+    windows.set_preset_my_speech(value.my_speech)
+    windows.set_original_only(not value.show_translation)
+    windows.set_preset_languages(value.preset_languages)
+    windows.set_preset_sizes(value.preset, use_presets.parent_of(value, value.preset))
+    windows.set_subtitles(
+        (value.subtitle_size, value.subtitle_width) if value.subtitles else None
     )
-    captioned = captioned_apps(value, sources.per_app, sources.app_id)
-    if sources.sample_shown and not value.source_chosen:  # an app chosen ends it
-        captioned.append((SOURCE_KEY_SAMPLE, SAMPLE))
-    desktop.set_app_sources(sources.shown())
-    labels = desktop.source_labels()
-    windows.set_labels(labels, labels[MIC].name)
-    windows.set_captioned(captioned)
+
+
+def preset_menu(
+    value: AppSettings,
+    look: CaptionLook,
+    my_speech: bool,
+    undo: tuple[Undo, str] | None = None,
+) -> PresetMenu:
+    """The presets as the caption windows' dropdown and Settings show
+    them (polyglotic-hq 556): each one's name - the learner's where they
+    renamed it - the chosen one, its Show, and what's added on top: word
+    links or the quiet view and readings as `look` shows them, and my
+    speech in any window (`my_speech`). What it changes as saved, in words;
+    how many of its settings aren't saved; and `undo`, a step that lost
+    something while it can be undone (587)."""
+    items = tuple(
+        PresetItem(
+            key,
+            value.preset_names.get(key) or preset_name(key),
+            key not in use_presets.ORDER,  # Custom, or one of the learner's
+            use_presets.parent_of(value, key) if key not in use_presets.ORDER else None,
+        )
+        for key in use_presets.keys(value)
+    )
+    show = (
+        Show.ORIGINAL
+        if not value.show_translation
+        else Show.TRANSLATION
+        if not value.show_original
+        else Show.BOTH
+    )
+    return PresetMenu(
+        items,
+        value.preset,
+        show,
+        links=look.word_links is not WordLinks.OFF,
+        quiet=look.quiet,
+        readings=bool(look.reading_lines),
+        my_speech=my_speech,
+        changes=change_words(use_presets.differences(value, value.preset)),
+        can_add=use_presets.can_add(value),
+        edited=len(use_presets.edits(value)),
+        restorable=use_presets.restorable(value, value.preset),
+        undo=undo,
+    )
+
+
+UNDO_SEC = 8.0
+"""How long a preset step that lost something offers Undo (polyglotic-hq
+587, the brief: "about 8 s")."""
+
+
+def presets_state(value: AppSettings) -> tuple[object, ...]:
+    """What a preset step changes: while it's the same as just after one,
+    its Undo still holds (587)."""
+    return (
+        value.preset,
+        value.preset_values,
+        value.preset_names,
+        value.preset_parents,
+        value.own_presets,
+        tuple(getattr(value, name) for name in use_presets.PRESET_SETTINGS),
+    )
+
+
+def lines_changes(show: Show) -> dict[str, object]:
+    """The settings the dropdown's Show changes to `show` (556)."""
+    return {
+        "show_original": show is not Show.TRANSLATION,
+        "show_translation": show is not Show.ORIGINAL,
+    }
 
 
 def traditional_here() -> bool:
@@ -1804,7 +2282,7 @@ def session_languages(
     last (`recent`: first in its list, polyglotic-hq 317)."""
     return SessionLanguages(
         spoken=value.spoken_language,
-        second_languages=dict(value.second_languages),
+        second_languages=value.second_languages_for(in_use),
         translate_live=value.translate_live,
         spelling_hints=value.spelling_hints,
         in_use=tuple(in_use),
@@ -1812,17 +2290,31 @@ def session_languages(
         recent_spoken=tuple(recent),
         mandarin_script=value.mandarin_script,
         traditional_here=traditional_here(),
+        lyrics=value.lyrics,
     )
 
 
-def languages_settings(languages: SessionLanguages) -> dict[str, object]:
-    """The settings a change in the Languages panel makes."""
+def languages_settings(
+    value: AppSettings, languages: SessionLanguages
+) -> dict[str, object]:
+    """The settings a change in the Languages panel makes: its second
+    languages by the windows' languages it has a row for (`in_use`) - the
+    default English not kept as a choice (555), the others' as they are."""
+    shown = {t: languages.second_languages.get(t) for t in languages.in_use}
+    preset = value.preset_second_languages
     return {
         "spoken_language": languages.spoken,
-        "second_languages": dict(languages.second_languages),
+        **second_languages_changes(
+            value, {t: s for t, s in shown.items() if t not in preset}
+        ),
+        "preset_second_languages": {
+            **preset,
+            **{t: s or "" for t, s in shown.items() if t in preset},
+        },
         "translate_live": languages.translate_live,
         "spelling_hints": languages.spelling_hints,
         "mandarin_script": languages.mandarin_script,
+        "lyrics": languages.lyrics,
     }
 
 
@@ -1933,7 +2425,7 @@ def timing_of(value: AppSettings) -> Timing:
     """The Timing panel's value from the settings: the caption mode, the
     Live updates interval and the longest wait for text (277)."""
     return Timing(
-        value.caption_mode,
+        value.requested_caption_mode,
         value.live_update_interval,
         value.max_wait_for_text,
         value.text_settles_after,
@@ -1942,6 +2434,7 @@ def timing_of(value: AppSettings) -> Timing:
         value.steady_two_zones,
         ReadingPath(value.caption_path),
         value.translation_after,
+        cards=value.steady_cards,
     )
 
 
@@ -1958,11 +2451,15 @@ def timing_changes(value: AppSettings, timing: Timing) -> dict[str, object]:
         "text_settles_after": timing.settle_after,
         "steady_newest_word": timing.newest_word,
         "steady_two_zones": timing.two_zones,
+        "steady_cards": timing.cards,
         "caption_path": timing.path.value,
         "translation_after": timing.translation_after,
         "steady_words_ahead": timing.words_ahead.value,
     }
-    if value.caption_mode_chosen is not None or timing.mode is not value.caption_mode:
+    if (
+        value.caption_mode_chosen is not None
+        or timing.mode is not value.requested_caption_mode
+    ):
         changes["caption_mode_chosen"] = timing.mode.value
     return changes
 
@@ -2000,6 +2497,36 @@ class Panels:
         self.downloads = DownloadsView()
         """The downloaded caption faces, as Look's Fonts card shows them
         (`FontDelivery`'s; polyglotic-hq 482)."""
+        self.presets = PresetsView(
+            preset_menu(value, self.look.value, windows.show_mic_anywhere)
+        )
+        """The presets, as Settings > Presets and the windows' dropdown
+        show them (polyglotic-hq 556)."""
+        self.presets.chose = self.choose_preset
+        self.presets.rename = lambda key, name: self._preset_step(
+            use_presets.renamed(self.settings.value, key, name)
+        )
+        self.presets.reset = self._reset_preset
+        self.presets.add = self.save_preset_as
+        self.presets.delete = lambda key: self._losing_step(
+            Undo.DELETED, key, lambda value: use_presets.removed(value, key)
+        )
+        self.presets.save = self.save_preset
+        self.presets.discard = self.discard_preset
+        self.presets.undo = self.undo_preset
+        self._undo: tuple[use_presets.Before, Undo, str, tuple[object, ...]] | None = (
+            None
+        )
+        """A preset step that lost something, while Undo is offered: what was
+        before it, which step, the preset it was in, and the presets just
+        after it (`presets_state`; 587)."""
+        self._undo_ends = QTimer(singleShot=True, interval=int(UNDO_SEC * 1000))
+        self._undo_ends.timeout.connect(self._undo_gone)
+        self.stepped: Callable[[PresetStep, int], None] = lambda step, changes: None
+        """A save, a save as new or a discard, with how many settings it
+        carried: the listening session's summary counts them (`main` sets
+        it; 587)."""
+        windows.set_presets(self.presets.value)
         self.look_waiting = False
         """A look change waits to be saved."""
         self._look_settles = QTimer(singleShot=True, interval=SETTLE_MS)
@@ -2024,13 +2551,183 @@ class Panels:
             changes = look_changes(self.settings.value, self.look.value, self.in_use())
             self.settings.update(**changes)
 
+    # -- presets (polyglotic-hq 556) ----------------------------------------------------
+
+    def _reset_preset(self, key: str) -> None:
+        self._losing_step(
+            Undo.RESTORED, key, lambda value: use_presets.reset(value, key)
+        )
+        self.windows.reset_preset_sizes(
+            key, use_presets.parent_of(self.settings.value, key)
+        )
+
+    def choose_preset(self, key: str) -> None:
+        """A preset picked - from a window's dropdown, Settings or the
+        hotkey: its values over the settings, and my speech as it says. The
+        one before's changes not saved - the look's waiting among them - go,
+        with Undo offered (587); the one chosen picked again changes
+        nothing."""
+        if key == self._settled().preset:
+            return
+        self._losing_step(
+            Undo.SWITCHED,
+            self.settings.value.preset,
+            lambda value: use_presets.chosen(value, key),
+        )
+
+    def save_preset(self) -> None:
+        """Save to the chosen preset: what the windows have now (587)."""
+        value = self._settled()
+        if changes := len(use_presets.edits(value)):
+            self.stepped(PresetStep.SAVED, changes)
+        self._preset_step(use_presets.saved_into(value))
+
+    def save_preset_as(self, name: str) -> None:
+        """Save as new preset…: one of the learner's own, named `name`, from
+        what the windows have now - chosen; the one before as saved (587)."""
+        value = self._settled()
+        if use_presets.can_add(value):
+            self.stepped(PresetStep.SAVED_AS, len(use_presets.edits(value)))
+        self._preset_step(use_presets.added(value, name))
+
+    def discard_preset(self) -> None:
+        """Discard changes: the windows back to the chosen preset as saved,
+        with Undo offered (587)."""
+        if changes := len(use_presets.edits(self._settled())):
+            self.stepped(PresetStep.DISCARDED, changes)
+        self._losing_step(
+            Undo.DISCARDED, self.settings.value.preset, use_presets.discarded
+        )
+
+    def preset_step(self, step: str) -> None:
+        """A step on the chosen preset from a window's dropdown or notice
+        line (587). Naming one happens on Settings' line ("save_as",
+        "rename": `main` opens it there), never in a caption window."""
+        key = self.settings.value.preset
+        steps: dict[str, Callable[[], None]] = {
+            "restore": lambda: self.presets.reset(key),
+            "delete": lambda: self.presets.delete(key),
+            "undo": self.undo_preset,
+        }
+        if step in steps:
+            steps[step]()
+
+    def undo_preset(self) -> None:
+        """Undo: the presets, the one chosen and its changes not saved as
+        they were before the step - while it's offered (587)."""
+        if self._undo is None:
+            return
+        was = self._undo[0]
+        self._undo = None
+        self._undo_ends.stop()
+        self._preset_step(use_presets.restored(self.settings.value, was))
+        self.windows.show_notice(self.presets.value.name)
+
+    def _losing_step(
+        self, kind: Undo, key: str, step: Callable[[AppSettings], AppSettings]
+    ) -> None:
+        """A preset step that may lose something - the changes not saved, a
+        preset's own changes, or the preset: taken, and offered back for
+        UNDO_SEC where it lost anything (587)."""
+        value = self._settled()
+        was = use_presets.before(value)
+        names = {i.key: i.name for i in self.presets.value.items}
+        name = names.get(key, self.presets.value.name)
+        self._preset_step(step(value))
+        now = self.settings.value
+        lost = presets_state(now) != presets_state(value) and (
+            kind is not Undo.SWITCHED or bool(use_presets.edits(value))
+        )
+        if not lost:
+            return
+        self._undo = (was, kind, name, presets_state(now))
+        self._undo_ends.start()
+        self.follow()
+        self.windows.offer_undo(undo_note(self.presets.value), UNDO_SEC)
+
+    def _undo_gone(self) -> None:
+        self._undo = None
+        self.follow()
+
+    def next_preset(self) -> None:
+        """The preset after the chosen one, in the dropdown's order, chosen
+        - and its name said in every window (the hotkey's: polyglotic-hq
+        567)."""
+        order = use_presets.keys(self.settings.value)
+        chosen = self.settings.value.preset
+        at = order.index(chosen) if chosen in order else -1
+        self.choose_preset(order[(at + 1) % len(order)])
+        if self._undo is None or self._undo[1] is not Undo.SWITCHED:
+            self.windows.show_notice(self.presets.value.name)  # else Undo's says it
+
+    def _settled(self) -> AppSettings:
+        self.save_look()  # a change waiting belongs to the preset before
+        return self.settings.value
+
+    def _preset_step(self, value: AppSettings) -> None:
+        before = self.settings.value
+        self.settings.change(value)
+        now = self.settings.value
+        moved = now.preset != before.preset or now.my_speech != before.my_speech
+        if moved and now.my_speech is not None:
+            self.windows.set_show_mic_everywhere(now.my_speech)
+        if now.subtitles != before.subtitles:  # the windows moved: said briefly
+            self.windows.say_subtitles(now.subtitles)
+
+    def set_lines(self, show: str) -> None:
+        """The dropdown's Show: both, the original only, the translation
+        only - saved in the preset."""
+        self._settled()
+        self.settings.update_from_bar(**lines_changes(Show(show)))
+
+    def set_my_speech(self, on: bool) -> None:
+        """The dropdown's My speech: in every window or in none - saved in
+        the preset."""
+        self.windows.set_show_mic_everywhere(on)
+        self.settings.update_from_bar(my_speech=on)
+
+    def change_bar_look(
+        self,
+        change: Callable[[bool, tuple[str, ...]], None],
+        on: bool,
+        readings: tuple[str, ...],
+    ) -> None:
+        value = self._settled()
+        before = look_settings(self.look.value)
+        change(on, readings)
+        after = look_changes(value, self.look.value, self.in_use())
+        self._look_settles.stop()
+        self.look_waiting = False
+        self.settings.update_from_bar(
+            **{
+                name: setting
+                for name, setting in after.items()
+                if before.get(name) != setting
+            }
+        )
+
+    def set_subtitles(self, size: float, width: float) -> None:
+        """Video's subtitles resized or their text stepped in a window."""
+        self.settings.update(subtitle_size=size, subtitle_width=width)
+
     def _languages_chosen(self, languages: SessionLanguages) -> None:
         """A change in the Languages panel (Settings > Captions > Speech),
         saved. Its Spoken language is for every window: each window's own
         is set to it (263) - a window's settings then change its own."""
-        if languages.spoken != self.settings.value.spoken_language:
+        value = self.settings.value
+        choices = languages_settings(value, languages)
+        if languages.spoken != value.spoken_language:
             self.windows.set_spoken_everywhere(languages.spoken)
-        self.settings.update(**languages_settings(languages))
+            choices["preset_languages"] = {
+                key: (
+                    {**current, "spoken_language": languages.spoken or ""}
+                    if "spoken_language" in current
+                    and not self.windows.music_player(key)
+                    else current
+                )
+                for key, current in value.preset_languages.items()
+            }
+        self.settings.update(**choices)
 
     def in_use(self, leaving_out: str | None = None) -> list[str]:
         """The caption windows' languages, in order - but the window of
@@ -2054,6 +2751,13 @@ class Panels:
         if self.look_waiting:  # the panels' is newer: only the timing's line
             look = replace(self.look.value, preview=look.preview)
         self.look.follow(look)
+        if self._undo is not None and presets_state(value) != self._undo[3]:
+            self._undo = None  # something changed since: Undo would undo it too
+            self._undo_ends.stop()
+        undo = (self._undo[1], self._undo[2]) if self._undo is not None else None
+        menu = preset_menu(value, look, self.windows.show_mic_anywhere, undo)
+        self.presets.follow(menu)
+        self.windows.set_presets(menu)
 
 
 def _tr_app(text: str) -> str:
@@ -2070,6 +2774,7 @@ def picker_of(
     sample: tuple[bool, bool] = (False, False),
     sample_ended: bool = False,
     fell_back: bool = False,
+    listening: bool = True,
 ) -> Picker:
     """Home's app picker: a row per captioned app - the first LIMIT picked,
     and everything else beside one, or everything the PC plays - with its
@@ -2143,6 +2848,7 @@ def picker_of(
         hidden=hidden,
         everything_else=per_app and value.captions_everything_else,
         sample=sample_state(*sample, value.source_chosen, available, sample_ended),
+        listening=listening,
     )
 
 
@@ -2209,6 +2915,60 @@ def renaming(value: AppSettings, key: str, text: str, own: str) -> dict[str, obj
     return {"source_names": names}
 
 
+class DeviceLister(QObject):
+    """The OS's speakers and mics, listed on a thread of their own
+    (polyglotic-hq 563): a Mac's Core Audio took 1.9 s to list them, and
+    the interface froze while Settings' Speakers list opened (523's sweep).
+    A list made within `WAIT_MS` is handed over at once, as before (Windows
+    lists them in 4-10 ms: measured 2026-11-16); a slower one when it's
+    made, on the interface thread. One listing at a time: asked again
+    meanwhile, each asker gets that one's."""
+
+    WAIT_MS = 30
+    """How long a look waits for the list, under a slot's 50 ms."""
+
+    _listed = Signal(object)  # a SoundDevices, from the listing's thread
+
+    def __init__(self, listing: Callable[[], SoundDevices]) -> None:
+        super().__init__()
+        self._listing = listing
+        self._waiting: list[Callable[[SoundDevices], None]] = []
+        self._listed.connect(self._hand_over)
+
+    def look(self, found: Callable[[SoundDevices], None]) -> None:
+        self._waiting.append(found)
+        if len(self._waiting) > 1:
+            return  # the listing running now hands it over
+        made: list[SoundDevices] = []
+        late = threading.Event()
+        lock = threading.Lock()
+
+        def run() -> None:
+            try:
+                devices = self._listing()
+            except OSError:  # the OS's adapters say nothing instead
+                devices = SoundDevices()
+            with lock:
+                made.append(devices)
+            if late.is_set():
+                with contextlib.suppress(RuntimeError):  # the app has closed
+                    self._listed.emit(devices)
+
+        thread = threading.Thread(target=run, name="sound devices", daemon=True)
+        thread.start()
+        thread.join(self.WAIT_MS / 1000)
+        with lock:
+            if not made:
+                late.set()  # handed over by the thread, when it's done
+                return
+        self._hand_over(made[0])
+
+    def _hand_over(self, devices: SoundDevices) -> None:
+        waiting, self._waiting = self._waiting, []
+        for found in waiting:
+            found(devices)
+
+
 class Hub:
     """The main window (109's section 7): Home - the state, the app picker,
     the Languages and Timing panels, the caption windows' commands - and
@@ -2254,6 +3014,7 @@ class Hub:
         self.picker = PickerView(self._picker(), self)
         self.list_devices: Callable[[], SoundDevices] = SoundDevices
         """The speakers and mics plugged in (`main`: the OS's; 372)."""
+        self._devices = DeviceLister(lambda: self.list_devices())
         self.read_mic_peak: Callable[[], float | None] = lambda: None
         """The mic's level while it's captioned (`main`: the sources')."""
         self.sound = SoundView(self._sound(), self)
@@ -2330,7 +3091,6 @@ class Hub:
         start_parts.done("page_learning_and_account")
         self.settings = SettingsPage(
             [(key, look.name) for key, look in theme.THEMES.items()],
-            desktop.hotkeys,
             desktop.work_with_us,
             interface_language.picker(),
             look=panels.look,
@@ -2338,6 +3098,7 @@ class Hub:
             speech=panels.languages,
             sound=self.sound,
             downloads=panels.downloads,
+            presets=panels.presets,
         )
         app = QApplication.instance()
         running = interface_language.in_use(app) if app else interface_language.ENGLISH
@@ -2349,6 +3110,8 @@ class Hub:
         self.settings.lab_load_wanted.connect(self.open_load)
         self.learning.load.lab_wanted.connect(self.open_lab_load)
         windows.all_settings_wanted.connect(self.open_caption_settings)
+        windows.customise_wanted.connect(self.open_presets)
+        windows.preset_step.connect(self.name_preset)  # its naming steps (587)
         self.settings.interface_language_chosen.connect(
             lambda code: desktop.settings.update(interface_language=code or None)
         )
@@ -2367,6 +3130,7 @@ class Hub:
         self.settings.transcript_ask_chosen.connect(
             lambda on: desktop.settings.update(transcript_ask_at_quit=on)
         )
+        self.settings.start_at_sign_in_chosen.connect(self._start_at_sign_in)
         self._show_theme()
         desktop.settings.changed.connect(self._show_theme)
         # the app's text size: `main` applied it at start; a change, at once
@@ -2390,12 +3154,17 @@ class Hub:
         self.retheme()
         desktop.window_wanted.connect(self.show)
         self.window.hidden_to_tray.connect(desktop.note_in_tray)  # once: still running
+        self.window.hidden_to_tray.connect(self.keep_size)
+        self.window.closed_without_tray.connect(self._closed_without_tray)  # (571)
+        self.keep_running: Callable[[QWidget], bool] = keep_running
+        """Asks, where there's no tray, whether to keep running (571)."""
         desktop.themed.connect(self.retheme)
         self.window.text_size_changed.connect(self.retheme)  # the logo at it
         desktop.minutes_changed.connect(self.home.state.set_minutes)
         desktop.home_notice.connect(self.home.state.set_notice)
         desktop.banner_in_view = self.banner_in_view  # else the tray says it too
         desktop.captions_failing.connect(self.home.state.set_failing)
+        desktop.captions_failing.connect(self.follow)
         desktop.connection_unstable.connect(self.home.state.set_unstable)
         for each in tools.every if tools is not None else ():
             self._follow_problems(each)
@@ -2782,7 +3551,7 @@ class Hub:
         pack offered on its card."""
         settings = self.desktop.settings
         before = settings.value.learning_languages
-        settings.update(**added_language_changes(settings.value, languages))
+        settings.update(**learning_changes(languages))
         tools = self.desktop.tools
         if tools is not None:
             for code in languages.all:
@@ -2952,6 +3721,21 @@ class Hub:
         self.settings.show_section("look")
         self.show(picker=False)
 
+    def open_presets(self) -> None:
+        """A caption window's "Customise presets…": the main window in
+        front, on Settings > Presets (polyglotic-hq 556)."""
+        self.window.go_to("settings")
+        self.settings.show_section("presets")
+        self.show(picker=False)
+
+    def name_preset(self, step: str) -> None:
+        """A caption window's Rename opens the name field in Settings."""
+        if step != "rename":
+            return
+        self.open_presets()
+        self.settings.preset.name.setFocus()
+        self.settings.preset.name.selectAll()
+
     def open_dictation_settings(self) -> None:
         """The tray's "More languages…" for dictation: the main window in
         front, on Settings > Dictation (polyglotic-hq 283, 304)."""
@@ -2968,7 +3752,8 @@ class Hub:
             self._shown = True
             screen = QGuiApplication.primaryScreen()
             if screen is not None:
-                self.window.fit_to(screen.availableGeometry())
+                kept = self.desktop.settings.value.main_window_size
+                self.window.fit_to(screen.availableGeometry(), kept)
         self.window.showNormal()
         self.window.raise_()
         self.window.activateWindow()
@@ -3003,11 +3788,54 @@ class Hub:
     def _start_with_windows(self, yes: bool) -> None:
         if yes and self.startup is not None:
             self.startup.set_enabled(True)
+            self.settings.offer_start_at_sign_in(self.startup.enabled())
+
+    def use_startup(self, startup: StartWithWindows) -> None:
+        """Starting at sign-in, where the OS can for this copy: Home may ask
+        after a good session, and Settings > App has its switch, as it is
+        now (polyglotic-hq 571)."""
+        self.startup = startup
+        self.settings.offer_start_at_sign_in(startup.enabled())
+
+    def _start_at_sign_in(self, on: bool) -> None:
+        """Settings' switch: on or off, as the OS then says it is."""
+        if self.startup is None:
+            return
+        self.startup.set_enabled(on)
+        self.desktop.settings.update(start_with_windows_asked=True)  # Home: no need
+        self.settings.offer_start_at_sign_in(self.startup.enabled())
+
+    def _closed_without_tray(self) -> None:
+        """The window closed where the desktop has no tray (polyglotic-hq
+        571): hidden, the app running on - its caption windows up, the window
+        back from the desktop's app launcher. The first time, a box says so
+        over it and offers Quit, as the tray's note does where there's one."""
+        settings = self.desktop.settings
+        if not settings.value.tray_note_shown:
+            settings.update(tray_note_shown=True)
+            if not self.keep_running(self.window):  # Quit, once the close is done
+                QTimer.singleShot(0, self.desktop.quit.trigger)
+                return
+        self.window.hide()
 
     def close(self) -> None:
         """The window closes for good (the app is quitting)."""
-        self.window.keep_in_tray = False
+        self.window.keep_in_tray = self.window.no_tray = False
         self.window.close()
+
+    def keep_size(self) -> None:
+        """The main window's size as the learner left it, saved - it opens
+        at it next time (polyglotic-hq 586): its size before it was
+        maximised or minimised, and nothing if it never showed."""
+        if not self._shown:
+            return
+        window = self.window
+        size = window.normalGeometry().size()
+        if not size.isValid() or size.isEmpty():
+            size = window.size()
+        kept = (size.width(), size.height())
+        if kept != self.desktop.settings.value.main_window_size:
+            self.desktop.settings.update(main_window_size=kept)
 
     def retheme(self) -> None:
         ratio = self.window.devicePixelRatioF()
@@ -3026,8 +3854,10 @@ class Hub:
 
     def set_maintenance(self, window: Maintenance | None) -> None:
         """The planned maintenance window the app holds: Home's banner and
-        state line say it (polyglotic-hq 319)."""
+        state line say it (polyglotic-hq 319), and the caption windows'
+        notice during it, until when (563)."""
         self.home.state.set_maintenance(window)
+        maintenance_words.hold(window)
         self.follow()
 
     def set_update_found(self, found: UpdateNow) -> None:
@@ -3052,6 +3882,9 @@ class Hub:
             ),
             self.sample_ended,
             self.fell_back,
+            self.desktop.connection is ConnectionState.LISTENING
+            and not self.desktop.pause.isChecked()
+            and not self.desktop.captions_are_failing,
         )
 
     def _has_sample(self, learning: str | None) -> bool:
@@ -3098,8 +3931,8 @@ class Hub:
         """In every window, as the tray's "Caption my own speech"."""
         self.desktop.caption_mic.setChecked(on)
 
-    def sound_devices(self) -> SoundDevices:
-        return self.list_devices()
+    def look_for_devices(self, found: Callable[[SoundDevices], None]) -> None:
+        self._devices.look(found)
 
     def mic_peak(self) -> float | None:
         return self.read_mic_peak()
@@ -3131,10 +3964,21 @@ class Hub:
                 windows_paused_after=every_window_paused(picker.captioned),
             )
         )
-        self.desktop.show_state_title(self.home.state.title_label.text())
+        self.desktop.show_state_title(
+            self.home.state.title_label.text(), self.sample_on
+        )
         self.desktop.show_hidden(*hidden_line(picker.captioned))
 
     # -- the picker's commands ----------------------------------------------------------
+
+    def start_captioning(self, app: str | None) -> None:
+        """An explicit start also resumes a session the learner had paused."""
+        if app is None:
+            self.set_whole_system(True)
+        else:
+            self.add(app)
+        if self.desktop.settings.value.source_chosen:
+            self.desktop.pause.setChecked(False)
 
     def add(self, name: str) -> None:
         value = self.desktop.settings.value
@@ -3222,8 +4066,9 @@ class Interface:
 
     def close(self) -> None:
         """Every window closed, their choices saved (the app is quitting) -
-        and a look change still settling."""
+        and a look change still settling, and the main window's size."""
         self.panels.save_look()
+        self.hub.keep_size()  # while the caption windows still follow a change
         self.transcripts.close()
         self.windows.close()
         self.hub.close()
@@ -3245,8 +4090,7 @@ class LearningOffer:
 
     def learn_too(self, code: str) -> None:
         languages = self.settings.value.learning_languages
-        value = self.settings.value
-        self.settings.update(**added_language_changes(value, languages.added(code)))
+        self.settings.update(**learning_changes(languages.added(code)))
 
     def not_now(self, code: str) -> None:
         languages = self.settings.value.learning_languages
@@ -4117,6 +4961,7 @@ def new_interface(
     keys: KeyState | None = None,
     on_top: OnTop | None = None,
     common_apps: Sequence[CommonApp] = (),
+    app_category: Callable[[str], SourceCategory] | None = None,
 ) -> Interface:
     """The interface on the app (decisions 0031 and 0032): a caption window
     per app captioned, a transcript per app, the panels they share and the
@@ -4125,7 +4970,8 @@ def new_interface(
     `on_top`: Windows' always-on-top band (`platform.windows.on_top`), to
     keep the caption windows above a game that is itself always on top;
     `common_apps`: browsers and the main apps a window's Captioning list
-    shows before they play (F12, 249)."""
+    shows before they play (F12, 249); `app_category`: an app's category by
+    its name, for its window - a music player's is heard on Detect (568)."""
     windows = CaptionWindows(
         store,
         MIC,
@@ -4160,6 +5006,9 @@ def new_interface(
 
     windows.app_choices = choices_for
     windows.app_wanted.connect(switch)
+    if app_category is not None:
+        category = app_category
+        windows.music_player = lambda key: category(key) is SourceCategory.MUSIC
     if windows.card is not None:  # "Learn Japanese too?" (polyglotic-hq 262)
         windows.card.model.offer = LearningOffer(desktop.settings)
     # every save dialog opens where the last save went, or in Documents -
@@ -4169,13 +5018,28 @@ def new_interface(
         windows, store, learner=tools, parent=desktop, save_folder=save_folder
     )
     panels = Panels(desktop.settings, windows)
-    windows.links_wanted.connect(panels.look.set_links_shown)  # a window's button
-    windows.quiet_wanted.connect(panels.look.set_quiet)  # and its quiet view (477)
+    windows.links_wanted.connect(
+        partial(panels.change_bar_look, panels.look.set_links_shown)
+    )
+    windows.quiet_wanted.connect(partial(panels.change_bar_look, panels.look.set_quiet))
     windows.quiet_word_wanted.connect(
         lambda which, on: panels.look.set_quiet_word(ChosenWords(which), on)
     )
     windows.fill_wanted.connect(panels.look.set_filled)  # and its filled lines (372)
     windows.aligned_wanted.connect(panels.look.set_lined_up)  # and parts lined up
+    # the presets' dropdown (polyglotic-hq 556)
+    windows.preset_wanted.connect(panels.choose_preset)
+    windows.preset_step.connect(panels.preset_step)  # save, discard, undo (587)
+    desktop.next_preset.triggered.connect(panels.next_preset)  # its hotkey (567)
+    windows.lines_wanted.connect(panels.set_lines)
+    windows.readings_wanted.connect(
+        partial(panels.change_bar_look, panels.look.set_readings_shown)
+    )
+    windows.my_speech_wanted.connect(panels.set_my_speech)
+    windows.subtitles_changed.connect(panels.set_subtitles)
+    windows.translations_wanted.connect(
+        lambda: desktop.settings.update(show_translation=True)
+    )
     windows.said_colours_wanted.connect(panels.look.set_said_in_link_colours)  # 431
     windows.translation_colours_wanted.connect(
         panels.look.set_translation_in_link_colours
@@ -4311,6 +5175,10 @@ class BackgroundUpdates:
 
     def follow(self, channel: str | None) -> None:
         def follow_then_check() -> None:
+            if self.updates.another_platforms(channel):  # never followed (579)
+                log.warning(
+                    "updates: the server named another platform's channel: ignored"
+                )
             if self.updates.follow(channel):
                 log.info("following the server's update channel")
                 self._look()
@@ -4365,15 +5233,28 @@ def _update_failure(problem: Exception) -> str:
     return failure_named(problem)
 
 
+def open_update_folder(appimage: AppImage | None = None) -> None:
+    """Opens the folder holding this copy (on Linux, the running AppImage's
+    folder) so the learner can move it to ~/Applications (polyglotic-hq 640)."""
+    here = appimage if appimage is not None else this_appimage()
+    folder = (
+        here.file.parent if here is not None else Path(sys.executable).resolve().parent
+    )
+    QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
+
 class UpdateShown(QObject):
     """What the updates found, on the interface thread (polyglotic-hq
     299): a downloaded update offered on Home - "Version X is ready", what's
-    new in two lines, Restart now and Later - and in the tray's menu;
+    new in two lines, Restart now and Later (on Linux: Quit and start again,
+    Quit now and Later - 640) - and in the tray's menu;
     Settings says what the last look found. Never a window of its own over
     a game or a call, and nothing restarts by itself: Restart now quits as
     Quit does, then the installer applies it and starts the new version.
     On a metered connection, an update found isn't downloaded: Home's card
-    says how big it is, with Download anyway (polyglotic-hq 345)."""
+    says how big it is, with Download anyway (polyglotic-hq 345). When the
+    folder isn't writable (Linux AppImage in /opt, 640), Home and Settings
+    say to move it to ~/Applications and offer Open folder."""
 
     _found = Signal(object, object, object)
 
@@ -4384,10 +5265,12 @@ class UpdateShown(QObject):
         settings: SettingsPage | None,
         restart: Callable[[], None],
         download_anyway: Callable[[], None] = lambda: None,
+        open_app_folder: Callable[[], None] = lambda: None,
     ) -> None:
         """`settings`: Settings' Updates card (None for the Microsoft
-        Store's copy, which the Store updates). `restart`: Restart now;
-        `download_anyway`: Download anyway, on a metered connection."""
+        Store's copy, which the Store updates). `restart`: Restart now (Quit
+        now on Linux); `download_anyway`: Download anyway, on a metered
+        connection; `open_app_folder`: Open folder, when not writable."""
         super().__init__(desktop)
         self.offer = RestartOffer()
         self.home, self.desktop, self.settings = home, desktop, settings
@@ -4395,9 +5278,11 @@ class UpdateShown(QObject):
         home.restart_wanted.connect(restart)
         home.update_later.connect(self._later)
         home.download_anyway_wanted.connect(download_anyway)
+        home.open_app_folder_wanted.connect(open_app_folder)
         desktop.install_update.triggered.connect(restart)
         if settings is not None:
             settings.restart_wanted.connect(restart)
+            settings.open_app_folder_wanted.connect(open_app_folder)
 
     def found(
         self, found: Found, downloaded: Update | None, held: Update | None = None
@@ -4427,6 +5312,9 @@ class UpdateShown(QObject):
             )
         else:
             self.home.show_update(None)
+        self.home.show_update_not_writable(
+            found is Found.NOT_WRITABLE and downloaded is None
+        )
         version = downloaded.version if downloaded else None
         self.desktop.show_update_ready(version)
         if self.settings is not None:  # ready, whatever this look found
@@ -4452,6 +5340,75 @@ def plan_shown(plan: protocol.PlanState) -> PlanShown:
             until = parse_at(plan.until)
     code = plan.message.code if plan.message is not None else None
     return PlanShown(plan.tier, plan.source, plan.status, until, code)
+
+
+class AppHotkeys:
+    """The app's hotkeys, taken from the OS as the settings say
+    (polyglotic-hq 567): each with a key that no other has before it
+    (`core.listening.hotkeys.clashes`), registered; registered again when
+    one changes; let go while Settings' key box listens, so a key the app
+    has reaches the box (and says whose it is) instead of doing its
+    action."""
+
+    def __init__(
+        self,
+        hotkeys: Callable[[Mapping[str, Callable[[], None]]], Hotkeys],
+        pressed: Callable[[str], None],
+    ) -> None:
+        """`hotkeys`: the OS's, made with each combination as kept;
+        `pressed`: a hotkey's name, on the hotkeys' own thread."""
+        self._hotkeys = hotkeys
+        self._pressed = pressed
+        self._held: Hotkeys | None = None
+        self.bound: dict[str, str] = {}
+        """Each combination registered, as kept, to its hotkey's name."""
+        self.taken: set[str] = set()
+        """The hotkeys (by name) whose key another program has."""
+        self.available = True
+        """Whether this desktop allows global hotkeys (False for `NoHotkeys`)."""
+        self.box_listening = False
+
+    def follow(
+        self,
+        keys: Mapping[Hotkey, DictationKey | None],
+        hold: Mapping[str, DictationKey | None] = {},
+    ) -> bool:
+        """The hotkeys' keys now, and the hold keys' (dictation's): each
+        hotkey whose key no hotkey or hold key before it has, registered.
+        True if that changed anything."""
+        together: dict[str, DictationKey | None] = {**hold}
+        together.update((hotkey.value, key) for hotkey, key in keys.items())
+        clashing = clashes(together)
+        wanted = {
+            str(key): hotkey.value
+            for hotkey, key in keys.items()
+            if key is not None and hotkey.value not in clashing
+        }
+        if self.box_listening:
+            wanted = {}
+        if wanted == self.bound and (self._held is not None or not wanted):
+            return False
+        self.stop()
+        self.bound = wanted
+        if wanted:
+            self._held = self._hotkeys(
+                {key: partial(self._pressed, name) for key, name in wanted.items()}
+            )
+            self.taken = {wanted[key] for key in self._held.start()}
+            self.available = bool(getattr(self._held, "available", True))
+        return True
+
+    def not_working(self, names: Iterable[str]) -> list[str]:
+        """Of `names`, the hotkeys that do nothing now: no key, a key
+        another hotkey or program has, or let go (`not_working`)."""
+        return not_working(names, self.bound.values(), self.taken)
+
+    def stop(self) -> None:
+        if self._held is not None:
+            self._held.stop()
+        self._held = None
+        self.bound = {}
+        self.taken = set()
 
 
 class DictationKeyHeld:
@@ -4505,6 +5462,76 @@ class DictationKeyHeld:
         self._key, self.held_as = None, None
 
 
+def wire_continuation_refresh(
+    feed: CaptionFeed,
+    listener: QtListener,
+    pipeline: SpeechPipeline,
+    connection: Connection,
+    chosen: Callable[[], ListeningSettings],
+) -> None:
+    """If a first stretch changes independently, ask for the second's own
+    audio. A newer answer, withdrawal, timeout or failed check wins over
+    an outstanding refresh. Only the display uses its result."""
+    pending: dict[CaptionId, tuple[SourceId, float]] = {}
+
+    def forget_answered(update: CaptionUpdate) -> None:
+        if update.continues is None and update.kind is not CaptionKind.LIVE:
+            pending.pop(update.caption_id, None)
+        for gone in update.replaces:
+            pending.pop(gone, None)
+
+    def request(cid: CaptionId) -> None:
+        held = pipeline.get(cid)
+        if cid in pending or held is None:
+            return
+        settings = chosen()
+        source = held.source_id
+        request = RecheckRequest(
+            cid,
+            Source(source, held.category),
+            held.start,
+            held.end,
+            held.audio,
+            settings.spoken_language_of(source),
+            settings.targets_of(source),
+            settings.second_languages,
+        )
+        if connection.recheck(request):
+            expires = time.monotonic() + ANSWER_WITHIN_SEC
+            pending[cid] = (source, expires)
+
+            def expire() -> None:
+                if pending.get(cid) == (source, expires):
+                    pending.pop(cid)
+
+            QTimer.singleShot(round(ANSWER_WITHIN_SEC * 1000), feed, expire)
+
+    def answered(result: RecheckResult) -> None:
+        waiting = pending.pop(result.caption_id, None)
+        if (
+            waiting is None
+            or time.monotonic() > waiting[1]
+            or result.outcome is not RecheckOutcome.CHECKED
+            or not result.clauses
+        ):
+            return
+        update = CaptionUpdate(
+            result.caption_id,
+            waiting[0],
+            CaptionKind.FINISHED,
+            result.clauses,
+            result.language,
+            result.languages_heard,
+        )
+        feed.show_answer(
+            listener.mandarin.caption(update) if listener.mandarin else update
+        )
+
+    feed.refresh_requested.connect(request)
+    feed.received.connect(forget_answered)
+    listener.refresh_answer.connect(answered, Qt.ConnectionType.QueuedConnection)
+
+
 class QtListener(QObject):
     """The session's listener: its calls come on the session's thread and
     go to the interface on the Qt thread. The channel the server names, and
@@ -4514,6 +5541,7 @@ class QtListener(QObject):
     _minutes = Signal(float, object)
     _notice = Signal(str)
     _failed = Signal()
+    refresh_answer = Signal(object)
     _stalled = Signal(bool)
     _pace = Signal(object)
     _plan = Signal(object)
@@ -4559,6 +5587,13 @@ class QtListener(QObject):
         self.dictated: Callable[[CaptionUpdate], None] | None = None
         """Where dictation's answers go, from the session's thread - never
         the caption feed (`ui.dictation.Dictating.answered`; 0073)."""
+        self.respoken: Callable[[CaptionId], bool] = lambda _caption_id: False
+        """Whether a caption was re-spoken by the learner (polyglotic-hq 567,
+        `ui.respeaking.Respeaking.is_respoken`): marked so, on the session's
+        thread, before the feed has it."""
+        self.heard: Callable[[CaptionUpdate], None] = lambda _update: None
+        """Every caption update, from the session's thread, for re-speaking
+        to know its own came back (`Respeaking.answered`)."""
         self.mandarin: MandarinScript | None = None
         """Mandarin's captions in the script the learner reads (375)."""
         self._status.connect(self._show_status, Qt.ConnectionType.QueuedConnection)
@@ -4594,6 +5629,9 @@ class QtListener(QObject):
             if self.dictated is not None:
                 self.dictated(update)
             return
+        if self.respoken(update.caption_id):  # said again for its source (567)
+            update = replace(update, respoken=True)
+        self.heard(update)
         if self.mandarin is not None:  # in the script the learner reads (375)
             update = self.mandarin.caption(update)
         self.desktop.feed.receive(update)  # queued to the Qt thread
@@ -4613,12 +5651,16 @@ class QtListener(QObject):
     def caption_failed(self) -> None:
         self._failed.emit()  # queued after the captions before it
 
+    def caption_dropped(self, caption_id: CaptionId) -> None:
+        # its live caption ends with what it shows (557), queued after the
+        # captions before it as `receive` queues them
+        self.desktop.feed.end(caption_id)
+
     def connection_stalled(self, stalled: bool) -> None:
         self._stalled.emit(stalled)
 
     def rechecked(self, result: RecheckResult) -> None:
-        # nothing asks since "Looks wrong?" left the interface (polyglotic-hq 339)
-        log.info("recheck %s", result.outcome.value)  # never the line
+        self.refresh_answer.emit(result)
 
     def plan_changed(self, plan: protocol.PlanState) -> None:
         log.info("plan %s (%s, %s)", plan.tier, plan.source, plan.status)
@@ -4695,16 +5737,19 @@ class QtListener(QObject):
 def not_deleted_notice(code: str) -> str:
     """Home's line when deleting the learning data on this PC left some of
     language `code`'s there (polyglotic-hq 306)."""
-    return pc_or_mac(
-        _tr_app(
-            "Some of your {language} learning data couldn't be deleted from this "
-            "PC. Restart Polyglotic, then delete it again on Account."
+    return in_sentence(
+        pc_or_mac(
+            _tr_app(
+                "Some of your {language} learning data couldn't be deleted from this "
+                "PC. Restart Polyglotic, then delete it again on Account."
+            ),
+            _tr_app(
+                "Some of your {language} learning data couldn't be deleted from this Mac. "
+                "Restart Polyglotic, then delete it again on Account."
+            ),
         ),
-        _tr_app(
-            "Some of your {language} learning data couldn't be deleted from this Mac. "
-            "Restart Polyglotic, then delete it again on Account."
-        ),
-    ).format(language=learned_name(code))
+        language=learned_name(code),
+    )
 
 
 def start_notice(set_aside: Path | None, taken_off: Sequence[str]) -> str:
@@ -5418,8 +6463,14 @@ def app_capture_line(
     """The log's line on capturing apps one by one (decision 0076):
     Windows' build, whether it was tried, and whether it worked or why not
     - Windows' code, never an app's name. Content-free: it says what the
-    first Windows 10 tester's PC did."""
-    start = f"capturing apps one by one: Windows build {build}, "
+    first Windows 10 tester's PC did. Without a Windows build (a Mac,
+    Linux) it names none: on Linux one app alone isn't there yet (550)."""
+    if not build:
+        start = "capturing apps one by one: "
+        if support is AppCaptureSupport.NO:
+            return start + "not on this OS yet"
+    else:
+        start = f"capturing apps one by one: Windows build {build}, "
     if support is AppCaptureSupport.YES:
         return start + "promised"
     if support is AppCaptureSupport.NO:
@@ -5508,7 +6559,7 @@ class AppsOneByOne(QObject):
 def fell_back_text() -> str:
     """What the learner is told, once, when capturing apps one by one
     failed on this PC (decision 0076)."""
-    return pc_or_mac(
+    return pc_mac_or_linux(
         _tr_app(
             "Windows on this PC couldn't caption one app alone, so Polyglotic"
             " captions everything the PC plays. You can try apps again on Home."
@@ -5516,6 +6567,10 @@ def fell_back_text() -> str:
         _tr_app(
             "This Mac couldn't caption one app alone, so Polyglotic captions "
             "everything the Mac plays. You can try apps again on Home."
+        ),
+        _tr_app(  # Linux: the sound server, not Windows (571)
+            "This PC couldn't caption one app alone, so Polyglotic captions "
+            "everything the PC plays. You can try apps again on Home."
         ),
     )
 
@@ -5626,6 +6681,11 @@ class Sources:
         if name not in self.ids:
             self.ids[name] = SourceId(f"app-{len(self.ids) + 1}")
         return self.ids[name]
+
+    def captured_now(self) -> tuple[SourceId, ...]:
+        """The sources captured now, in the order they started (the mic's
+        too): whom re-speaking can be for (polyglotic-hq 567)."""
+        return tuple(self._running)
 
     def shown(self) -> dict[SourceId, tuple[str, str]]:
         """Each app captured since Polyglotic started: its source id ->
@@ -6480,11 +7540,66 @@ def try_the_windows(interface: Interface, desktop: DesktopApp) -> list[str]:
     return built
 
 
+CHECKBOX_TICK_INSET_PX = 3
+"""Pixels inset from a checkbox indicator's edges (past its 1 px border and
+3 px border-radius) when checking for the rendered SVG tick (647)."""
+CHECKBOX_TICK_MIN_CONTRAST = 3.0
+"""Minimum WCAG contrast against ACCENT for a pixel inside a checked box's
+indicator: a missing SVG plugin paints solid ACCENT at 1:1 contrast (647)."""
+
+
+def check_checkbox_tick() -> bool:
+    """Prove Qt's SVG imageformat plugin renders a checked QCheckBox's tick
+    (polyglotic-hq 647; 644 bug 1). Without `libqsvg.so` / `qsvg.dll`, QSS
+    `image: url("...svg")` fails silently and the indicator is a solid ACCENT
+    square with 1:1 contrast."""
+    from PySide6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton, QVBoxLayout
+
+    from polyglotic_desktop.ui_next.views.presets import contrast
+
+    app = QApplication.instance()
+    t = window_theme()
+    host = QWidget()
+    try:
+        host.setStyleSheet(style.stylesheet(t))
+        layout = QVBoxLayout(host)
+        box = QCheckBox("", host)
+        box.setChecked(True)
+        layout.addWidget(box)
+        host.resize(160, 48)
+        host.show()
+        if app is not None:
+            app.processEvents()
+        option = QStyleOptionButton()
+        box.initStyleOption(option)
+        rect = box.style().subElementRect(
+            QStyle.SubElement.SE_CheckBoxIndicator, option, box
+        )
+        rect.moveTopLeft(box.mapTo(host, rect.topLeft()))
+        image = host.grab().toImage().copy(rect)
+        inset = CHECKBOX_TICK_INSET_PX
+        if image.isNull() or image.width() <= inset * 2 or image.height() <= inset * 2:
+            return False
+        accent = t["ACCENT"]
+        return any(
+            contrast(image.pixelColor(x, y).name(), accent)
+            >= CHECKBOX_TICK_MIN_CONTRAST
+            for y in range(inset, image.height() - inset)
+            for x in range(inset, image.width() - inset)
+        )
+    finally:
+        host.close()
+        host.deleteLater()
+        if app is not None:
+            app.processEvents()
+
+
 def check_install(
     report: Path,
     dictionaries: Path,
     feed: str | None = None,
     learners: Path | None = None,
+    tunables: Path | None = None,
 ) -> int:
     """Everything the app needs, built and tried once - Qt (offscreen, so no
     window appears), both dictionaries and the learner's data (in a
@@ -6528,8 +7643,15 @@ def check_install(
             else QApplication(["polyglotic", "-platform", "offscreen"])
         )
         found["qt"] = qVersion()
-        # the learning stores are closed before the folder is removed, even
-        # when a step fails (Windows can't delete an open SQLite file);
+        # a link's browser loads the system's libraries, not the app's (561)
+        found["programs_library_path"] = programs_library_path()
+        if sys.platform.startswith("linux"):  # and none of the loader's own (574)
+            from polyglotic_desktop.platform.linux import system as linux
+
+            found["programs_loader_variables"] = linux.loader_variables()
+        # the learning stores and the settings are closed before the folder
+        # is removed, even when a step fails (Windows can't delete an open
+        # SQLite file);
         # anything still open is left to Windows' temporary-files clean-up
         # rather than failing the check
         with (
@@ -6556,6 +7678,11 @@ def check_install(
                 out[f"{learner_dictionary(False)}.sqlite"] = problem.value
             found["dictionaries_out"] = out
             store = JsonSettingsStore(data / "settings.json")
+            # closed last, as `main` closes it: a save still being written on
+            # its thread made the folder again after its removal, and left
+            # settings.json in it (polyglotic-hq 578)
+            closing.callback(store.close)
+            tunable_config.load(learners or data, tunables, store.load())
             desktop = DesktopApp(store, tools, NoApps())
             closing.callback(desktop.close)
             interface = new_interface(desktop, store, tools, per_app=True)
@@ -6604,6 +7731,7 @@ def check_install(
             found["opus_bytes"] = len(encode_ogg_opus(silence))
             found["ready_seconds"] = round(time.perf_counter() - started, 3)
             found["windows"] = try_the_windows(interface, desktop)
+            found["checkbox_tick"] = check_checkbox_tick()
             key, signature = RFC8032_TEST_1  # the signed feed's check works here
             verify(b"", signature, public_keys([key]))
             try:
@@ -6626,7 +7754,12 @@ def check_install(
         pack_ok = isinstance(pack, dict) and all(
             pack.get(k) == v for k, v in PACK_CHECKED.items()
         )
-        found["ok"] = not out and not refused and pack_ok
+        tick_ok = found.get("checkbox_tick") is True
+        found["ok"] = not out and not refused and pack_ok and tick_ok
+        if not tick_ok:
+            found["error"] = (
+                "a checked check box didn't draw its tick (missing SVG plugin)"
+            )
         if not pack_ok:
             found["error"] = "a dictionary pack can't be opened and looked up in"
         if out:
@@ -6729,7 +7862,13 @@ def check_parity(report: Path, system: OsAdapters, os_name: str) -> int:
         ok = True
 
         def hotkeys_taken() -> object:
-            keys = system.hotkeys({key: lambda: None for key in "LPH"})
+            keys = system.hotkeys(
+                {
+                    str(key): lambda: None
+                    for key in hotkey_keys({}, Platform.MAC).values()
+                    if key
+                }
+            )
             taken = keys.start()
             keys.stop()
             return taken
@@ -6793,6 +7932,14 @@ def check_tls(report: Path, server: str, app: AppInfo) -> int:
     the path captions take, through asyncio's handshake, not urllib's).
     Nothing is saved; no token can come back. Writes what was found to
     `report` as JSON; 0 if all three reached the server."""
+    found = tls_found(server, app)
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text(json.dumps(found, indent=2), encoding="utf-8")
+    return 0 if found["ok"] else 1
+
+
+def tls_found(server: str, app: AppInfo) -> dict[str, object]:
+    """What `check_tls` finds, its "ok" with it."""
     import urllib.request
 
     from polyglotic_desktop.connection import sign_in, tls
@@ -6820,9 +7967,106 @@ def check_tls(report: Path, server: str, app: AppInfo) -> int:
         and isinstance(answer, sign_in.InviteNotValid)
         and found["session"] == "opened"
     )
+    return found
+
+
+NOT_ANYONES_TOKEN = "pgd_" + "0" * 43
+"""A device token of the right shape that is no one's: `--check-release`
+sends a report with it to hear the server's own "that token isn't valid"."""
+
+
+def check_release(
+    report: Path, server: str, updates: str, channel: str, app: AppInfo
+) -> int:
+    """The built app's own requests through Cloudflare, before a release is
+    published (polyglotic-hq 563; 2026-11-11: Cloudflare's edge refused
+    Python's own user agent with a 403, and every installed copy failed to
+    sign in): `check_tls`'s three on `server` - its health, sign-in's path,
+    the session's WebSocket - then the update feed as this copy reads it
+    from `updates` (`feed_read`), and a report sent as this copy sends one
+    (`report_answered`). No account, no code and no token of anyone's:
+    each is one that's no one's, and our server's own refusal of it is the
+    answer wanted - not Cloudflare's, nor a network failure. Nothing is
+    saved. Writes what was found to `report` as JSON; 0 if every part
+    reached our servers."""
+    found = tls_found(server, app)
+    tls_ok = found.pop("ok")
+    found.update(updates=updates, channel=channel)
+    feed = feed_read(updates, channel)
+    found["feed"] = feed
+    found["report"] = report_answered(server, app)
+    found["ok"] = (
+        bool(tls_ok)
+        and feed.get("signature") == "verified"
+        and feed.get("package") in (200, 206)
+        and found["report"] == "token_not_valid"
+    )
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(found, indent=2), encoding="utf-8")
     return 0 if found["ok"] else 1
+
+
+def feed_read(updates: str, channel: str) -> dict[str, object]:
+    """`channel`'s update feed from `updates` as this copy's updater reads
+    it (`adapters.signed_feed`, the app's own name in each request): the
+    feed and its signature, checked against the keys built in
+    (`FEED_KEYS`), and the first byte of its newest full package - the one
+    an update downloads. What each answered."""
+    import urllib.request
+
+    from polyglotic_desktop.adapters import signed_feed
+    from polyglotic_desktop.core.shared.client import HEADERS
+
+    base = updates if updates.endswith("/") else updates + "/"
+    name = f"releases.{channel}.json"
+    found: dict[str, object] = {}
+    try:
+        feed = signed_feed.fetch(base + name, _open_url)
+        signature = signed_feed.fetch(base + name + ".sig", _open_url)
+        signed_feed.verify(
+            signed_feed.signed_message(channel, feed),
+            signature,
+            signed_feed.public_keys(FEED_KEYS),
+        )
+        found["signature"] = "verified"
+        newest = signed_feed.newest_full_package(feed)
+        found["newest"] = newest["Version"]
+        first_byte = urllib.request.Request(
+            base + str(newest["FileName"]), headers={**HEADERS, "Range": "bytes=0-0"}
+        )
+        with _open_url(first_byte, signed_feed.TIMEOUT_SEC) as response:
+            found["package"] = response.status
+    except Exception as e:  # noqa: BLE001 - reported by type: it's the point
+        found["error"] = f"{type(e).__name__}: {e}"
+    return found
+
+
+def report_answered(server: str, app: AppInfo) -> str:
+    """A report sent to `server` as "Report a problem" sends one
+    (`connection.feedback`: its address, its headers, a body the protocol
+    accepts), with a token that's no one's (`NOT_ANYONES_TOKEN`): the error
+    our server answered ("token_not_valid" is the one wanted), or what
+    stopped it. Nothing is kept: the server refuses it before reading on."""
+    import urllib.error
+    import urllib.request
+
+    from polyglotic_desktop.connection import tls
+    from polyglotic_desktop.connection.feedback import report_request
+
+    sent = new_report("problem", "release check", None, None, app, None)
+    request = report_request(server, NOT_ANYONES_TOKEN, sent)
+    try:
+        with tls.urlopen(request, 30.0) as response:
+            return f"accepted ({response.status}) with a token that is no one's"
+    except urllib.error.HTTPError as error:
+        try:
+            said = json.loads(error.read(4096))
+        except ValueError:
+            said = None
+        code = said.get("error") if isinstance(said, dict) else None
+        return str(code) if code else f"HTTP {error.code}, not our server's answer"
+    except Exception as e:  # noqa: BLE001 - reported by type: it's the point
+        return f"{type(e).__name__}: {e}"
 
 
 def session_reached(server: str, seconds: float) -> str:
@@ -6974,12 +8218,18 @@ def import_the_rest() -> None:
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     """The command line's options."""
+    return command_line().parse_args(argv)
+
+
+def command_line() -> argparse.ArgumentParser:
+    """The options the app takes (`arguments`)."""
     parser = argparse.ArgumentParser(prog="python -m polyglotic_desktop.main")
     parser.add_argument(
         "--server",
         default=SERVER,
         help=f"the server (default {SERVER}); e.g. http://127.0.0.1:8217",
     )
+    parser.add_argument("--tunables", type=Path, help="use this tunables TOML file")
     parser.add_argument("--dictionaries", type=Path, default=dictionaries_folder())
     parser.add_argument(
         "--data", type=Path, default=None, help="where settings and learning data live"
@@ -7033,6 +8283,21 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="build everything without showing, capturing or connecting;"
         " write what was found to REPORT (JSON) and quit",
     )
+    commands = parser.add_mutually_exclusive_group()
+    for command, does in (
+        ("lock", "lock or unlock the caption windows"),
+        ("pause", "pause or resume captioning"),
+        ("hide", "hide or show the caption windows"),
+    ):
+        commands.add_argument(
+            f"--{command}",
+            dest="command",
+            action="store_const",
+            const=command,
+            help=f"{does} of the copy that runs, as its hotkey does, and end -"
+            " for a shortcut made in the desktop's own keyboard settings",
+        )
+    parser.set_defaults(command=None)
     # GitHub's Mac only (polyglotic-hq 412): refused on Windows
     parser.add_argument("--check-capture", type=Path, help=argparse.SUPPRESS)
     # GitHub's Mac only (polyglotic-hq 428): refused off a Mac
@@ -7040,7 +8305,46 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     # GitHub's Mac (polyglotic-hq 512): secure connections to --server, and
     # sign-in's path with a code that's no one's
     parser.add_argument("--check-tls", type=Path, help=argparse.SUPPRESS)
-    return parser.parse_args(argv)
+    # before a release is published (polyglotic-hq 563): this copy's own
+    # requests to --server and --updates, through Cloudflare
+    parser.add_argument("--check-release", type=Path, help=argparse.SUPPRESS)
+    return parser
+
+
+def refuse_unknown_arguments(argv: list[str] | None = None) -> None:
+    """Ends the process here, with code 2, when the command line holds
+    anything this version doesn't know - saying so in the app's log (and
+    on the console, from source), never in a box, before anything is
+    opened (polyglotic-hq 569). An option it doesn't know is a caller
+    expecting what this version can't do (`--check-release`, given to
+    0.1.9 on 2026-11-20): starting anyway would run the whole app, on the
+    account's own data folder if `--data` wasn't given as well. Only the
+    options' names are logged - their values may be paths or text. The
+    installer's hooks (`--veloapp-...`) are Velopack's, left for
+    `run_installer_hooks`."""
+    given = sys.argv[1:] if argv is None else argv
+    if any(a.startswith(VELOPACK_HOOK) for a in [*given, *sys.argv[1:]]):
+        return
+    known, unknown = command_line().parse_known_args(argv)
+    if not unknown:
+        return
+    data: Path | None = known.data
+    if data is None:
+        try:
+            data = os_adapters().data_folder()
+        except NoOsAdapters:
+            data = None  # Python's own last resort prints it, where there's a console
+    if data is not None:
+        start_logging(data)
+    options = [a.split("=", 1)[0] for a in unknown if a.startswith("-")]
+    log.warning(
+        "not started: the command line has %s this version doesn't know"
+        " (%d argument%s it doesn't know in all; exit 2)",
+        ", ".join(options) or "arguments",
+        len(unknown),
+        "" if len(unknown) == 1 else "s",
+    )
+    sys.exit(2)
 
 
 def store_copy_here() -> str | None:
@@ -7076,12 +8380,20 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
     Velopack's start, whose update ends every copy running from the install
     folder, and before anything is opened. None, with nothing held, for an
     installer's hook, `--check-install` (a folder of its own) and an OS
-    with no adapters yet."""
+    with no adapters yet. A start with `--lock`, `--pause` or `--hide`
+    (polyglotic-hq 570) asks the copy that runs to do it and ends: 0 when
+    done, 1 when no copy runs or it isn't ready (`tell_the_copy`)."""
     given = sys.argv[1:] if argv is None else argv
     if any(a.startswith(VELOPACK_HOOK) for a in [*given, *sys.argv[1:]]):
         return None
     args = arguments(argv)
-    if args.check_install or args.check_capture or args.check_parity or args.check_tls:
+    if (
+        args.check_install
+        or args.check_capture
+        or args.check_parity
+        or args.check_tls
+        or args.check_release
+    ):
         return None
     try:
         system = os_adapters()
@@ -7089,6 +8401,8 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
         return None
     data = args.data or system.data_folder()
     name = one_copy.copy_name(data, one_copy.user())
+    if args.command is not None:
+        sys.exit(tell_the_copy(name, args.command))
     lock = system.copy_lock(name)
     asked = partial(one_copy.ask_to_show, name, system.let_to_front)
     started = one_copy.start(lock.take, asked, show=not args.in_tray)
@@ -7096,10 +8410,35 @@ def this_copy(argv: list[str] | None = None) -> FirstCopy | None:
         return FirstCopy(name, lock)
     if started is not one_copy.Start.NO_ANSWER:
         sys.exit(0)
+    use_qt_platform(system.qt_platform)
     app = QApplication(sys.argv[:1])  # the learner's language, from the file as it is
     start_interface_language(app, ReadOnlySettings(data / "settings.json"))
     system.show_error("Polyglotic", one_copy.not_answering())
     sys.exit(1)
+
+
+def shortcut_command(environ: Mapping[str, str] | None = None) -> str:
+    """How a shortcut of the desktop's own starts this app again (570): the
+    AppImage's path where it runs as one (quoted if it has a space), else the
+    interpreter running it from source."""
+    env = os.environ if environ is None else environ
+    found = env.get("APPIMAGE") or f"{sys.executable} -m polyglotic_desktop.main"
+    if " " in found and env.get("APPIMAGE"):
+        return f'"{found}"'
+    return found
+
+
+def tell_the_copy(name: str, command: str) -> int:
+    """Asks the copy that runs under `name` to do `command`, as its hotkey
+    does, saying on the terminal what came of it: the process's exit code."""
+    told = one_copy.tell(name, command)
+    if told is one_copy.Told.DONE:
+        return 0
+    if told is one_copy.Told.NOT_YET:
+        print("Polyglotic is still starting: nothing done", file=sys.stderr)
+    else:
+        print("Polyglotic isn't running: nothing done", file=sys.stderr)
+    return 1
 
 
 def windows_deleted() -> None:
@@ -7141,7 +8480,9 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     # the start's parts, by name, from here to the first paint: each
     # `done` ends one (`perf.start_parts`, polyglotic-hq 314)
     start_parts.begin()
+    leave_packed_environment()  # Linux: before anything can start a program (561)
     store_copy = store_copy_here()  # whose copy this is comes first
+    refuse_unknown_arguments(argv)  # an option it doesn't know ends it here (569)
     start_parts.done("arguments")  # (with the rest of them, below)
     # one copy per user and data folder: a second start brings the first's
     # window forward and ends here, before Velopack and anything opened (310)
@@ -7152,8 +8493,13 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     args = arguments(argv)
     if args.check_install:
         feed = args.updates if args.updates != UPDATES else None
-        sys.exit(check_install(args.check_install, args.dictionaries, feed, args.data))
+        sys.exit(
+            check_install(
+                args.check_install, args.dictionaries, feed, args.data, args.tunables
+            )
+        )
     system = os_adapters()
+    theme.os_mode = system.system_mode  # Like this PC, where Qt can't read it (571)
     if args.check_capture:
         to_capture = {
             "system": lambda: system.system_capture(None),
@@ -7165,6 +8511,12 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     if args.check_tls:
         about = AppInfo.this_app(system.os_name(), system.os_version())
         sys.exit(check_tls(args.check_tls, args.server, about))
+    if args.check_release:
+        about = AppInfo.this_app(system.os_name(), system.os_version())
+        channel = this_copys_release().channel
+        sys.exit(
+            check_release(args.check_release, args.server, args.updates, channel, about)
+        )
     start_parts.done("arguments")
     taskbar_id = system.taskbar_identity(TASKBAR_ID)  # before any window
     data = args.data or system.data_folder()
@@ -7185,9 +8537,15 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     )
     # the Store's copy: the Store updates it, nothing here (decision 0056)
     updater_or_store = None if store_copy else updater(args.updates)
-    # on a metered connection, an update waits for the learner (345)
+    # on a metered connection, an update waits for the learner (345);
+    # on Linux, a downloaded AppImage update applies as the app quits (640)
     updates = BackgroundUpdates(
-        Updates(updater_or_store, release.channel, system.metered)
+        Updates(
+            updater_or_store,
+            release.channel,
+            system.metered,
+            apply_on_quit=on_linux(),
+        )
     )
     updates.check()  # before anything else is built: a broken start can still update
 
@@ -7196,6 +8554,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     # (they're imported where used, after the first paint - 136)
     threading.Thread(target=import_the_rest, name="imports", daemon=True).start()
     start_parts.done("logging_and_updates")
+    use_qt_platform(system.qt_platform)  # Linux: X11, through XWayland (0258)
+    use_input_methods(system.qt_platform)  # Linux: IBus's for Fcitx5 too (0279)
+    use_file_dialogs(
+        system.qt_platform
+    )  # Linux: the desktop's own, by its portal (0280)
     app = QApplication(sys.argv[:1])
     # Windows' fonts, read on a thread of their own from now - beside the
     # learner's data, not at Home's first label (about 0.3 s; polyglotic-hq
@@ -7221,6 +8584,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     watchdog.start()
     start_parts.done("application")
     store = JsonSettingsStore(data / "settings.json")
+    tunable_config.load(data, args.tunables, store.load())
     # the caption faces downloaded before: added with the bundled ones, by the
     # first caption layout (polyglotic-hq 482)
     caption_faces.downloaded = fonts_folder(data)
@@ -7351,6 +8715,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         system.keys,
         system.on_top(),
         system.common_apps,
+        system.app_category,
     )
     windows, transcripts, hub = interface.windows, interface.transcripts, interface.hub
     if per_app.fell_back:  # here before: Home offers "Try apps again" (0076)
@@ -7369,15 +8734,19 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     # the window first; then the rest - speech detection, the connection
     desktop.show_tray()
     hub.window.keep_in_tray = desktop.tray is not None  # closing it hides it
+    hub.window.no_tray = desktop.tray is None  # GNOME without its extension (571)
     hub.window.follows_text_size = True  # a change Qt reports restyles it
     if second_starts is not None:  # a second start: the window, as the tray's Open
         second_starts.show_with(desktop.show_window)
+        # or what a hotkey does, from a shortcut of the desktop's own (570)
+        second_starts.do_with(desktop.hotkey_pressed.emit)  # its hotkey's name
+    hub.help.show_command(shortcut_command())  # Help says how to make one (570)
     if notice := start_notice(store.set_aside, windows.taken_off):
         desktop.home_notice.emit(notice)
     # the installed app can start with Windows (176) - not the Store's copy
     # yet: its Run value would be the package's private copy (decision 0056)
     if installed() and store_copy is None and system.start_at_sign_in is not None:
-        hub.startup = system.start_at_sign_in(sys.executable)
+        hub.use_startup(system.start_at_sign_in(sys.executable))
     start_parts.done("tray")  # and the last wiring before the window shows
     if not (args.in_tray and desktop.tray is not None):
         desktop.show_window()  # started by Windows: in the tray (176)
@@ -7471,8 +8840,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         timing,
         on_ready=speech_ready,
         outputs_playing=system.outputs_playing,
-        new_mic_detector=lambda: SpeechDetector(model.result(), MIC_GAIN_MAX),
+        new_mic_detector=lambda: SpeechDetector(
+            model.result(), MIC_GAIN_MAX, beds=False
+        ),
         preparing=model.start,
+        dropped=desktop.feed.end,  # finished speech never sent (557)
     )
     # the install's milestones (usage statistics, with consent): a PC that
     # has never connected is a new install (polyglotic-hq project 134)
@@ -7504,9 +8876,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         mandarin.traditional = shows_traditional(value)
         # transcripts and Copy name Mandarin's lines by it (433)
         show_mandarin_in_traditional(mandarin.traditional)
-        mandarin.seconds = {
-            Language(t): Language(s) for t, s in value.second_languages.items()
-        }
+        mandarin.seconds = second_languages(value)
 
     follow_script()
     desktop.settings.changed.connect(follow_script)
@@ -7518,8 +8888,15 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     listener.update_found.connect(hub.set_update_found)
     listener.clock_doubted.connect(hub.home.state.set_clock_looks_wrong)
     connection = Connection(
-        args.server, credentials, app_info, exchange, listener, milestones=milestones
+        args.server,
+        credentials,
+        app_info,
+        exchange,
+        listener,
+        milestones=milestones,
+        capture_restarts=pipeline.take_restarts,  # each summary counts them (566)
     )
+    wire_continuation_refresh(desktop.feed, listener, pipeline, connection, chosen)
     wire_maintenance(connection, listener, desktop, hub, windows)
     account = hub.account
     reports = FeedbackFolder(data / "feedback")
@@ -7646,9 +9023,14 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     settings_page.check_for_updates.connect(updates.check)
 
     def restart_into_update() -> None:
-        """Restart now (polyglotic-hq 299): the app quits as Quit does -
-        everything saved - and the installer applies the update and starts
-        the new version."""
+        """Restart now (polyglotic-hq 299) - or Quit now on Linux (640):
+        the app quits as Quit does - everything saved - and the installer
+        applies the update (starting the new version on Windows and a Mac;
+        on Linux the AppImage replaces itself in place as the app quits)."""
+        if on_linux():
+            log.info("quit now: the update applies as the app quits")
+            desktop.quit.trigger()
+            return
         if not desktop.may_quit():  # a transcript not saved: Cancel (334)
             return
         log.info("restart now: the update applies as the app quits")
@@ -7661,6 +9043,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         None if store_copy is not None else settings_page,
         restart_into_update,
         updates.download_anyway,
+        open_update_folder,
     )
     updates.tell(update_shown.found)
     settings_page.set_notices(third_party_notices())
@@ -7716,6 +9099,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             speech_to_send,
             current.live_interval,
             current.caption_mode,
+            use_presets.usage(current),  # the preset in use, counted (556)
         )
         handoff.started(session, settings)
 
@@ -7854,7 +9238,9 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         )
         windows.use_say_it(say_it)
         transcripts.use_say_it(say_it)
-    if speaker is not None:  # the voices listed once the app has started
+    if speaker is not None and system.list_voices_at_start:
+        # the voices listed once the app has started (not on Linux, 646:
+        # listing starts speech-dispatcher, so Linux lists on first card ask)
         QTimer.singleShot(VOICES_AFTER_START_MS, speaker.look_for_voices)
     # the pages not on show in the window's stylesheet once the start is
     # done, so a first click on one doesn't wait for it (decision 0158)
@@ -7943,6 +9329,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
 
         return SampleCapture(found, play)
 
+    def capture_sources_changed(apps: dict[SourceId, tuple[str, str]]) -> None:
+        desktop.set_app_sources(apps)
+        windows.set_respeaking_sources(sources.captured_now())
+
+    windows.set_respeaking_sources(())
     sources = Sources(
         pipeline,
         apps,
@@ -7953,7 +9344,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         # are when a source starts - choosing another restarts it
         lambda: system.system_capture(desktop.settings.value.speaker_device),
         lambda: system.mic_capture(desktop.settings.value.mic_device),
-        desktop.set_app_sources,
+        capture_sources_changed,
         connection.captured,  # per app vs whole system, in the session's summary
         signed_in,  # nothing captured while signed out
         everything_else_capture=lambda left_out: system.everything_else_capture(
@@ -7975,10 +9366,16 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     # dictation (polyglotic-hq 283, decision 0073): off until turned on;
     # then its key, held, opens the mic, and what was said is typed (imported
     # only now, after the window's first paint, like the connection)
-    from polyglotic_desktop.core.listening.dictation import DICTATION_LANGUAGES, Said
-    from polyglotic_desktop.platform.dictation_mic import DictationMic
+    from polyglotic_desktop.core.listening.dictation import (
+        DICTATION_LANGUAGES,
+        Said,
+        Stage,
+    )
+    from polyglotic_desktop.platform.dictation_mic import (
+        DictationMic,
+        encode_respeaking,
+    )
     from polyglotic_desktop.ui.dictation import Dictating
-    from polyglotic_desktop.ui_next.dictation_key import key_words
     from polyglotic_desktop.ui_next.dictation_sign import DictationSign
     from polyglotic_desktop.ui_next.languages import dictation_choices
 
@@ -8043,27 +9440,99 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
                 settings_page.show_typing_permission()
 
         dictating.sign_changed.connect(typing_not_allowed)
+    # re-speaking (polyglotic-hq 567, decision 0274): hold a key and say what
+    # the other person said - captioned and translated as theirs, in their
+    # window and transcript, marked re-spoken.
+    from polyglotic_desktop.ui.respeaking import Respeaking, SharedKey
+
+    def respeak_whose() -> tuple[Source, str] | None:
+        window = windows.respeaking_window()
+        if window is None:
+            return None
+        source = Source(window.source, sources.category_of_source(window.source))
+        return source, window.label.name
+
+    respeak_mic = DictationMic(
+        lambda: system.mic_capture(desktop.settings.value.mic_device),
+        encode=encode_respeaking,
+    )
+    respeaking = Respeaking(
+        desktop.settings,
+        respeak_mic,
+        dictation_send,  # the same queue, sent before the captions' speech
+        respeak_whose,
+        system.keys,
+        parent=desktop,
+        mic_held=dictation_has_mic,  # the mic's own captions hear silence
+        available=lambda source: (
+            source in sources.captured_now()
+            and any(w.source == source for w in windows.windows.values())
+        ),
+    )
+    desktop.connection_changed.connect(
+        lambda state, _retry_in: respeaking.connection_changed(state)
+    )
+    respeaking.connection_changed(desktop.connection)
+    listener.respoken = respeaking.is_respoken
+    listener.heard = respeaking.answered
+
+    def show_respeaking(state: str, level: float, whose: str) -> None:
+        source = respeaking.holds.source
+        window = windows.show_respeaking_level(
+            source.id if source else None, state, level
+        )
+        dictation_sign.show_respeaking(state, level, whose, window)
+
+    respeaking.sign_changed.connect(show_respeaking)
+
+    # Settings > Look's independent caption and translation sizes (655)
+    settings_page.caption_size_chosen.connect(windows.set_caption_sizes)
+    settings_page.translation_size_chosen.connect(windows.set_translation_sizes)
+
+    def sync_caption_sizes() -> None:
+        settings_page.show_caption_sizes(*windows.current_size_readout())
+
+    windows.sizes_changed.connect(sync_caption_sizes)
+    windows.languages_changed.connect(sync_caption_sizes)
+    sync_caption_sizes()
+    shared_key = SharedKey(dictating, respeaking, desktop.settings)
     dictation_key = DictationKeyHeld(
         lambda key: system.hold_key(
-            key, dictating.key_down, dictating.key_up, dictating.key_other
+            key, shared_key.down, shared_key.up, shared_key.other
+        )
+    )
+    respeak_key = DictationKeyHeld(  # a key of its own, when it has one
+        lambda key: system.hold_key(
+            key, respeaking.key_down, respeaking.key_up, respeaking.key_other
         )
     )
     dictation_was_on = desktop.settings.value.dictation
+    respeaking_was_on = desktop.settings.value.respeaking
 
     def follow_dictation() -> None:
         """Dictation's key taken (or let go) as the settings say - let go
         while Settings' key box listens - and shown in words where it's
         named: Settings, the tray, the sign, Help (polyglotic-hq 289)."""
-        nonlocal dictation_was_on
+        nonlocal dictation_was_on, respeaking_was_on
         value = desktop.settings.value
-        changed = dictation_key.follow(value.dictation, value.dictation_key)
+        shared = value.respeaking and not value.respeak_key
+        changed = dictation_key.follow(
+            system.dictation and (value.dictation or shared), value.dictation_key
+        )
         if changed and not value.dictation:
             dictating.stop()
+        own = bool(system.dictation and value.respeaking and value.respeak_key)
+        binding_changed = respeak_key.follow(own, value.respeak_key)
+        if (
+            binding_changed or (respeaking_was_on and not value.respeaking)
+        ) and respeaking.holds.stage is not Stage.IDLE:
+            respeaking.stop()
+        respeaking_was_on = value.respeaking
         words = key_words(value.dictation_key)
         desktop.show_dictation_key(words)
-        hub.help.show_dictation_key(words)
+        show_keys_in_help(hub.help, value)
         dictation_sign.key = words
-        if value.dictation and not dictation_was_on:
+        if system.dictation and value.dictation and not dictation_was_on:
             dictation_sign.show_hint()  # which key to hold, as it's turned on
         dictation_was_on = value.dictation
         settings_page.show_dictation(
@@ -8073,16 +9542,38 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             value.dictation_australian,
             dictation_key.taken,
         )
+        settings_page.show_respeaking(
+            value.respeaking, value.respeak_key, respeak_key.taken
+        )
+        key = respeak_key if own else dictation_key
+        windows.set_respeaking(
+            system.dictation and value.respeaking,
+            "" if key.taken else key.held_as or "",
+            own or not value.dictation,
+        )
         settings_page.show_typing_permission()
 
     def dictation_key_box(listening: bool) -> None:
-        dictation_key.box_listening = listening
+        dictation_key.box_listening = respeak_key.box_listening = listening
         follow_dictation()
+
+    def respeak_key_wanted(wanted: str) -> None:
+        """Re-speaking's own key pressed in Settings: kept if another
+        program doesn't have it - else the one before is, and Settings
+        says so ("" is one key for both: dictation's)."""
+        value = desktop.settings.value
+        if not wanted or respeak_key.try_key(wanted, value.respeaking):
+            desktop.settings.update(respeak_key=wanted)
+        else:
+            settings_page.respeak_key_not_taken(wanted)
+            follow_dictation()
 
     def dictation_key_wanted(wanted: str) -> None:
         """A key pressed in Settings: kept if another program doesn't have
         it - else the one before is, and Settings says so."""
-        if dictation_key.try_key(wanted, desktop.settings.value.dictation):
+        value = desktop.settings.value
+        shared = value.respeaking and not value.respeak_key
+        if dictation_key.try_key(wanted, value.dictation or shared):
             desktop.settings.update(dictation_key=wanted)
         else:
             settings_page.dictation_key_not_taken(wanted)
@@ -8091,12 +9582,19 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     settings_page.dictation_changes.connect(
         lambda changes: desktop.settings.update(**changes)
     )
-    settings_page.dictation_key_listening.connect(dictation_key_box)
     settings_page.dictation_key_wanted.connect(dictation_key_wanted)
+    settings_page.respeak_changes.connect(
+        lambda changes: desktop.settings.update(**changes)
+    )
+    settings_page.respeak_key_wanted.connect(respeak_key_wanted)
     # its language as modes at the tray: Detect, English, Mandarin, Cantonese
     desktop.set_dictation_languages(dictation_choices(DICTATION_LANGUAGES))
     desktop.dictation_settings_wanted.connect(hub.open_dictation_settings)
     follow_dictation()
+    if not system.dictation:  # none on this OS yet: never offered (574)
+        desktop.offer_dictation(False)
+        settings_page.offer_dictation(False)
+        hub.help.offer_dictation(False)
 
     def listened(update: CaptionUpdate) -> None:
         """Listening time, from finished captions of what the PC played in
@@ -8113,7 +9611,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             if category is not SourceCategory.MIC:
                 ours.vocabulary.listened(category.value)
 
-    desktop.feed.applied.connect(listened)
+    desktop.feed.received.connect(listened)
 
     send_settings = handoff.changed
 
@@ -8137,12 +9635,25 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         )
 
     before_apps = [list(desktop.settings.value.apps[:LIMIT])]
+    lyrics_before = [desktop.settings.value.lyrics]
+
+    def follow_songs() -> None:
+        """The sources heard in songs mode now - the music players' windows
+        on Detect, with the Lyrics switch on (595): the speech pipeline's,
+        and the listening session's summary's (with consent, a count)."""
+        songs = windows.songs_sources()
+        pipeline.set_songs(songs)
+        connection.songs(bool(songs))
 
     def settings_changed() -> None:
         changed = desktop.settings.value
         follow_settings(windows, desktop, sources)
         follow_transcripts(transcripts)
         send_settings()
+        if changed.lyrics != lyrics_before[0]:  # in a window or in Settings
+            lyrics_before[0] = changed.lyrics
+            connection.did(SessionAction.LYRICS_SWITCHED)
+        follow_songs()
         pipeline.set_timing(
             changed.caption_mode.rules,
             changed.live_interval,
@@ -8182,6 +9693,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     hub.sample = try_sample
     hub.list_devices = system.sound_devices  # Home's Sound (372)
     hub.read_mic_peak = sources.mic_peak
+    windows.read_mic_peak = sources.mic_peak
 
     def sample_ended() -> None:
         """The sample played to its end (polyglotic-hq 208, 203's option B):
@@ -8221,6 +9733,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     mic_asked = wire_caption_windows(
         windows, desktop, send_settings, system.mic_permission
     )
+    if system.unlock_spot:  # Linux on a Wayland desktop (570): the setting's say
+        follow_unlock_spot(windows, desktop)
+    if on_linux():  # after the start's own lock: the learner's first (570)
+        tell_how_to_unlock(windows, desktop)
     follow_settings(windows, desktop, sources)
     # the mic is captured only while a window shows my speech - with the
     # OS's leave, where it asks (478)
@@ -8228,6 +9744,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     wire_transcripts(transcripts, desktop)
     # what the learner does, in the listening session's summary (project 134)
     transcripts.opened.connect(lambda: connection.did(SessionAction.TRANSCRIPT_OPENED))
+    interface.panels.stepped = connection.preset_step  # saves and discards (587)
     windows.joined_changed.connect(connection.joined)
     connection.joined(windows.joined_window is not None)
     desktop.settings.changed.connect(settings_changed)
@@ -8238,6 +9755,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         lambda: pipeline.set_paused_sources(windows.paused_sources())
     )
     pipeline.set_paused_sources(windows.paused_sources())
+    # songs mode (polyglotic-hq 595, decision 0287): the music players'
+    # windows on Detect, with the Lyrics setting on, are heard in songs mode
+    windows.languages_changed.connect(follow_songs)
+    follow_songs()
     # a hidden window whose transcript is open is being read: not paused
     windows.reading = transcripts.is_open
     # a chosen app opened later: looked for off the interface thread
@@ -8336,14 +9857,71 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     resending.timeout.connect(problem_sender.send_waiting)
     resending.start()
 
-    bound = {key: partial(desktop.hotkey_pressed.emit, key) for key in desktop.hotkeys}
-    hotkeys = system.hotkeys(bound)
-    # another app may have some; a build may register none (398)
-    desktop.hotkeys_not_working(not_working(desktop.hotkeys, bound, hotkeys.start()))
-    # Home reads its actions; Help names only those that work (400)
-    hub.help.show_hotkeys(
-        [key for key, action in desktop.hotkeys.items() if hotkey_works(action)]
+    settings_page.show_command(shortcut_command())
+    hotkeys = AppHotkeys(system.hotkeys, desktop.hotkey_pressed.emit)
+    hotkeys_shown: list[object] = [None]
+
+    def follow_hotkeys() -> None:
+        """The hotkeys taken as the settings say (polyglotic-hq 567) - again
+        when a key changes - and shown where they're named: the tray's
+        commands, Settings > Hotkeys, Home and Help; another app may have
+        some (398)."""
+        value = desktop.settings.value
+        keys = hotkey_keys(value.hotkeys, platform())
+        shared = value.respeaking and not value.respeak_key
+        dictation = (
+            DictationKey.parse(value.dictation_key)
+            if value.dictation or shared
+            else None
+        )
+        respeak = (
+            DictationKey.parse(value.respeak_key)
+            if value.respeaking and value.respeak_key
+            else None
+        )
+        changed = hotkeys.follow(keys, {DICTATE: dictation, RESPEAK: respeak})
+        shown = (keys, hotkeys.bound, hotkeys.taken, hotkeys.available)
+        if not changed and shown == hotkeys_shown[0]:
+            return
+        hotkeys_shown[0] = shown
+        desktop.set_hotkeys(keys)
+        desktop.hotkeys_not_working(hotkeys.not_working(desktop.hotkeys))
+        settings_page.show_hotkeys(
+            {h.value: str(k) if k else "" for h, k in keys.items()},
+            hotkeys.taken,
+            unavailable=not hotkeys.available,
+        )
+        # Help names Ctrl+Alt+L, P and H only while they're those and work (400)
+        hub.help.show_hotkeys(
+            [
+                letter
+                for letter, hotkey in (
+                    ("L", Hotkey.LOCK),
+                    ("P", Hotkey.PAUSE),
+                    ("H", Hotkey.HIDE),
+                )
+                if own_hotkey(desktop.hotkeys[hotkey.value], letter)
+            ]
+        )
+
+    def key_box(listening: bool) -> None:
+        """A key box in Settings listens - a hotkey's or dictation's: every
+        key the app holds lets keys through meanwhile, so the box gets the
+        one pressed (and says whose it is) instead of its action running."""
+        hotkeys.box_listening = listening
+        follow_hotkeys()
+        dictation_key_box(listening)
+
+    settings_page.hotkey_wanted.connect(
+        lambda name, key: desktop.settings.update(
+            hotkeys={**desktop.settings.value.hotkeys, name: key}
+        )
     )
+    settings_page.hotkeys_reset.connect(lambda: desktop.settings.update(hotkeys={}))
+    settings_page.hotkey_listening.connect(key_box)
+    settings_page.dictation_key_listening.connect(key_box)
+    desktop.settings.changed.connect(follow_hotkeys)
+    follow_hotkeys()
     # a game that is itself always on top comes to the front: the caption
     # windows go back above it (on the interface's thread)
     in_front = system.foreground_watch(windows.front_changed.emit)
@@ -8364,8 +9942,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         problem_sender.close()
         hotkeys.stop()
         dictation_key.stop()
+        respeak_key.stop()
         dictating.stop()
+        respeaking.stop()
         dictation_mic.stop()
+        respeak_mic.stop()
         in_front.stop()
         looking.stop()
         hearing.stop()

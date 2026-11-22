@@ -322,8 +322,8 @@ class FacesPanel(Panel):
                 gone.deleteLater()
         self.boxes, self.face_rows = {}, {}
         for code in self._codes:
-            title = _tr("{language} captions in").format(
-                language=languages.language_name(code)
+            title = languages.in_sentence(
+                _tr("{language} captions in"), language=languages.language_name(code)
             )
             box = FaceBox(code)
             box.setObjectName(f"look.face_{code}")

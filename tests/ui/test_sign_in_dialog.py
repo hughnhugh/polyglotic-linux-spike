@@ -25,7 +25,7 @@ from polyglotic_desktop.ui.sign_in import (
     confirm_sign_out,
 )
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.os_words import pc_or_mac
+from polyglotic_desktop.ui_next.os_words import pc_mac_or_linux, pc_or_mac
 
 
 def settle(qapp: QApplication, dialog: SignInDialog, timeout: float = 5.0) -> None:
@@ -164,8 +164,10 @@ def test_the_server_unreachable_says_whose_side(
     )
     this = pc_or_mac("This PC", "This Mac")
     assert said(Unreachable.CLOCK).startswith(f"{this} says it's {today}")
-    assert pc_or_mac(
-        "Set time automatically", "Set time and date automatically"
+    assert pc_mac_or_linux(
+        "Set time automatically",
+        "Set time and date automatically",
+        "automatic date and time",  # 571
     ) in said(Unreachable.CLOCK)
     # a certificate out of date, the clock right: an antivirus or a VPN first
     assert "antivirus's HTTPS scanning, or a VPN" in said(Unreachable.OUT_OF_DATE)

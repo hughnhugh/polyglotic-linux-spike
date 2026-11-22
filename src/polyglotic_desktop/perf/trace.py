@@ -24,6 +24,10 @@ own):
   thread;
 - `handed` - the interface thread began applying the answer;
 - `applied` - the caption feed applied it;
+- `released` - in a paced caption mode (Steady), the playout let it out:
+  each word is shown a set delay after it was said, and the record's
+  `pace` is that delay (polyglotic-hq 551: Steady's own pace had counted
+  as a caption window's hold); not passed in a mode without one;
 - `windowed` - a caption window put it into its view: at once, or after
   the mouse over the window let it in (`held` `mouse`) or the Lab's gap
   between new captions did (`held` `gap`);
@@ -40,6 +44,17 @@ why.
 characters, enough to group a caption's updates), the speech's kind and
 section, the source's category and fixed words for outcomes. Never text,
 audio, an app's name or a source's id.
+
+**Sound without speech** (polyglotic-hq 549, decision 0256). A trace sees
+only what was sent, so a source that played sound speech detection never
+heard as speech - a song's band, a game's music, or speech the detector
+missed - left nothing in it, and a 28 s gap with nothing sent couldn't be
+told from silence. Each such stretch over 3 s (`platform.sound_unheard`)
+is a record of its own, kind `UNHEARD`: when it began and ended, its
+level's p10, p50 and p90 in dBFS, how many times speech detection forgot
+its state in it (decision 0254) and how long after the last of them it
+ended, and what ended it. Levels and times only, never audio. A stretch
+still going on is in `recent` as it stands (`end` `open`).
 
 **Where records go.** A record is done when it's painted, applied with no
 window showing its source, dropped, or `DONE_AFTER_SEC` old. Done records
@@ -76,6 +91,7 @@ APP_STAGES = (
     "received",
     "handed",
     "applied",
+    "released",
     "windowed",
     "painted",
 )
@@ -104,12 +120,54 @@ def speech_key(
     return (caption_id, kind, section, round(speech_end, 3))
 
 
+UNHEARD = "sound_unheard"
+"""The kind of a record of sound without speech (decision 0256)."""
+
+
+@dataclass(frozen=True)
+class Unheard:
+    """A stretch of sound without speech on one source (module docstring):
+    `began` and `ended` on the app's clock; `dbfs` its frames' level (root
+    mean square) at p10, p50 and p90; `resets` the times speech detection
+    forgot its state in it, `after_reset` the seconds from the last of them
+    to its end (None without one); `end` what ended it - `speech` heard,
+    `quiet` (the sound stopped), `stopped` (the source did) or `open` (it
+    goes on)."""
+
+    source: str
+    began: float
+    ended: float
+    dbfs: tuple[int, int, int]
+    resets: int
+    after_reset: float | None
+    end: str
+
+    @property
+    def seconds(self) -> float:
+        return self.ended - self.began
+
+    def as_json(self) -> dict[str, Any]:
+        return {
+            "kind": UNHEARD,
+            "src": self.source,
+            "t": {"began": round(self.began, 4), "ended": round(self.ended, 4)},
+            "len": round(self.seconds, 2),
+            "dbfs": list(self.dbfs),
+            "resets": self.resets,
+            "after_reset": None
+            if self.after_reset is None
+            else round(self.after_reset, 2),
+            "end": self.end,
+        }
+
+
 @dataclass
 class Record:
     """One speech frame's timeline. `t`: each stage's moment (seconds,
     the app's clock); `server`: the server's numbers (milliseconds, and
     `queued` frames); `end`: how it ended (`painted`, `applied`,
-    `unanswered:<why>`, `overtaken_in_app`, `not_sent:<why>`, `lost`)."""
+    `unanswered:<why>`, `overtaken_in_app`, `not_sent:<why>`, `lost`);
+    `pace`: the playout's delay it was let out at (seconds; `released`)."""
 
     seq: int | None
     caption: str
@@ -122,6 +180,7 @@ class Record:
     held: str | None = None
     end: str | None = None
     last: float = 0.0
+    pace: float | None = None
 
     def as_json(self) -> dict[str, Any]:
         found: dict[str, Any] = {
@@ -138,6 +197,8 @@ class Record:
             found["srv"] = dict(self.server)
         if self.held is not None:
             found["held"] = self.held
+        if self.pace is not None:
+            found["pace"] = round(self.pace, 2)
         return found
 
 
@@ -161,6 +222,8 @@ class Tracer:
         self._next_seq = 0
         self._swept = 0.0
         self._listeners: list[Callable[[dict[str, Any]], None]] = []
+        self._sounding: dict[int, dict[str, Any]] = {}
+        """Stretches of sound without speech going on now, by their key."""
         self.stalls: deque[tuple[float, float]] = deque(maxlen=512)
         """Interface-thread stalls: (when, ms) - the watchdog's."""
 
@@ -199,6 +262,20 @@ class Tracer:
             found = self._pre.get(key)
             if found is not None:
                 found["encoded"] = at
+
+    def sounding(self, key: int, stretch: Unheard) -> None:
+        """A stretch of sound without speech goes on, as it stands now
+        (`key`: its tracker's, the same until it ends): `recent` has it."""
+        found = stretch.as_json()
+        with self._lock:
+            self._sounding[key] = found
+
+    def unheard(self, key: int, stretch: Unheard) -> None:
+        """A stretch of sound without speech ended: done, as a record."""
+        found = stretch.as_json()
+        with self._lock:
+            self._sounding.pop(key, None)
+            self._publish_locked(found)
 
     # -- the session (its own thread) --------------------------------------------
 
@@ -300,6 +377,20 @@ class Tracer:
             if record is not None and record.held is None:
                 record.held = why
 
+    def released(self, seq: int | None, pace: float, at: float | None = None) -> None:
+        """The playout let it out (a paced mode), `pace` seconds after its
+        words were said: what it waited for was the mode's own pace."""
+        if seq is None:
+            return
+        now = self.clock() if at is None else at
+        with self._lock:
+            record = self._open.get(seq)
+            if record is None or "released" in record.t:
+                return
+            record.t["released"] = now
+            record.pace = pace
+            record.last = now
+
     def windowed(self, seq: int | None, at: float | None = None) -> None:
         """A caption window put it into its view; it shows at the next paint."""
         if seq is None:
@@ -335,11 +426,13 @@ class Tracer:
     # -- reading -------------------------------------------------------------------
 
     def recent(self, seconds: float = KEEP_SEC) -> list[dict[str, Any]]:
-        """Done records of the last `seconds`, oldest first (as JSON)."""
+        """Done records of the last `seconds`, oldest first (as JSON), then
+        the stretches of sound without speech going on now."""
         now = self.clock()
         with self._lock:
             self._sweep_locked(now, force=True)
-            return [r for r in self._done if _ended_at(r) >= now - seconds]
+            done = [r for r in self._done if _ended_at(r) >= now - seconds]
+            return done + [dict(r) for r in self._sounding.values()]
 
     def open_now(self) -> list[dict[str, Any]]:
         """The records not done yet, as they stand (as JSON) - left open:
@@ -351,6 +444,11 @@ class Tracer:
                 now["end"] = _ending(record)
                 found.append(now)
             return found
+
+    def sounding_now(self) -> list[dict[str, Any]]:
+        """The stretches of sound without speech going on now (as JSON)."""
+        with self._lock:
+            return [dict(r) for r in self._sounding.values()]
 
     def flush(self) -> None:
         """Every open record done as it stands (a session's end)."""
@@ -372,12 +470,20 @@ class Tracer:
         for seq in stale:
             record = self._open.pop(seq)
             self._finish_locked(record, _ending(record))
+        for key in [
+            k for k, r in self._sounding.items() if now - _ended_at(r) >= DONE_AFTER_SEC
+        ]:  # given as it stood, then never ended: its source went
+            del self._sounding[key]
         while self._done and _ended_at(self._done[0]) < now - self.keep_sec:
             self._done.popleft()
 
     def _finish_locked(self, record: Record, end: str) -> None:
         record.end = end
-        found = record.as_json()
+        self._publish_locked(record.as_json())
+
+    def _publish_locked(self, found: dict[str, Any]) -> None:
+        """A done record (as JSON): kept, heard by the listeners, and
+        written to the trace file when asked."""
         self._done.append(found)
         for listener in self._listeners:
             try:

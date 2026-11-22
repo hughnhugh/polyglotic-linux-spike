@@ -110,7 +110,10 @@ ABOUT_WINDOWS = {
     # Windows' own setting: the probe asks it (decision 0122)
     ("Learning", "Paused: Windows says this connection is metered"),
     ("Help", "Caption apps you add (Windows 11)"),
-    ("Help", "On Home, add up to 3 apps with sound open; each gets a caption window"),
+    (
+        "Help",
+        "On Home, add up to %Ln app(s) with sound open; each gets a caption window",
+    ),
     ("Help", "With one app added on Home, turn on Also caption everything else"),
     # 285 (decision 0076): what Windows here can capture, and why apps are off
     ("Home", "instead of apps (the only choice on this version of Windows)"),

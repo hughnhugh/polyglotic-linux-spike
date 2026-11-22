@@ -24,7 +24,11 @@ def test_both_is_the_default_and_the_choice_is_kept() -> None:
 
 
 def test_acquisition_holds_the_translation_back_in_the_paced_modes_only() -> None:
-    value = AppSettings(caption_path="acquisition", translation_after=3.0)
+    value = AppSettings(
+        caption_mode_chosen=CaptionMode.STEADY.value,
+        caption_path="acquisition",
+        translation_after=3.0,
+    )
     assert value.caption_mode is CaptionMode.STEADY and value.acquisition
     assert value.playout_rules.translation_after == 3.0
     whole = replace(value, caption_mode_chosen=CaptionMode.WHOLE.value)
@@ -41,9 +45,24 @@ def test_acquisition_translates_nothing_live() -> None:
 
     assert listening_settings(AppSettings()).translate_live  # Both: by clause
     assert listening_settings(AppSettings(caption_path="follow")).translate_live
-    value = AppSettings(caption_path="acquisition")
+    value = AppSettings(
+        caption_mode_chosen=CaptionMode.STEADY.value, caption_path="acquisition"
+    )
     assert not listening_settings(value).translate_live
     timing = timing_of(value)
     assert timing.path is ReadingPath.ACQUISITION
     changes = timing_changes(value, replace(timing, path=ReadingPath.FOLLOW))
     assert changes["caption_path"] == "follow"
+
+
+def test_the_card_stack_is_the_learners_to_turn_off() -> None:
+    """Steady's card stack (decision 0260) has a switch in Settings >
+    Timing: it is saved, and read back (polyglotic-hq 552)."""
+    from polyglotic_desktop.main import timing_changes, timing_of
+
+    value = AppSettings()
+    timing = timing_of(value)
+    assert timing.cards is value.steady_cards
+    off = timing_changes(value, replace(timing, cards=False))
+    assert off["steady_cards"] is False
+    assert not timing_of(replace(value, steady_cards=False)).cards

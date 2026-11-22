@@ -716,9 +716,10 @@ def moved_by_use(key: str) -> bool:
 KNOWN = {
     "Settings > links / toggle Quiet view": (
         "polyglotic-hq 523's finding: Settings > Links' Quiet view on, then off,"
-        " leaves word links off and six languages' reading lines on (LookView."
-        "set_quiet alone puts the lines back: the switch's own path doesn't);"
-        " a fix is proposed"
+        " left word links off - put back since 555 - and the reading lines the"
+        " default gives written down as chosen (the same lines, but no longer"
+        " following the default: the record of changes keeps them); a fix is"
+        " proposed"
     ),
 }
 """Controls known not to put back what they change, each with why and

@@ -20,6 +20,7 @@ from polyglotic_desktop.core.listening.playout import (
     Playout,
     PlayoutRules,
     carried,
+    word_beats,
 )
 from polyglotic_desktop.core.listening.sources import SourceId
 from polyglotic_desktop.core.listening.timing import CaptionId, WithdrawalReason
@@ -148,9 +149,26 @@ def test_a_word_that_comes_after_its_moment_is_shown_at_once_never_in_a_clump() 
     assert [said(u) for _, u in shown] == ["one", "one two", "one two three"]
     assert [round(at, 2) for at, _ in shown] == [
         15.0,
-        15.0 + MIN_GAP_SEC,
-        15.0 + 2 * MIN_GAP_SEC,
+        15.25,
+        15.5,
     ]
+
+
+def test_a_late_timer_releases_one_word_and_keeps_the_speech_rhythm() -> None:
+    playout = Playout(RULES)
+    playout.heard(finished("cat dog bird fish", 10.0, 12.0), 12.1)
+    assert [said(u) for u in playout.release(15.0)] == ["cat"]
+    assert playout.release(15.0) == ()
+    assert playout.due() == pytest.approx(15.5)
+
+
+def test_translation_added_to_an_already_shown_clause_is_delivered_at_once() -> None:
+    playout = Playout(RULES)
+    playout.heard(update(("one two", " three four"), 10.0, 11.0), 11.1)
+    played(playout, 15.0)
+    clause = Clause("one two", {EN: "un deux"})
+    translated = update((clause, " three four"), 10.0, 11.0)
+    assert [u.clauses[0] for u in playout.heard(translated, 16.0)] == [clause]
 
 
 def test_a_word_keeps_its_moment_when_later_updates_bring_more() -> None:
@@ -204,7 +222,18 @@ def test_a_clauses_translation_and_links_come_with_its_last_word() -> None:
     assert shown[-1] is whole
 
 
-def test_a_live_captions_last_clause_is_never_whole() -> None:
+def test_translation_with_a_fully_confirmed_live_clause_arrives_on_its_last_word() -> (
+    None
+):
+    playout = Playout(RULES)
+    clause = Clause("one two", {EN: "un deux"})
+    playout.heard(update((clause,), 10.0, 11.0, established=len(clause.original)), 11.1)
+    first, second = (u for _, u in played(playout, 15.0))
+    assert not first.clauses[0].translations
+    assert second.clauses == (clause,)
+
+
+def test_a_live_captions_unconfirmed_last_clause_waits() -> None:
     clause = Clause("one two", {EN: "un deux"})
     playout = Playout(PlayoutRules(delay=D, hold_back=0))
     playout.heard(update((clause,), 10.0, 11.0), 11.1)
@@ -255,6 +284,25 @@ def test_karaoke_gives_the_waiting_words_past_the_established_count() -> None:
     ]
 
 
+def test_karaoke_pairs_a_finished_translation_with_the_complete_visible_clause() -> (
+    None
+):
+    playout = Playout(PlayoutRules(delay=D, ahead=Ahead.WAITING))
+    clause = Clause("one two", {EN: "un deux"})
+    (first,) = playout.heard(finished((clause,), 10.0, 11.0), 11.1)
+    assert first.established == 0
+    assert first.clauses == (clause,)
+
+
+def test_karaoke_pairs_a_confirmed_live_translation_with_the_waiting_words() -> None:
+    playout = Playout(PlayoutRules(delay=D, ahead=Ahead.WAITING))
+    clause = Clause("one two", {EN: "un deux"})
+    packet = update((clause,), 10.0, 11.0, established=len(clause.original))
+    (waiting,) = playout.heard(packet, 11.1)
+    assert waiting.established == 0
+    assert waiting.clauses == (clause,)
+
+
 def test_eager_karaoke_gives_the_newest_word_too() -> None:
     playout = Playout(PlayoutRules(delay=D, ahead=Ahead.ALL))
     now = playout.heard(update("one two three", 10.0, 11.5), 11.6)
@@ -279,6 +327,20 @@ def test_a_sources_captions_are_shown_one_after_another() -> None:
     ]  # fmt: skip
 
 
+def test_words_ahead_of_a_later_caption_wait_for_the_current_one() -> None:
+    playout = Playout(PlayoutRules(delay=D, ahead=Ahead.WAITING))
+    first = finished("one two three", 10, 12)
+    later = finished("four five", 12, 13, caption=TWO)
+    playout.heard(first, 12)
+    early = playout.heard(later, 12.1)
+    assert all(u.caption_id != TWO for u in early)
+    shown = [u for _, u in played(playout, 20)]
+    assert shown.index(first) < next(
+        i for i, u in enumerate(shown) if u.caption_id == TWO
+    )
+    assert shown[-1] is later
+
+
 def test_each_source_has_its_own_pace() -> None:
     playout = Playout(RULES)
     playout.heard(update("one two three", 10.0, 11.0), 11.1)
@@ -291,10 +353,11 @@ def test_a_caption_never_finished_stops_holding_the_next_back() -> None:
     playout.heard(update("one two three", 10.0, 11.0), 11.1)
     playout.heard(finished("four", 11.5, 12.0, caption=TWO), 12.1)
     played(playout, 15.0)
-    assert playout.due() is None  # two waits for one's last word
-    assert [said(u) for u in playout.release(11.1 + STALE_SEC + 0.5)] == [
-        "four"
-    ]  # one is passed over
+    # The window arms its timer from due(). Silence sends no more packets
+    # to release the second caption if the first one never finishes.
+    assert playout.due() == pytest.approx(11.1 + STALE_SEC)
+    assert [said(u) for _, u in played(playout, 11.1 + STALE_SEC)] == ["four"]
+    assert playout.due() is None
 
 
 def test_a_joined_caption_keeps_what_its_captions_showed() -> None:
@@ -428,3 +491,18 @@ def test_without_it_nothing_is_held() -> None:
     playout.heard(whole, 11.1)
     assert played(playout, 30.0)[-1][1] is whole
     assert playout.due() is None
+
+
+def test_subtitle_word_beats_keep_spoken_pauses_and_attach_punctuation() -> None:
+    clause = Clause(
+        "A, slow finish.",
+        words=(
+            WordTime((0, 1), 10.0, 10.1),
+            WordTime((3, 7), 10.3, 10.5),
+            WordTime((8, 14), 11.8, 12.0),
+        ),
+    )
+    ends, offsets = word_beats(clause.original, lambda run: [(0, len(run))], clause)
+    assert ends == (3, 8, 15)
+    assert offsets == pytest.approx((0.0, 0.3, 1.8))
+    assert word_beats("你好，世界。", lambda run: [(0, len(run))]) == ((3, 6), ())

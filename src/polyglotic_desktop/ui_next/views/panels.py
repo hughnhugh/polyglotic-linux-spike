@@ -170,6 +170,9 @@ class SessionLanguages:
     chosen; None: as this PC reads Chinese (`traditional_here`; 375)."""
     traditional_here: bool = False
     """This PC reads Chinese in Traditional (Taiwan's or Hong Kong's)."""
+    lyrics: bool = False
+    """The Lyrics switch: music players heard on Detect in songs mode
+    (polyglotic-hq 595, decision 0287)."""
 
     @property
     def traditional(self) -> bool:
@@ -236,6 +239,9 @@ class LanguagesView(Shared[SessionLanguages]):
         script = "traditional" if on else "simplified"
         self.change(replace(self.value, mandarin_script=script))
 
+    def set_lyrics(self, on: bool) -> None:
+        self.change(replace(self.value, lyrics=on))
+
 
 @dataclass(frozen=True, slots=True)
 class WindowLanguage:
@@ -276,14 +282,18 @@ class Timing:
     settle_after: float = SETTLE_AFTER_SEC
     newest_word: bool = False
     """Steady's newest word shown too, a little sooner (526)."""
-    words_ahead: Ahead = Ahead.NONE
-    """Steady's waiting words drawn faint ahead (karaoke)."""
+    words_ahead: Ahead = Ahead.WAITING
+    """Steady's waiting words drawn faint ahead (karaoke): on by default
+    (polyglotic-hq 554)."""
     two_zones: bool = True
     """Steady's live lines below and the settled transcript above (526)."""
     path: ReadingPath = ReadingPath.BOTH
     """What is read first in a paced mode (decision 0253)."""
     translation_after: float = TRANSLATION_AFTER_SEC
     """Acquisition's seconds between a clause and its translation."""
+    cards: bool = True
+    """Steady's card stack is on (decision 0260): the two zones' switch
+    then changes nothing, and isn't offered."""
 
     @property
     def live_every(self) -> float:
@@ -334,6 +344,9 @@ class TimingView(Shared[Timing]):
 
     def set_two_zones(self, on: bool) -> None:
         self.change(replace(self.value, two_zones=on))
+
+    def set_cards(self, on: bool) -> None:
+        self.change(replace(self.value, cards=on))
 
     def set_path(self, path: ReadingPath) -> None:
         self.change(replace(self.value, path=path))
@@ -447,12 +460,16 @@ def quiet_view(
     on: bool,
     readings: tuple[str, ...] = (),
     before: CaptionLook | None = None,
+    links: WordLinks = LINKS_WHEN_ON,
 ) -> CaptionLook:
     """The look with the quiet view on (polyglotic-hq 477) - word links
     off, and the reading lines of the window clicked on (`readings`: "zh"
     for a Chinese window: a reading over every word) - or off again, the
-    reading lines back as they were in `before` (the look when it was
-    turned on; not known: as they are)."""
+    word links, their colours and the reading lines back as they were in
+    `before` (the look when it was turned on), so links show as the
+    learner had them (polyglotic-hq 555; 523 found them left off). Not
+    known (turned on before a restart): word links shown as `links` -
+    on every word by default - and the rest as it is."""
     if on:
         return replace(
             look,
@@ -461,8 +478,16 @@ def quiet_view(
             reading_lines=tuple(sorted({*look.reading_lines, *readings})),
         )
     if before is None:
-        return replace(look, quiet=False)
-    return replace(look, quiet=False, reading_lines=before.reading_lines)
+        return replace(look, quiet=False, word_links=links)
+    return replace(
+        look,
+        quiet=False,
+        word_links=before.word_links,
+        said_in_link_colours=before.said_in_link_colours,
+        translation_in_link_colours=before.translation_in_link_colours,
+        reading_colour=before.reading_colour,
+        reading_lines=before.reading_lines,
+    )
 
 
 class LookView(Shared[CaptionLook]):
@@ -595,16 +620,16 @@ class LookView(Shared[CaptionLook]):
         """A caption window's quiet button, or Settings' (477): the quiet
         view on - word links off, as their button turns them off, and
         `readings`, the reading lines of the window clicked - or off,
-        its reading lines back as they were."""
+        its word links and reading lines back as they were (555)."""
         if on == self.value.quiet:
             return
         look = self.value
         if on:
+            self.unquieted = look  # its word links as they were too (555)
             if look.word_links is not WordLinks.OFF:  # as their own button would
                 look = learning_view(look, False, self.links_when_on, (), self.unlinked)
                 self.unlinked = None
-            self.unquieted = look
-        self.change(quiet_view(look, on, readings, self.unquieted))
+        self.change(quiet_view(look, on, readings, self.unquieted, self.links_when_on))
         if not on:
             self.unquieted = None
 
@@ -632,7 +657,7 @@ class LookView(Shared[CaptionLook]):
         look = self.value
         if on:
             if look.quiet:  # the quiet view off first, as its own button would
-                look = quiet_view(look, False, (), self.unquieted)
+                look = quiet_view(look, False, (), self.unquieted, self.links_when_on)
                 self.unquieted = None
             self.unlinked = look
         self.change(
@@ -640,6 +665,15 @@ class LookView(Shared[CaptionLook]):
         )
         if not on:
             self.unlinked = None
+
+    def set_readings_shown(self, on: bool, readings: tuple[str, ...] = ()) -> None:
+        """The preset dropdown's Readings (polyglotic-hq 556): `readings` -
+        the reading lines of the window clicked - on beside those already
+        on, or every reading line off."""
+        lines = tuple(sorted({*self.value.reading_lines, *readings})) if on else ()
+        if on and not lines:
+            return  # nothing in that window has a reading to show
+        self.change(replace(self.value, reading_lines=lines))
 
     def set_link_detail(self, detail: LinkDetail) -> None:
         self.change(replace(self.value, link_detail=detail))

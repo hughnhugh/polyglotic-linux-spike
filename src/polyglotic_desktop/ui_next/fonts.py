@@ -22,8 +22,10 @@ Qt's fonts by `caption_faces`.
 """
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
+
+from polyglotic_desktop.core.shared.tunables import Applies, tunable
 
 WEIGHT_FACES: dict[int, tuple[str, ...]] = {
     300: ("Segoe UI Variable Display Light",),
@@ -65,10 +67,30 @@ Thai, Arabic and Devanagari ("deva"). macOS's Korean, Thai, Arabic and
 Devanagari faces are the ones it ships (479: not yet seen on a Mac)."""
 
 
+CJK_SCRIPTS = ("zh", "zh-hant", "yue", "ja", "ko")
+"""Scripts whose system CJK font families Linux desktops supply (polyglotic-hq
+647): checked once so minimal installs without `fonts-noto-cjk` log why glyphs
+may show as boxes."""
+
+
 def also(script: str, system: str = sys.platform) -> tuple[str, ...]:
     """This OS's fonts for `script`, to follow Windows' in a font list -
     none on Windows."""
     return OTHER_OS.get(system, {}).get(script, ())
+
+
+def missing_cjk_families(
+    installed: Collection[str], system: str = sys.platform
+) -> dict[str, tuple[str, ...]]:
+    """CJK scripts for `system` that have none of their OS font families in
+    `installed` (case-insensitive): `{script: expected_families}`."""
+    have = {family.casefold() for family in installed}
+    missing: dict[str, tuple[str, ...]] = {}
+    for code in CJK_SCRIPTS:
+        families = also(code, system)
+        if families and not any(family.casefold() in have for family in families):
+            missing[code] = families
+    return missing
 
 
 # -- Captions -------------------------------------------------------------
@@ -104,11 +126,14 @@ class Face:
     the readings' cut, hadn't the characters, and drew them in the next
     face - Semibold and Bold Chinese came out in YaHei, or Ma Shan Zheng
     (polyglotic-hq 532's measure)."""
-    reads: bool = True
-    """Whether it draws readings over its text: False for a face without
-    pinyin's tone marks (Ma Shan Zheng), whose readings are in the face
-    after it - not a brush's letters and another face's vowels in one
-    word (532)."""
+    brushed: bool = False
+    """A brush's or a hand's Chinese face (Ma Shan Zheng; LXGW WenKai TC,
+    Polyglotic Kai): only its Han characters are drawn in it (551, the
+    user's preview 1: "focus" came out in Ma Shan Zheng's own cursive
+    letters). The Latin letters, digits and Latin punctuation in a line of
+    it are in the Latin captions' face (`latin_runs`), and readings over
+    it - pinyin, zhuyin - in the face after it: Ma Shan Zheng has no tone
+    marks (532), and a brush's letters read as handwriting, not text."""
 
     @property
     def name(self) -> str:
@@ -123,7 +148,7 @@ BUNDLED = (
         upright=True,  # a brush's own slant: a made-up one bends its strokes
         shown="Ma Shan Zheng",
         scripts=("zh",),
-        reads=False,
+        brushed=True,
     ),
     Face(
         "Noto Sans SC Captions",
@@ -172,14 +197,15 @@ def _packed(
     upright: bool = False,
     family: str = "",
     readings: bool = False,
+    brushed: bool = False,
 ) -> Face:
     """A downloaded face: `changed` (cut or fixed at a weight by
     `tools.caption_fonts`) has a family of its own, "<name> Captions";
     `readings`, a SemiBold cut of readings beside its Medium text
-    (`Face.text_style`)."""
+    (`Face.text_style`); `brushed`, only its Han characters drawn in it."""
     family = family or (f"{name} Captions" if changed else name)
     text_style = "Medium" if readings else ""
-    return Face(family, kind, (), upright, name, pack, scripts, text_style)
+    return Face(family, kind, (), upright, name, pack, scripts, text_style, brushed)
 
 
 PACKED = (
@@ -193,11 +219,16 @@ PACKED = (
     _packed("notoserifsc", "Noto Serif SC", SERIF, ("zh",), readings=True),
     _packed("zhuquefangsong", "Zhuque Fangsong", SERIF, ("zh",)),
     _packed(
-        "polyglotickai", "Polyglotic Kai", HANDWRITTEN, ("zh",), family="Polyglotic Kai"
+        "polyglotickai",
+        "Polyglotic Kai",
+        HANDWRITTEN,
+        ("zh",),
+        family="Polyglotic Kai",
+        brushed=True,
     ),
     _packed("huninn", "jf open Huninn", SANS, ("zh-hant",)),
     _packed("notoseriftc", "Noto Serif TC", SERIF, ("zh-hant",), readings=True),
-    _packed("lxgwwenkaitc", "LXGW WenKai TC", HANDWRITTEN, ("zh-hant",)),
+    _packed("lxgwwenkaitc", "LXGW WenKai TC", HANDWRITTEN, ("zh-hant",), brushed=True),
     _packed("chironheihk", "Chiron Hei HK", SANS, ("yue",), readings=True),
     _packed("notoserifhk", "Noto Serif HK", SERIF, ("yue",), readings=True),
     _packed("chironsunghk", "Chiron Sung HK", SERIF, ("yue",), readings=True),
@@ -282,7 +313,7 @@ OS's own draws until they're here."""
 BEHIND = {"zh": "Noto Sans SC Captions", "zh-hant": "Noto Sans TC Captions"}
 """The script's sans after a calligraphy default (532): draws the
 characters it hasn't (Ma Shan Zheng's rarer 1,342 of the 8,105), the
-readings over it (`Face.reads`), and the captions while a downloaded
+readings over it (`Face.brushed`), and the captions while a downloaded
 default isn't here yet, if the sans is."""
 
 WINDOWS = {
@@ -319,13 +350,112 @@ CHOICES: dict[str, tuple[str, ...]] = {
 its default first, then the others the app carries, then the downloaded
 ones."""
 
-SIZES = {"zh": 1.05, "zh-hant": 1.05, "yue": 1.05, "ja": 1.05, "ar": 1.15, "deva": 1.1}
-"""A script's text drawn a little larger than Latin at the same pixel
-size: Chinese and Japanese, whose denser strokes read as easily (today's
-overlay's); Arabic and Devanagari, whose letters' bodies are smaller than
-Latin's x-height in their faces (482's measure: Noto Naskh Arabic's 0.47
-of its size, IBM Plex Sans' x-height 0.53; Noto Sans Devanagari's 0.62
-against Nirmala UI's 0.73)."""
+SCRIPT_SCALE_BOUNDS = (
+    0.7,
+    1.5,
+)  # constant: visual-height matching envelope across scripts
+"""Allowed range for per-script optical size matching (`SCRIPT_SCALES`)."""
+
+SCRIPT_SCALES = {
+    "latin": tunable(
+        "fonts.script_scale.latin",
+        1.0,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 reference: IBM Plex Sans Medium (cap 69.8, x 52.0, sentence ink 97.0 at 100 px)",
+        applies=Applies.LIVE,
+    ),
+    "vi": tunable(
+        "fonts.script_scale.vi",
+        1.0,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 measured: Be Vietnam Pro Medium (x 53.0, cap 74.0 at 100 px; matches Latin x-height within 2 %)",
+        applies=Applies.LIVE,
+    ),
+    "cyrl": tunable(
+        "fonts.script_scale.cyrl",
+        1.0,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 measured: PT Sans Regular (cap 70.0, x 50.0 at 100 px; matches Latin cap-height within 0.3 %)",
+        applies=Applies.LIVE,
+    ),
+    "zh": tunable(
+        "fonts.script_scale.zh",
+        1.05,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 measured: Ma Shan Zheng (sentence ink 94.0, med char 85.0 at 100 px) and Noto Sans SC (95.0/94.0); at 1.05 sentence ink 98.7 matches Latin 97.0 within 2 %",
+        applies=Applies.LIVE,
+    ),
+    "zh-hant": tunable(
+        "fonts.script_scale.zh_hant",
+        1.05,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 script match: Traditional Chinese matches Simplified Chinese CJK visual scale",
+        applies=Applies.LIVE,
+    ),
+    "yue": tunable(
+        "fonts.script_scale.yue",
+        1.05,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 script match: Cantonese Han characters match Simplified Chinese CJK visual scale",
+        applies=Applies.LIVE,
+    ),
+    "ja": tunable(
+        "fonts.script_scale.ja",
+        1.05,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 measured: Yu Gothic UI fallback (sentence ink 87.0 at 100 px; at 1.05 -> 91.4 vs Latin 97.0) and Noto Sans JP CJK em-box",
+        applies=Applies.LIVE,
+    ),
+    "ko": tunable(
+        "fonts.script_scale.ko",
+        1.05,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 measured: Malgun Gothic fallback (Hangul body 78.0 at 100 px; at 1.05 -> 81.9, matching CJK visual scale)",
+        applies=Applies.LIVE,
+    ),
+    "th": tunable(
+        "fonts.script_scale.th",
+        1.0,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="655 measured: Noto Sans Thai Looped Medium (cap 71.4, x 53.9, base consonant 58.0 at 100 px; matches Latin within 4 %)",
+        applies=Applies.LIVE,
+    ),
+    "ar": tunable(
+        "fonts.script_scale.ar",
+        1.15,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="482/655 measured: Noto Naskh Arabic Captions (body 47.0 at 100 px; at 1.15 -> 54.1 vs Latin x-height 52.0, within 4 %)",
+        applies=Applies.LIVE,
+    ),
+    "deva": tunable(
+        "fonts.script_scale.deva",
+        1.1,
+        "scale",
+        SCRIPT_SCALE_BOUNDS,
+        source="482/655 measured: Noto Sans Devanagari Medium (consonant body 62.2 at 100 px; at 1.10 -> 68.4 vs Latin cap-height 69.8, within 2 %)",
+        applies=Applies.LIVE,
+    ),
+}
+"""Each script's visual-height scale relative to Latin (`size`), measured from
+the bundled fonts' glyph heights so 100 % reads at the same visual size across
+scripts (482, 655)."""
+
+SIZES = {
+    script_: item.default
+    for script_, item in SCRIPT_SCALES.items()
+    if item.default != 1.0
+}
+"""Default non-1.0 script scales, for callers inspecting the static table."""
 
 UPRIGHT_SCRIPTS = frozenset({"ar", "zh", "zh-hant", "yue", "ja", "ko"})
 """Scripts never slanted: Arabic has no italic, and a slant made up for it
@@ -366,14 +496,72 @@ def caption_families(
 
 def reading_families(families: Sequence[str]) -> list[str]:
     """`families` (a caption's) without the faces that don't draw readings
-    (`Face.reads`): a reading over Ma Shan Zheng is in Noto Sans SC."""
-    kept = [f for f in families if f not in FACES or FACES[f].reads]
+    (`Face.brushed`): a reading over Ma Shan Zheng is in Noto Sans SC, over
+    LXGW WenKai TC in Noto Sans TC."""
+    kept = [f for f in families if not brushed(f)]
     return kept or list(families)
 
 
+def brushed(family: str | None) -> bool:
+    """Whether only the Han characters of a line in `family` are drawn in
+    it (`Face.brushed`)."""
+    face = FACES.get(family or "")
+    return face is not None and face.brushed
+
+
+def _latin(char: str) -> bool:
+    """A Latin letter (with any accent, Vietnamese's too), a digit, or
+    ASCII's punctuation and symbols - not full-width forms, nor the
+    punctuation Chinese shares (“”, ·, —, …), which its faces draw."""
+    point = ord(char)
+    return (
+        0x21 <= point <= 0x7E
+        or (0xC0 <= point <= 0x24F and point not in (0xD7, 0xF7))
+        or 0x1E00 <= point <= 0x1EFF
+    )
+
+
+_SPACES = frozenset(" \u00a0")
+_WITHIN = _SPACES | {"\u2019"}
+"""Kept in a Latin run between two of its characters: the space of "machine
+learning", and the apostrophe of "don't"."""
+_MARKS = range(0x300, 0x370)
+"""Combining accents: part of the letter before them."""
+
+
+def latin_runs(text: str) -> tuple[tuple[int, int], ...]:
+    """The Latin runs in a line of Chinese, as `[start, end)` character
+    spans: its letters, digits and Latin punctuation - "focus", "2026",
+    "3.5%", "Wi-Fi" - with the spaces between them and after them, for the
+    Latin captions' face (`Face.brushed`, 551). A space after a word goes
+    with it: a word and its space are measured alone (`views.pour`), and
+    so are as wide there as in the line."""
+    runs: list[tuple[int, int]] = []
+    start = end = -1
+    for index, char in enumerate(text):
+        if _latin(char) or (end == index and ord(char) in _MARKS):
+            if start < 0:
+                start = index
+            end = index + 1  # spaces before it, between two Latin ones, kept
+        elif start >= 0 and char not in _WITHIN:
+            runs.append((start, _spaced(text, end)))
+            start = end = -1
+    if start >= 0:
+        runs.append((start, _spaced(text, end)))
+    return tuple(runs)
+
+
+def _spaced(text: str, end: int) -> int:
+    """Where a run ending at `end` ends with the spaces after it."""
+    while end < len(text) and text[end] in _SPACES:
+        end += 1
+    return end
+
+
 def size(language: str | None) -> float:
-    """How much larger `language`'s text is drawn than Latin (`SIZES`)."""
-    return SIZES.get(script(language), 1.0)
+    """Visual-height scale for `language`'s script relative to Latin (`SCRIPT_SCALES`)."""
+    item = SCRIPT_SCALES.get(script(language))
+    return item.value if item is not None else 1.0
 
 
 def upright(language: str | None, family: str | None = None) -> bool:

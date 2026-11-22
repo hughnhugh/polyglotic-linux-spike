@@ -5,7 +5,7 @@ main caption window instead of font change")."""
 
 from dataclasses import replace
 
-from PySide6.QtGui import QAccessible, QIcon
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 from tests.ui_next.test_caption_window import MIC, Store, areas, window_of
 from tests.ui_next.test_joined_window import THREE
@@ -20,32 +20,29 @@ from polyglotic_desktop.ui_next.views.caption_window import CaptionLook
 from polyglotic_desktop.ui_next.views.panels import LookView
 
 
-def test_the_strip_has_word_links_and_no_text_size() -> None:
+def test_the_strip_has_no_text_size_and_its_toggles_went_into_presets() -> None:
     # "report" only shows for an alpha tester (polyglotic-hq 275)
-    # filled lines and parts lined up beside word links (polyglotic-hq 372)
-    # and the quiet view beside them (polyglotic-hq 477)
-    assert STRIP == (
-        "links", "quiet", "fill", "aligned", "lock", "report", "settings", "stop",
-    )  # fmt: skip
+    # word links, the quiet view, filled lines and parts lined up went into
+    # the presets' dropdown (polyglotic-hq 556); their actions stay
+    assert STRIP == ("lock", "report", "settings", "stop")
 
 
 def test_the_button_shows_and_asks_for_word_links(qapp: QApplication) -> None:
     window = window_of(qapp)
     try:
-        button = window.buttons["links"]
+        button = window.controls["links"]  # the dropdown's since 556
         assert window.glyphs["links"] is Glyph.LINKS
-        assert not window.controls["links"].icon().isNull()
-        said = QAccessible.queryAccessibleInterface(button)
-        assert said.text(QAccessible.Text.Name) == "Word links"
+        assert not button.icon().isNull()
+        assert button.text() == "Word links"
         assert button.toolTip()  # what they are, in plain words
         assert not button.isChecked()  # off by default
         asked: list[bool] = []
         window.links_wanted.connect(lambda on, _: asked.append(on))
-        button.click()
+        button.trigger()
         assert asked == [True]
         window.set_look(replace(window.look, word_links=WordLinks.HOVER))
         assert button.isChecked()
-        button.click()
+        button.trigger()
         assert asked == [True, False]
     finally:
         window.close()
@@ -74,7 +71,7 @@ def test_with_what_was_said_hidden_the_button_says_why_it_does_nothing(
     words; shown again, it works as before."""
     window = window_of(qapp)
     try:
-        button = window.buttons["links"]
+        button = window.controls["links"]
         on = button.toolTip()
         asked: list[bool] = []
         window.links_wanted.connect(lambda on, _: asked.append(on))
@@ -84,7 +81,7 @@ def test_with_what_was_said_hidden_the_button_says_why_it_does_nothing(
             "Word links need what was said: turn on “Show the original above the "
             "translation” in Settings"
         )
-        button.click()
+        button.trigger()
         assert asked == []
         # dimmed: Qt's own grey of a near-white glyph stayed near white
         drawn = window.controls["links"].icon()
@@ -96,7 +93,7 @@ def test_with_what_was_said_hidden_the_button_says_why_it_does_nothing(
         assert button.isChecked() and not button.isEnabled()  # still says it's on
         window.set_look(replace(window.look, show_original=True))
         assert button.isEnabled() and button.toolTip() == on
-        button.click()
+        button.trigger()
         assert asked == [False]
     finally:
         window.close()
@@ -111,12 +108,12 @@ def test_every_window_s_button_reaches_the_look(qapp: QApplication) -> None:
     windows.links_wanted.connect(look.set_links_shown)
     windows.set_captioned(THREE[:2])
     first, second = windows.windows.values()
-    first.buttons["links"].click()
+    first.controls["links"].trigger()
     assert look.value.word_links is WordLinks.ARROWS
-    assert first.buttons["links"].isChecked() and second.buttons["links"].isChecked()
-    second.buttons["links"].click()
+    assert first.controls["links"].isChecked() and second.controls["links"].isChecked()
+    second.controls["links"].trigger()
     assert look.value.word_links is WordLinks.OFF
-    assert not first.buttons["links"].isChecked()
+    assert not first.controls["links"].isChecked()
     windows.close()
 
 
@@ -143,7 +140,7 @@ def _popover(window: CaptionWindow, qapp: QApplication) -> None:
 
 
 def test_the_text_size_is_in_the_settings_popover(qapp: QApplication) -> None:
-    assert ROWS.index("text_size") == ROWS.index("timing") + 1
+    assert ROWS.index("translation_size") == ROWS.index("text_size") + 1  # 655
     assert "text_size" in COLUMN_ROWS  # a joined window's column has its own
     window = window_of(qapp)
     try:
@@ -157,8 +154,8 @@ def test_the_text_size_is_in_the_settings_popover(qapp: QApplication) -> None:
         )
         assert smaller is not None and bigger is not None
         assert (smaller.text(), bigger.text()) == ("A-", "A+")
-        assert smaller.accessibleName() == "Smaller text"
-        assert bigger.accessibleName() == "Bigger text"
+        assert smaller.accessibleName() == "Smaller caption size"
+        assert bigger.accessibleName() == "Bigger caption size"
         heading = row.findChild(QLabel)
         assert heading is not None and "100%" in heading.text()
         bigger.click()

@@ -6,8 +6,14 @@ import threading
 from functools import partial
 
 import numpy as np
+import pytest
 
-from polyglotic_desktop.platform.dictation_mic import DictationMic
+from polyglotic_desktop.platform.dictation_mic import (
+    RESPEAK_GAIN,
+    RESPEAK_PEAK,
+    DictationMic,
+    encode_respeaking,
+)
 from polyglotic_desktop.ports.capture import AudioCallback, MicPiece
 
 RATE = 16000
@@ -34,6 +40,8 @@ class StandInCapture:
     @property
     def error(self) -> str | None:
         return self._error
+
+    restarts = 0  # never fails (566)
 
     def feed(self, start: float, seconds: float, loudness: float = 0.1) -> None:
         assert self.on_audio is not None
@@ -138,3 +146,27 @@ def test_a_new_hold_drops_the_last_one() -> None:
     mic.stop()
     [piece] = pieces.got
     assert (piece.hold, piece.start, piece.speech) == (2, 5.0, b"1.0")
+
+
+@pytest.mark.parametrize(
+    ("peak", "expected"),
+    [
+        (0.0, 0.0),
+        (0.001, 0.001 * RESPEAK_GAIN.default),
+        (0.08, RESPEAK_PEAK.default),
+        (0.7, 0.7),
+    ],
+)
+def test_re_speaking_boosts_quiet_audio_without_overdriving_loud_audio(
+    monkeypatch: pytest.MonkeyPatch, peak: float, expected: float
+) -> None:
+    from polyglotic_desktop.platform import dictation_mic
+
+    def encode(audio: np.ndarray) -> bytes:
+        assert max(abs(audio)) == pytest.approx(expected)
+        return b"encoded"
+
+    monkeypatch.setattr(dictation_mic, "encode_ogg_opus", encode)
+    audio = np.array([-peak, peak, 0.0], dtype=np.float32)
+    assert encode_respeaking(audio) == b"encoded"
+    assert max(abs(audio)) == pytest.approx(peak)

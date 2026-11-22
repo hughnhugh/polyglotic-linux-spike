@@ -24,7 +24,7 @@ from PySide6.QtGui import (
     QTextCharFormat,
     QTextLayout,
 )
-from PySide6.QtWidgets import QApplication, QPushButton, QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 from tests.budget_judge import sampled, within
 from tests.ui.fakes import chinese_tools
 from tests.ui.test_learning_load_view import LINE, SPANS
@@ -57,7 +57,6 @@ from polyglotic_desktop.ui_next.caption_layout import (
 from polyglotic_desktop.ui_next.caption_marks import LINK_COLORS
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow, look_ink
 from polyglotic_desktop.ui_next.panels import ReadingLinesPanel, WordLinksPanel
-from polyglotic_desktop.ui_next.settings_popover import SettingsPopover
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook, WindowChoices
 from polyglotic_desktop.ui_next.views.captions import CaptionLines
 from polyglotic_desktop.ui_next.views.flow import flow_options
@@ -572,41 +571,6 @@ def test_the_word_links_group_colours_the_linked_words(qapp: QApplication) -> No
     assert not view.value.translation_in_link_colours
     view.set_word_links(WordLinks.OFF)
     assert not said.isEnabled() and not translation.isEnabled()  # nothing to colour
-
-
-def test_a_windows_popover_switches_each_side_for_every_window(
-    qapp: QApplication,
-) -> None:
-    """431: the caption window's settings popover has both switches; a
-    click asks for that side in every window (main hands it to Settings'
-    look, which every window follows), showing the look's choice."""
-    window = CaptionWindow(
-        "Discord.exe", APP, WindowChoices(), SourceLabel("Discord", "#4dd0e1"),
-        mic=MIC, areas=areas, learner=chinese_tools(),
-    )  # fmt: skip
-    MADE.append(window)
-    window.set_look(replace(UNCOLOURED, word_links=WordLinks.COLOURS))
-    asked: list[tuple[str, bool]] = []
-    window.said_colours_wanted.connect(lambda on: asked.append(("said", on)))
-    window.translation_colours_wanted.connect(
-        lambda on: asked.append(("translation", on))
-    )
-    popover = SettingsPopover(window)
-    MADE.append(popover)
-    said = popover.findChild(QPushButton, "settings_popover.said_colours")
-    translation = popover.findChild(QPushButton, "settings_popover.translation_colours")
-    assert said is not None and translation is not None
-    assert not said.isChecked() and said.isEnabled()
-    translation.click()
-    assert asked == [("translation", True)]
-    window.set_look(
-        replace(
-            UNCOLOURED, word_links=WordLinks.COLOURS, translation_in_link_colours=True
-        )
-    )
-    assert translation.isChecked() and not said.isChecked()
-    window.set_look(CaptionLook(word_links=WordLinks.OFF))
-    assert not said.isEnabled() and not translation.isEnabled()
 
 
 # -- the cost --------------------------------------------------------------------------

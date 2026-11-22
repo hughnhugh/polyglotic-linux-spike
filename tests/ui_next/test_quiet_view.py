@@ -38,8 +38,9 @@ from polyglotic_desktop.ui_next.caption_window import (
     shown_links,
 )
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.panels import QuietViewPanel
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook
-from polyglotic_desktop.ui_next.views.panels import LookView
+from polyglotic_desktop.ui_next.views.panels import LINKS_WHEN_ON, LookView
 from polyglotic_desktop.ui_next.views.placement import Rect
 
 AREA = Rect(0, 0, 1920, 1040)
@@ -64,6 +65,39 @@ def test_the_quiet_view_turns_word_links_off_and_word_links_turn_it_off() -> Non
     view.set_quiet(True)
     view.set_word_links(WordLinks.COLOURS)  # Settings' own choice
     assert not view.value.quiet
+
+
+def test_the_quiet_view_off_puts_word_links_back_as_they_were() -> None:
+    """Off again, word links show as the learner had them (polyglotic-hq
+    555: on every word by default; 523's settings sweep found them left
+    off) - with their colours - and off stays off."""
+    view = LookView(CaptionLook())
+    view.set_links_shown(True, ("zh",))
+    shown = view.value
+    view.set_quiet(True, ("zh", "ja"))
+    assert view.value.word_links is WordLinks.OFF
+    view.set_quiet(False)
+    assert view.value == shown
+    off = LookView(CaptionLook(word_links=WordLinks.OFF))
+    off.set_quiet(True)
+    off.set_quiet(False)
+    assert off.value.word_links is WordLinks.OFF
+    # turned on before a restart: links as the links button shows them
+    restarted = LookView(CaptionLook(quiet=True, word_links=WordLinks.OFF))
+    restarted.set_quiet(False)
+    assert restarted.value.word_links is LINKS_WHEN_ON
+
+
+def test_settings_quiet_view_switch_puts_word_links_back(qapp: QApplication) -> None:
+    """The way 523's sweep found it: Settings > Links' Quiet view, on and
+    off."""
+    view = LookView(CaptionLook(word_links=WordLinks.ARROWS))
+    panel = QuietViewPanel(view, notes=True)
+    panel.quiet.setChecked(True)
+    assert view.value.quiet and view.value.word_links is WordLinks.OFF
+    panel.quiet.setChecked(False)
+    assert not view.value.quiet and view.value.word_links is WordLinks.ARROWS
+    panel.deleteLater()
 
 
 def test_the_quiet_view_puts_a_reading_over_a_chinese_window_and_back_off() -> None:
@@ -94,7 +128,7 @@ def test_every_line_is_italic_a_size_step_bigger_with_no_room_for_underlines() -
     quiet = caption_style(replace(QUIET, reading_past=True))
     assert quiet.italic_all and not plain.italic_all
     assert quiet.text_px == pytest.approx(CaptionStyle().text_px * QUIET_SCALE)
-    assert quiet.translation_size == pytest.approx(QUIET_TRANSLATION)  # the larger
+    assert quiet.translation_factor == pytest.approx(QUIET_TRANSLATION)  # the larger
     assert not quiet.link_room and not quiet.arrows
     assert not quiet.reading_past  # a reading over every word
     assert shown_links(QUIET) is WordLinks.HOVER  # links kept, for the hover
@@ -200,7 +234,7 @@ def test_the_strip_and_the_popover_offer_it(
     shown: CaptionWindows, qapp: QApplication
 ) -> None:
     window = shown.windows["app"]
-    assert "quiet" in window_module.STRIP
+    assert "quiet" not in window_module.STRIP  # the presets' dropdown has it (556)
     assert window.controls["quiet"].isChecked()
     assert window.controls["quiet_curriculum"].isChecked()
     assert not window.controls["quiet_saved"].isChecked()

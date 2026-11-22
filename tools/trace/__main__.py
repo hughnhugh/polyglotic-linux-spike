@@ -27,6 +27,7 @@ def summary_line(found: Summary) -> str:
             if total and p50 is not None and p95 is not None
             else ""
         )
+        + f"; {found.unheard.said()}"
     )
 
 
@@ -40,6 +41,13 @@ def numbers(found: Summary) -> dict[str, Any]:
         "bursts": len(found.bursts),
         "drops": dict(found.drops),
         "held": dict(found.held),
+        "sound_unheard": {
+            "stretches": found.unheard.stretches,
+            "seconds": round(found.unheard.seconds, 1),
+            "longest": round(found.unheard.longest, 1),
+            "with_reset": found.unheard.with_reset,
+            "heard_after_reset": found.unheard.heard_after_reset,
+        },
         "segments_ms": {
             name: {f"p{p}": round(found.p(name, p) or 0) for p in (50, 95, 99)}
             for name in found.by_segment

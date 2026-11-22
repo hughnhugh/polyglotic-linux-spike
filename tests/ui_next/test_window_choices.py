@@ -72,8 +72,10 @@ def test_todays_interface_keeps_its_own_values() -> None:
         "recent_spoken",
         "declined_spoken",
         "reading_hinted",
+        "respeaking_hinted",
         "set_up",  # the first window's set-up answered (465)
         "start_like_this",
+        "kept_languages",  # while every window shows the original only (556)
     }
 
 
@@ -82,9 +84,9 @@ def test_joined_or_separate_is_remembered_with_the_joined_place() -> None:
     stored = StoredWindows(joined=joined)
     back = stored_windows({STORED_KEY: stored.to_stored()})
     assert back.joined == joined
-    assert not stored_windows({}).joined.on  # separate, at first
-    # the setting from before the joined window: separate
-    assert not stored_windows({STORED_KEY: {"windows": {}}}).joined.on
+    assert stored_windows({}).joined.on  # joined, at first (554)
+    # the setting from before the joined window: the default, joined
+    assert stored_windows({STORED_KEY: {"windows": {}}}).joined.on
 
 
 def test_joined_choices_read_leniently() -> None:

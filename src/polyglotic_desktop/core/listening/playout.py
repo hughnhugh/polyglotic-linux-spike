@@ -30,11 +30,12 @@ of its own:
   last word shown and whose `established` count covers every word shown, so
   the display draws them as final; and, when a finished caption's last word
   is shown, the server's finished update itself. A clause's translation and
-  word links come with it once its last word is shown, not before: one
+  word links come with it once the complete original is visible: one
   translation per clause, where a live caption's was rewritten with every
-  update. With `Ahead.WAITING` (karaoke) the words waiting for their moment
-  are in the update too, past its `established` count, for the display to
-  draw faint; `Ahead.ALL` adds the held-back newest word.
+  update. With `Ahead.WAITING` (karaoke), the complete original can already
+  be visible in faint ink. Its confirmed translation comes with it unless
+  the reading path delays it. The `established` count gives the lit prefix.
+  `Ahead.ALL` adds the held-back newest word.
 
 Holds caption text: never log it.
 """
@@ -204,6 +205,18 @@ def _clause_words(text: str, clause: int, split: Split) -> list[_Word]:
     return words
 
 
+def word_beats(
+    text: str, split: Split, clause: Clause | None = None
+) -> tuple[tuple[int, ...], tuple[float, ...]]:
+    """Steady's word boundaries and their spoken offsets from the first
+    word, when this original carries word times. No times for translations."""
+    words = _clause_words(text, 0, split)
+    ends = tuple(word.start + len(word.text) for word in words)
+    moments = _true_moments((clause,), words) if clause is not None else None
+    offsets = tuple(t - moments[0] for t in moments) if moments else ()
+    return ends, offsets
+
+
 def _within(words: Sequence[_Word], chars: int) -> int:
     """How many of `words` lie in the first `chars` characters of their
     text - the word itself, whatever punctuation follows it."""
@@ -255,6 +268,7 @@ class _Caption:
     heard_at: float
     speech_end: float
     given: object = None  # what was last given out, to give only changes
+    sent_replacements: CaptionKind | None = None  # first draft and first final
     announced: bool = False  # whether an update of it has been given out
     whole_at: dict[str, float] = field(default_factory=dict)
     """When each clause, by its text, was shown whole (`translation_after`)."""
@@ -398,7 +412,7 @@ class Playout:
         speech_end: float,
         previous_end: float,
     ) -> list[float]:
-        true = _true_moments(update, words)
+        true = _true_moments(update.clauses, words)
         if true is not None:
             return true
         # the estimate: a word heard before keeps its moment; the new ones
@@ -436,6 +450,11 @@ class Playout:
             if (t := self._due(source)) is not None
         ]
         times += [
+            caption.heard_at + STALE_SEC
+            for source in self._sources.values()
+            if (caption := self._blocking(source)) is not None
+        ]
+        times += [
             when
             for source in self._sources.values()
             for caption in source.captions.values()
@@ -469,18 +488,22 @@ class Playout:
             caption.whole_at.setdefault(each.original, when)
 
     def release(self, at: float) -> tuple[CaptionUpdate, ...]:
-        """Show every word whose time has come by `at`: the updates to show."""
+        """Advance each source by one due word and reveal due translations."""
         out: list[CaptionUpdate] = []
         for source in self._sources.values():
             changed = False
-            self._skip_stale(source, at)
-            while (when := self._due(source)) is not None and when <= at:
+            while (blocked := self._blocking(source)) is not None:
+                if blocked.heard_at + STALE_SEC > at:
+                    break
+                blocked.passed = True
+                changed = True
+            if (when := self._due(source)) is not None and when <= at:
                 caption = self._current(source)
                 assert caption is not None
                 caption.shown += 1
-                source.last_release = when
+                source.last_release = at
                 changed = True
-                self._note_whole(caption, when)
+                self._note_whole(caption, at)
             for caption in source.captions.values():
                 for text, whole in caption.whole_at.items():
                     due = whole + self.rules.translation_after
@@ -503,32 +526,40 @@ class Playout:
         caption = self._current(source)
         if caption is None or caption.shown >= caption.releasable:
             return None
+        moment = caption.moments[caption.shown]
+        gap = MIN_GAP_SEC
+        if caption.shown and moment + self.rules.delay <= source.last_release:
+            # Keep the speaker's word intervals when an answer or a paint
+            # tick is late. The speech clock itself keeps longer pauses.
+            gap = max(
+                gap, min(moment - caption.moments[caption.shown - 1], self.rules.delay)
+            )
         return max(
-            caption.moments[caption.shown] + self.rules.delay,
-            source.last_release + MIN_GAP_SEC,
+            moment + self.rules.delay,
+            source.last_release + gap,
             caption.heard_at,
         )
 
-    def _skip_stale(self, source: _Source, at: float) -> None:
-        """A caption never finished, with nothing to release and captions
-        waiting behind it, stops holding them back after `STALE_SEC`."""
-        captions = list(source.captions.values())
-        for index, caption in enumerate(captions):
-            if caption.done or caption.passed:
-                continue
-            last = index == len(captions) - 1
-            stale = (
-                caption.shown >= caption.releasable
-                and at - caption.heard_at > STALE_SEC
-            )
-            if last or caption.finished or not stale:
-                return
-            caption.passed = True
+    def _blocking(self, source: _Source) -> _Caption | None:
+        """An unfinished caption with no releasable word and another caption
+        waiting behind it. Its deadline wakes the window even in silence."""
+        caption = self._current(source)
+        if (
+            caption is None
+            or caption.finished
+            or caption.shown < caption.releasable
+            or caption is next(reversed(source.captions.values()))
+        ):
+            return None
+        return caption
 
     def _changes(self, source: _Source) -> list[CaptionUpdate]:
         out = []
+        current = self._current(source)
         for caption in source.captions.values():
             shown = caption.shown
+            if not shown and caption is not current:
+                continue  # waiting ink belongs to the caption being spoken
             upto = shown
             if self.rules.ahead is Ahead.WAITING:
                 upto = max(shown, caption.releasable)
@@ -537,17 +568,29 @@ class Playout:
             if not upto:
                 continue
             held = self.rules.translation_after > 0.0
-            state = (upto, shown, caption.done, caption.update if caption.done else None,
-                     tuple(w.text for w in caption.words[:upto]),
-                     len(caption.revealed) if held else 0)  # fmt: skip
-            if caption.given == state:
-                continue
-            caption.given = state
             update = caption.update if caption.done else _partial(caption, upto, held)
             if held and caption.done:
                 update = _withheld(caption)
-            if caption.announced and update.replaces:
-                update = replace(update, replaces=())  # said once
+            # A translation or its links can arrive between two word ticks.
+            state = (
+                update.kind,
+                update.established,
+                update.clauses,
+                caption.update if caption.done else None,
+            )
+            if caption.given == state:
+                continue
+            caption.given = state
+            if update.replaces:
+                # The deck can take over placed words on the first draft.
+                # A caption history retires replaced IDs only at the finish.
+                if update.display_member is None:
+                    sent = caption.announced  # an ordinary audio join is announced once
+                else:
+                    sent = caption.sent_replacements is update.kind
+                if sent:
+                    update = replace(update, replaces=())
+                caption.sent_replacements = update.kind
             caption.announced = True
             out.append(update)
         return out
@@ -562,11 +605,13 @@ class Playout:
             del source.captions[key]
 
 
-def _true_moments(update: CaptionUpdate, words: Sequence[_Word]) -> list[float] | None:
+def _true_moments(
+    clauses: Sequence[Clause], words: Sequence[_Word]
+) -> list[float] | None:
     """Each word's moment from the server's word times (`Clause.words`): the
     start of the first timed span that touches it; a word without one, the
     moment of the word before. None when the update carries no times."""
-    if not any(clause.words for clause in update.clauses):
+    if not any(clause.words for clause in clauses):
         return None
     out: list[float] = []
     floor = float("-inf")
@@ -574,7 +619,7 @@ def _true_moments(update: CaptionUpdate, words: Sequence[_Word]) -> list[float] 
         lo, hi = word.start, word.start + len(word.text)
         starts = [
             t.start
-            for t in update.clauses[word.clause].words
+            for t in clauses[word.clause].words
             if t.original[0] < hi and t.original[1] > lo
         ]
         floor = max(floor, min(starts)) if starts else floor
@@ -606,23 +651,24 @@ def _withheld(caption: _Caption) -> CaptionUpdate:
 def _partial(caption: _Caption, upto: int, held: bool = False) -> CaptionUpdate:
     """The caption as a live update that stops at its `upto`th word, the
     `shown` first of them established. A clause's translation and links
-    come with it once its last word is shown - or, `held`, once it has
-    been revealed (`PlayoutRules.translation_after`)."""
+    come with the complete visible clause, or at its reveal deadline
+    when `held` (`PlayoutRules.translation_after`)."""
     update, words, shown = caption.update, caption.words, caption.shown
     last_clause = words[upto - 1].clause
-    shown_clause = words[shown - 1].clause if shown else -1
-    # a clause is whole once a word of a later clause follows its last shown word; a
-    # live caption's last clause may still grow
-    whole_to = shown_clause - 1
-    if 0 < shown < len(words) and words[shown].clause > shown_clause:
-        whole_to = shown_clause
+    confirmed_end = caption.finished or (
+        upto == len(words) and _within(words, update.established) == upto
+    )
     clauses: list[Clause] = []
     for index, clause in enumerate(update.clauses[: last_clause + 1]):
         original = clause.original
         if index == last_clause:
             original = "".join(w.text for w in words[:upto] if w.clause == index)
-        whole = index <= whole_to and original == clause.original
-        if whole and (not held or clause.original in caption.revealed):
+        # In karaoke, the complete original can already be visible in
+        # waiting ink. Its supplied translation can occupy the paired row
+        # immediately. Acquisition still waits for the spoken words.
+        visible = original == clause.original
+        confirmed = confirmed_end or index < len(update.clauses) - 1
+        if visible and confirmed and (not held or clause.original in caption.revealed):
             clauses.append(clause)
         else:  # no space left hanging at the end of what is shown
             clauses.append(

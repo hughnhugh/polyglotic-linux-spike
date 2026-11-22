@@ -108,7 +108,9 @@ class CaptionUpdate:
     the session when it sent that speech itself (None otherwise).
     `established`: a live update's established text - characters of its
     clauses' originals counted in order (`established`; 0: none, as from a
-    server before it)."""
+    server before it). `respoken`: the learner re-spoke it for its source
+    (polyglotic-hq 567) - the app's own mark, set as it arrives, never the
+    server's."""
 
     caption_id: CaptionId
     source_id: SourceId
@@ -121,6 +123,12 @@ class CaptionUpdate:
     processing_ms: int | None = None
     times: SpeechTimes | None = None
     established: int = 0
+    respoken: bool = False
+    continues: CaptionId | None = None
+    """On the wire, the earlier audio ID whose words these clauses include."""
+    display_member: CaptionId | None = None
+    """In the views, the later audio ID when revising or restoring its
+    earlier line. Its place can be folded away and opened again."""
 
 
 HAN_NOT_MANDARIN = frozenset({"ja", "yue"})

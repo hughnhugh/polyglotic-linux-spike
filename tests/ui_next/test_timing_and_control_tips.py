@@ -47,11 +47,19 @@ def test_the_windows_controls_say_what_they_do(qapp: QApplication) -> None:
         window.toggle_settings()
         popover = window.popover
         assert popover is not None
-        assert popover.language.toolTip()
-        steady = popover.findChild(
-            QPushButton, "settings_popover.caption_window.steady"
-        )
-        assert steady is not None and steady.toolTip() == timing_tip(CaptionMode.WHOLE)
+        assert popover.translation_match.toolTip()
+        popover.close()
+        window.toggle_languages()
+        assert window.languages is not None
+        assert window.languages.language.toolTip()
+        window.languages.close()
+        # the timings are the bar's timing chip's now (593), each with its tip
+        assert window.timing_chip.toolTip()
+        window.timing_chip.click()
+        timings = window.timings
+        assert timings is not None
+        whole = timings.findChild(QPushButton, "timings.timing.steady")
+        assert whole is not None and whole.toolTip() == timing_tip(CaptionMode.WHOLE)
     finally:
         window.close()
 
@@ -61,6 +69,20 @@ def test_the_timing_panel_s_choices_say_what_they_do(qapp: QApplication) -> None
     assert [b.toolTip() for b in panel.mode.buttons] == [
         timing_tip(mode) for mode in OFFERED_MODES
     ]
+
+
+def test_timing_choices_stay_visible_when_narrow(
+    qapp: QApplication,
+) -> None:
+    panel = TimingPanel(TimingView(Timing(CaptionMode.CALM)))
+    try:
+        panel.resize(490, panel.sizeHint().height())
+        panel.show()
+        qapp.processEvents()
+        assert all(panel.mode.rect().contains(b.geometry()) for b in panel.mode.buttons)
+    finally:
+        panel.close()
+        panel.deleteLater()
 
 
 def test_a_transcript_s_timing_menu_says_what_each_does(qapp: QApplication) -> None:
@@ -77,15 +99,14 @@ def test_a_transcript_s_timing_menu_says_what_each_does(qapp: QApplication) -> N
 def test_the_default_timing_is_named_first_wherever_it_s_chosen(
     qapp: QApplication,
 ) -> None:
-    """Steady is the default (desktop decision 0246, polyglotic-hq 526):
-    Help's "When do captions appear?" names it first, the others after
-    it, by the names the app gives them, and the Timing panel offers them
-    in the same order."""
+    """Help and Settings start with Instant and then list the other modes."""
     default = default_caption_mode()
-    assert default is CaptionMode.STEADY
+    assert default is CaptionMode.INSTANT
     spectrum = list(OFFERED_MODES)
     panel = TimingPanel(TimingView(Timing(default, 1.5)))
     assert [b.text() for b in panel.mode.buttons] == [timing_name(m) for m in spectrum]
+    assert all("experimental" not in b.text().casefold() for b in panel.mode.buttons)
+    panel.deleteLater()
     [said] = [
         text
         for title, text in help_page.questions()
@@ -95,3 +116,73 @@ def test_the_default_timing_is_named_first_wherever_it_s_chosen(
     places = [said.index(timing_name(mode)) for mode in spectrum]
     assert places == sorted(places)
     assert "Settings > Timing" in said  # Home's panel went in 261, a section in 304
+
+
+def test_settings_timing_marks_the_presets_recommendation_and_moves_at_once(
+    qapp: QApplication,
+) -> None:
+    from polyglotic_desktop.ui_next.views.preset_menu import (
+        PresetItem,
+        PresetMenu,
+        PresetsView,
+    )
+
+    items = (
+        PresetItem("everyday", "Everyday"),
+        PresetItem("conversation", "Conversation"),
+        PresetItem("video", "Video, film & TV"),
+        PresetItem("learning", "Learning"),
+        PresetItem("own1", "Anime", own=True, parent="video"),
+        PresetItem("own2", "Freeform", own=True, parent=None),
+    )
+    presets = PresetsView(PresetMenu(items, "everyday"))
+    view = TimingView(Timing(CaptionMode.INSTANT))
+    panel = TimingPanel(view, presets=presets)
+    try:
+        buttons = dict(zip(OFFERED_MODES, panel.mode.buttons, strict=True))
+        assert buttons[CaptionMode.INSTANT].property("recommended") is True
+        assert not any(
+            buttons[m].property("recommended")
+            for m in OFFERED_MODES
+            if m is not CaptionMode.INSTANT
+        )
+        assert (
+            buttons[CaptionMode.INSTANT]
+            .toolTip()
+            .startswith("Recommended for Everyday: ")
+        )
+        assert (
+            "Recommended for Everyday: "
+            in buttons[CaptionMode.INSTANT].accessibleName()
+        )
+
+        # Preset changes to Video -> mark moves at once to Whole captions
+        presets.follow(PresetMenu(items, "video"))
+        assert buttons[CaptionMode.WHOLE].property("recommended") is True
+        assert not buttons[CaptionMode.INSTANT].property("recommended")
+        assert (
+            buttons[CaptionMode.WHOLE]
+            .toolTip()
+            .startswith("Recommended for Video, film & TV: ")
+        )
+        assert (
+            "Recommended for Video, film & TV: "
+            in buttons[CaptionMode.WHOLE].accessibleName()
+        )
+        # Choosing another timing is allowed without nagging
+        panel.mode.choose(CaptionMode.INSTANT)
+        assert view.value.mode is CaptionMode.INSTANT
+
+        # Saved preset from Video inherits Video's recommendation
+        presets.follow(PresetMenu(items, "own1"))
+        assert buttons[CaptionMode.WHOLE].property("recommended") is True
+        assert (
+            buttons[CaptionMode.WHOLE].toolTip().startswith("Recommended for Anime: ")
+        )
+
+        # Saved preset with no parent shows none
+        presets.follow(PresetMenu(items, "own2"))
+        assert not any(b.property("recommended") for b in panel.mode.buttons)
+    finally:
+        panel.close()
+        panel.deleteLater()

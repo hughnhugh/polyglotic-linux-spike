@@ -93,6 +93,7 @@ CHECKED = {
     "caption_update.live.trace",
     "caption_update.finished",
     "caption_update.finished.joined",
+    "caption_update.finished.continuation",
     "caption_update.finished.mixed",
     "caption_update.finished.words",
     "caption_update.withdrawn",
@@ -603,7 +604,19 @@ def test_welcome() -> None:
     assert welcome.limits.ping_seconds == 25
     assert welcome.limits.speech_frame_bytes == 262_144
     assert welcome.live_interval_min is None
-    assert welcome.features == {}  # no flag is live (server #127, 2026-11-06)
+    # No flag is on (server #127, 2026-11-06). The server may list a flag that
+    # is off: `{"word_times": false}` since server #336 (531, decision 0100).
+    assert not any(welcome.features.values())
+
+
+def test_welcome_reads_a_flag_that_is_off() -> None:
+    # server #336 (polyglotic-hq 531, server decision 0100): the welcome says
+    # the word timer's flag, off; the next copy of the examples carries it
+    message = example("welcome")
+    message["features"] = {"word_times": False}
+    welcome = protocol.decode(json.dumps(message))
+    assert isinstance(welcome, protocol.Welcome)
+    assert welcome.features == {"word_times": False}
 
 
 def test_welcome_says_whether_the_session_was_resumed() -> None:
@@ -1041,3 +1054,11 @@ def test_a_planned_maintenance_window_in_welcome_and_as_its_own_message() -> Non
         120,
     )
     assert decoded("server_busy").reason is None  # type: ignore[attr-defined]
+
+
+def test_finished_continuation_names_another_audio_id() -> None:
+    wire = example("caption_update.finished.continuation")
+    update = listening.caption_update(protocol.validate(protocol.CaptionUpdate, wire))
+    assert update.continues == wire["continues"]
+    assert update.caption_id != update.continues
+    assert update.replaces == ()

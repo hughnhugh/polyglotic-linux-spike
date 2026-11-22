@@ -1077,11 +1077,15 @@ class _LabClock:
         return self.now
 
 
-def _steady(lab: Lab, rules: PlayoutRules, more: int = 4) -> CaptionWindows:
+def _steady(
+    lab: Lab, rules: PlayoutRules, more: int = 4, cards: bool = False
+) -> CaptionWindows:
     """Steady's two zones (polyglotic-hq 526, decision 0251): the captions
     already there are the transcript; `more` come word by word into the
-    live lines below, every word's moment come."""
+    live lines below, every word's moment come. With `cards`, its card
+    stack instead (552, decision 0260)."""
     found = windows(lab)
+    found.set_cards(cards)
     clock = _LabClock()
     found.word_clock = clock
     found.set_playout(rules)
@@ -1102,6 +1106,12 @@ def _steady(lab: Lab, rules: PlayoutRules, more: int = 4) -> CaptionWindows:
 def steady_two_zones(lab: Lab) -> QWidget:
     """526: the live reading lines below, the settled transcript above."""
     return window_of(_steady(lab, PlayoutRules(delay=0.0, hold_back=0)))
+
+
+def steady_cards(lab: Lab) -> QWidget:
+    """552, decision 0260: Steady's card stack - each line a card with its
+    translation's room, the older ones turning away above."""
+    return window_of(_steady(lab, PlayoutRules(delay=0.0, hold_back=0), cards=True))
 
 
 def steady_follow(lab: Lab) -> QWidget:
@@ -1154,6 +1164,7 @@ STATES = [
         ("w1_quiet_paper", quiet_paper, True),
         ("w1_zhuyin", zhuyin, True),
         ("w1_steady_two_zones", steady_two_zones, True),
+        ("w1_steady_cards", steady_cards, True),
         ("w1_steady_follow", steady_follow, True),
         ("w1_steady_acquisition", steady_acquisition, True),
         ("w3_english_card", english_card, False),

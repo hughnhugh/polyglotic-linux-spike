@@ -45,23 +45,31 @@ window they're in dresses them (`style.stylesheet`), so they take its
 theme.
 """
 
+import math
 from collections.abc import Callable
 from functools import partial
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPaintEvent
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QHBoxLayout,
     QLineEdit,
+    QPushButton,
+    QSizePolicy,
     QSlider,
+    QStyle,
+    QStyleOptionButton,
+    QStylePainter,
     QVBoxLayout,
     QWidget,
 )
 
 from polyglotic_desktop.core.learning.curriculum import SIZES as CURRICULUM_SIZES
 from polyglotic_desktop.core.learning.curriculum import ChosenWords
+from polyglotic_desktop.core.lexicon.readings import RESPELLED_WORD_LIMIT
 from polyglotic_desktop.core.listening.display import (
     READING_LANGUAGES,
     LinkDetail,
@@ -78,7 +86,6 @@ from polyglotic_desktop.core.listening.timing import OFFERED_MODES, CaptionMode
 from polyglotic_desktop.perf import spans
 from polyglotic_desktop.ui_next import caption_faces, style
 from polyglotic_desktop.ui_next.caption_preview import CaptionPreview
-from polyglotic_desktop.ui_next.caption_window import timing_name, timing_tip
 from polyglotic_desktop.ui_next.colour_controls import (
     CaptionTextSliders,
     ExactColour,
@@ -97,12 +104,19 @@ from polyglotic_desktop.ui_next.controls import (
     label,
 )
 from polyglotic_desktop.ui_next.languages import (
+    in_sentence,
     language_name,
     not_offered_note,
     target_languages,
 )
-from polyglotic_desktop.ui_next.os_words import pc_or_mac
+from polyglotic_desktop.ui_next.os_words import pc_mac_or_linux, pc_or_mac
 from polyglotic_desktop.ui_next.spoken_list import SpokenPicker
+from polyglotic_desktop.ui_next.timing_popover import (
+    menu_recommendation,
+    recommended_tag,
+    timing_name,
+    timing_tip,
+)
 from polyglotic_desktop.ui_next.views.arrivals import Arrival
 from polyglotic_desktop.ui_next.views.caption_window import ORIGINAL_ONLY, MarksIn
 from polyglotic_desktop.ui_next.views.panels import (
@@ -118,12 +132,17 @@ from polyglotic_desktop.ui_next.views.panels import (
     settle_choices,
     wait_choices,
 )
-from polyglotic_desktop.ui_next.views.presets import look_of, preset_of
+from polyglotic_desktop.ui_next.views.preset_menu import PresetsView
+from polyglotic_desktop.ui_next.views.presets import look_of, preset_of, readable_on
 from polyglotic_desktop.ui_next.views.tone import offered
 
 
 def _tr(text: str) -> str:
     return QApplication.translate("Panels", text)
+
+
+def _trn(text: str, n: int) -> str:
+    return QApplication.translate("Panels", text, None, n)
 
 
 def _seconds(value: float) -> str:
@@ -231,6 +250,26 @@ class LanguagesPanel(Panel):
         )
         self.add(spoken)
 
+        # songs mode for music players on Detect, under what it depends on
+        # (polyglotic-hq 595, decision 0287): Settings' half of the switch a
+        # music player's window offers
+        self.lyrics: SwitchButton | None = None
+        if speech:
+            lyrics = SwitchRow(
+                _tr("Lyrics in music players"),
+                _tr(
+                    "Captions the singing in Spotify and other music players heard "
+                    "on Detect: their sound is sent even while no speech is heard, "
+                    "a few seconds at a time. Off: only what's heard as speech is "
+                    "sent."
+                ),
+                "languages.lyrics",
+            )
+            self.lyrics = lyrics.switch
+            self.lyrics.set_quietly(value.lyrics)
+            self.lyrics.toggled.connect(session.set_lyrics)
+            self.add(lyrics)
+
         # beside the language it's about: Mandarin's script, converted on
         # this PC - with Detect too (polyglotic-hq 375; decision 0164)
         self.mandarin_script = Segmented(
@@ -331,7 +370,7 @@ class LanguagesPanel(Panel):
         self.add(Row(_tr("Translate into"), not_offered_note(), box))
         mic = SwitchRow(
             _tr("Show my speech here"),
-            _tr("Your microphone is sent to the server only while this is on."),
+            _tr("Your microphone is sent for your captions only while this is on."),
             "languages.show_mic",
         )
         self.show_mic = mic.switch
@@ -347,6 +386,8 @@ class LanguagesPanel(Panel):
         self.mandarin_row.setHidden(value.spoken not in (None, "zh"))
         if self.translate_live is not None:
             self.translate_live.set_quietly(value.translate_live)
+        if self.lyrics is not None:
+            self.lyrics.set_quietly(value.lyrics)
         if not self.hints.hasFocus():
             self.hints.setText(", ".join(value.spelling_hints))
         if value.in_use != self._in_use:
@@ -393,10 +434,13 @@ class LanguagesPanel(Panel):
             box = Combo()
             box.setObjectName(f"languages.second.{target}")
             box.setAccessibleName(
-                _tr(
-                    "Caption windows translating into {language} - when someone already "
-                    "speaks {language}, also translate into"
-                ).format(language=language_name(target))
+                in_sentence(
+                    _tr(
+                        "Caption windows translating into {language} - when someone already "
+                        "speaks {language}, also translate into"
+                    ),
+                    language=language_name(target),
+                )
             )
             box.addItem(_tr("None"), None)
             for code in target_languages():
@@ -415,10 +459,13 @@ class LanguagesPanel(Panel):
                     # the user, 2026-11-17: "Why english? what if you're
                     # targetting chinese translation?" - each row is the
                     # windows translating into its language (465)
-                    _tr(
-                        "Caption windows translating into {language} - when someone "
-                        "already speaks {language}, also translate into:"
-                    ).format(language=language_name(target)),
+                    in_sentence(
+                        _tr(
+                            "Caption windows translating into {language} - when someone "
+                            "already speaks {language}, also translate into:"
+                        ),
+                        language=language_name(target),
+                    ),
                     "Dim",
                     wrap=True,
                 )
@@ -436,28 +483,162 @@ class LanguagesPanel(Panel):
 
 # -- Timing ----------------------------------------------------------------------------
 
+RECOMMENDED_TAG_GAP = 6
+"""Logical px (2..12): gap between a timing mode's name and its quiet Recommended tag (638)."""
+RECOMMENDED_TAG_PAD = (6, 1)
+"""Logical px (0..10): horizontal and vertical padding inside the Recommended tag (638)."""
+RECOMMENDED_TAG_RADIUS = 6
+"""Logical px (2, 3, 6, 8, 9, 10, 12 design scale): corner radius of the Recommended tag in Settings > Timing (638)."""
+RECOMMENDED_TAG_BG_ALPHA = 0.14
+"""Opacity (0.05..0.30): subtle accent fill behind the Recommended tag (638)."""
+RECOMMENDED_TAG_BORDER_ALPHA = 0.34
+"""Opacity (0.10..0.50): soft accent border around the Recommended tag (638)."""
+
+
+def _blend_hex(base: str, tint: str, alpha: float) -> str:
+    b, t = QColor(base), QColor(tint)
+    r = round(b.red() * (1 - alpha) + t.red() * alpha)
+    g = round(b.green() * (1 - alpha) + t.green() * alpha)
+    bl = round(b.blue() * (1 - alpha) + t.blue() * alpha)
+    return f"#{r:02x}{g:02x}{bl:02x}"
+
+
+class _TaggedChoiceButton(QPushButton):
+    """A segmented timing button that can carry a quiet Recommended tag (638)."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None) -> None:
+        super().__init__(text, parent)
+        self.tag = ""
+
+    def set_tag(self, text: str) -> None:
+        if text == self.tag:
+            return
+        self.tag = text
+        self.setProperty("recommended", bool(text))
+        self.updateGeometry()
+        self.update()
+
+    def _tag_font(self) -> QFont:
+        font = QFont(self.font())
+        font.setPixelSize(style.px(12))
+        return font
+
+    def _tag_size(self) -> QSize:
+        if not self.tag:
+            return QSize(0, 0)
+        fm = QFontMetricsF(self._tag_font())
+        pad_x, pad_y = RECOMMENDED_TAG_PAD
+        return QSize(
+            math.ceil(fm.horizontalAdvance(self.tag)) + 2 * pad_x + 2,
+            math.ceil(fm.height()) + 2 * pad_y,
+        )
+
+    def sizeHint(self) -> QSize:
+        base = super().sizeHint()
+        if not self.tag:
+            return base
+        tag = self._tag_size()
+        return QSize(
+            base.width() + RECOMMENDED_TAG_GAP + tag.width(),
+            max(base.height(), tag.height() + 4),
+        )
+
+    def minimumSizeHint(self) -> QSize:
+        return self.sizeHint()
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self.tag:
+            super().paintEvent(event)
+            return
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        option.text = ""
+        bevel = QStylePainter(self)
+        bevel.drawControl(QStyle.ControlElement.CE_PushButton, option)
+        bevel.end()
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        content = self.style().subElementRect(
+            QStyle.SubElement.SE_PushButtonContents, option, self
+        )
+        tag_size = self._tag_size()
+        text_fm = QFontMetricsF(self.font())
+        text_w = math.ceil(text_fm.horizontalAdvance(self.text()))
+        total_w = text_w + RECOMMENDED_TAG_GAP + tag_size.width()
+        left = content.x() + max(0, (content.width() - total_w) // 2)
+
+        theme = style.current()
+        text_ink = (
+            theme["TEXT"]
+            if (self.isChecked() or self.underMouse())
+            else theme["TEXT_DIM"]
+        )
+        painter.setFont(self.font())
+        painter.setPen(QColor(text_ink))
+        painter.drawText(
+            QRectF(left, content.y(), text_w + 2, content.height()),
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            self.text(),
+        )
+
+        base_bg = theme["SURFACE_3"] if self.isChecked() else theme["SURFACE_2"]
+        bg = QColor(theme["ACCENT"])
+        bg.setAlphaF(RECOMMENDED_TAG_BG_ALPHA)
+        border = QColor(theme["ACCENT"])
+        border.setAlphaF(RECOMMENDED_TAG_BORDER_ALPHA)
+        blended = _blend_hex(base_bg, theme["ACCENT"], RECOMMENDED_TAG_BG_ALPHA)
+        tag_ink = QColor(readable_on(theme["TEXT_DIM"], blended))
+
+        tag_rect = QRectF(
+            left + text_w + RECOMMENDED_TAG_GAP,
+            content.y() + (content.height() - tag_size.height()) / 2,
+            tag_size.width(),
+            tag_size.height(),
+        )
+        painter.setPen(border)
+        painter.setBrush(bg)
+        painter.drawRoundedRect(
+            tag_rect, RECOMMENDED_TAG_RADIUS, RECOMMENDED_TAG_RADIUS
+        )
+        painter.setFont(self._tag_font())
+        painter.setPen(tag_ink)
+        painter.drawText(tag_rect, Qt.AlignmentFlag.AlignCenter, self.tag)
+        painter.end()
+
+
+class _ModeSegmented(Segmented):
+    def _make_button(self, text: str) -> QPushButton:
+        return _TaggedChoiceButton(text)
+
 
 class TimingPanel(Panel):
     """When captions appear, for every window: the caption timing, and
     under it only the chosen timing's own settings, in seconds, each with
     one line saying what it trades (polyglotic-hq 295). With `languages`
     (Settings > Captions): Translate live captions too, under Live updates
-    every."""
+    every. With `presets` (Settings > Timing): the active preset's
+    recommended timing carries a quiet Recommended tag (638)."""
 
     def __init__(
         self,
         view: TimingView,
         parent: QWidget | None = None,
         languages: LanguagesView | None = None,
+        presets: PresetsView | None = None,
     ) -> None:
         super().__init__(_tr("Timing"), parent=parent)
         self.view = view
         self.languages = languages
-        self.mode = Segmented(
+        self.presets = presets
+        self.mode = _ModeSegmented(
             [(mode, timing_name(mode)) for mode in OFFERED_MODES],
             view.value.mode,
         )
         self.mode.setObjectName("timing.mode")
+        self.mode.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred
+        )
         for button, mode in zip(self.mode.buttons, OFFERED_MODES, strict=True):
             button.setToolTip(timing_tip(mode))  # what each does (F22, 249)
         self.mode.changed.connect(lambda m: view.set_mode(CaptionMode(m)))
@@ -481,6 +662,17 @@ class TimingPanel(Panel):
         )
         self.newest_row.switch.toggled.connect(view.set_newest_word)
         self.add(self.newest_row)
+        self.cards_row = SwitchRow(
+            _tr("Card stack"),
+            _tr(
+                "Each line that is said keeps its place, with its translation "
+                "under it, and the lines roll up together as new ones come. "
+                "Off: live lines below, transcript above."
+            ),
+            "timing.cards",
+        )
+        self.cards_row.switch.toggled.connect(view.set_cards)
+        self.add(self.cards_row)
         self.zones_row = SwitchRow(
             _tr("Live lines below, transcript above"),
             _tr(
@@ -512,6 +704,10 @@ class TimingPanel(Panel):
             ),
             _left(self.path),
         )
+        # These longer explanations share a readable text width at large window sizes.
+        for detail in (self.cards_row.detail, self.path_row.detail):
+            margins = detail.contentsMargins()
+            detail.setMaximumWidth(style.px(380) + margins.left() + margins.right())
         self.add(self.path_row)
         self.after = Segmented(
             [(seconds, f"{seconds:g}s") for seconds in TRANSLATION_AFTER_CHOICES],
@@ -559,15 +755,9 @@ class TimingPanel(Panel):
         live_column.addWidget(self.live_note)
         self.live = Row(
             _tr("Live updates every"),
-            _tr(
-                "Shorter: text sooner, rewritten more often; the first update "
-                "waits for a second of speech."
-            ),
+            _tr("Shorter intervals show text sooner, with more revisions."),
             live,
-            tip=_tr(
-                "Less than a second of speech is too little for the speech model "
-                "to tell the language."
-            ),
+            tip=_tr("The first update waits for a second of speech."),
         )
         self.add(self.live)
         self.translate_live: SwitchButton | None = None
@@ -624,15 +814,37 @@ class TimingPanel(Panel):
             _left(self.settle),
         )
         self.add(self.settle_row)
+        views: list[Shared[Any]] = [view]
         if languages is not None:
-            self.bind(view, languages)
-        else:
-            self.bind(view)
+            views.append(languages)
+        if presets is not None:
+            views.append(presets)
+        self.bind(*views)
         self.refresh()
 
     def refresh(self) -> None:
         value = self.view.value
         self.mode.set_value(value.mode)
+        rec = (
+            menu_recommendation(self.presets.value)
+            if self.presets is not None
+            else None
+        )
+        for button, mode in zip(self.mode.buttons, OFFERED_MODES, strict=True):
+            assert isinstance(button, _TaggedChoiceButton)
+            if rec is not None and rec[0] is mode:
+                button.set_tag(recommended_tag())
+                button.setToolTip(f"{rec[1]}\n{timing_tip(mode)}")
+                button.setAccessibleName(f"{timing_name(mode)}. {rec[1]}")
+                button.setAccessibleDescription(rec[1])
+            else:
+                button.set_tag("")
+                button.setToolTip(timing_tip(mode))
+                button.setAccessibleName("")
+                button.setAccessibleDescription("")
+        if (mode_layout := self.mode.layout()) is not None:
+            mode_layout.invalidate()
+        self.mode.updateGeometry()
         sentence = timing_tip(value.mode)
         if value.mode is CaptionMode.WHOLE:
             # the longest wait for text's line (277)
@@ -644,8 +856,10 @@ class TimingPanel(Panel):
         self.newest_row.setVisible(value.mode is CaptionMode.STEADY)
         self.ahead.set_value(value.words_ahead)
         self.ahead_row.setVisible(value.mode.paced)
+        self.cards_row.switch.set_quietly(value.cards)
+        self.cards_row.setVisible(value.mode.paced)
         self.zones_row.switch.set_quietly(value.two_zones)
-        self.zones_row.setVisible(value.mode.paced)
+        self.zones_row.setVisible(value.mode.paced and not value.cards)
         self.path.set_value(value.path)
         self.path_row.setVisible(value.mode.paced)
         self.after.set_value(value.translation_after)
@@ -934,7 +1148,7 @@ class LookPanel(_LookGroup):
 
 
 class WordLinksPanel(_LookGroup):
-    """Word links' style - the button on a caption window turns them off
+    """Word links' style - a caption window's preset menu turns them off
     and back on to it (249, F9) - their underline, and how many words."""
 
     learning_wanted = Signal()
@@ -966,8 +1180,8 @@ class WordLinksPanel(_LookGroup):
             _tr(
                 "Which words of what was said and its translation mean the same. On "
                 "hover: point at a word. Underline: matching words share a colour. "
-                "Arrows: curves join them. The button on a caption window turns "
-                "this off and on."
+                "Arrows: curves join them. A caption window's preset menu turns "
+                "them off and on, under Add."
             ),
             self.word_links,
         )
@@ -1289,11 +1503,12 @@ class ReadingLinesPanel(_LookGroup):
         self.english = self._switch(
             "reading_en",
             _tr("Respelling above English"),
-            _tr(
+            _trn(
                 "How each English word sounds, in plain letters, its stressed part "
-                "in capitals (KAY-oss, ri-SEET) - for the 10,000 commonest words, "
+                "in capitals (KAY-oss, ri-SEET) - for the %Ln commonest word(s), "
                 "in what was said and in translations into English, once you "
-                "learn English."
+                "learn English.",
+                RESPELLED_WORD_LIMIT,
             ),
             lambda on: view.set_reading_line("en", on),
         )
@@ -1469,7 +1684,7 @@ class BehaviourPanel(_LookGroup):
             self.show_on_speech = self._switch(
                 "show_on_speech",
                 _tr("Show a hidden caption window when speech starts"),
-                pc_or_mac(
+                pc_mac_or_linux(
                     _tr(
                         "Off: it stays hidden, and the tray says it's still captioning."
                     ),
@@ -1477,6 +1692,7 @@ class BehaviourPanel(_LookGroup):
                         "Off: it stays hidden, and the menu bar's icon says it's still "
                         "captioning."
                     ),
+                    _tr("Off: it stays hidden, and Home says it's still captioning."),
                 ),
                 view.set_show_on_speech,
             )

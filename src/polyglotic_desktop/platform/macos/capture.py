@@ -38,6 +38,7 @@ app restarts).
 """
 
 import contextlib
+import logging
 import os
 import platform
 import queue
@@ -50,15 +51,19 @@ from typing import Any
 import numpy as np
 
 from polyglotic_desktop.core.listening.timing import VAD_SAMPLE_RATE
+from polyglotic_desktop.platform.capture_restarts import Backoff, why
 from polyglotic_desktop.platform.macos import apps, devices
 from polyglotic_desktop.platform.timeline import Timeline, wanted_device
 from polyglotic_desktop.ports.capture import (
+    APP_CLOSED,
     NOT_ALLOWED,
     AppCaptureSupport,
     AppCaptureTrial,
     AudioCallback,
     TrialOutcome,
 )
+
+log = logging.getLogger(__name__)
 
 DEVICE_POLL_SEC = 1.0
 WAKE_SEC = 0.1  # wake at least this often without audio
@@ -309,15 +314,22 @@ class _Opening:
 class _Capture:
     """The thread that runs one capture: opens its stream, delivers its
     audio converted and continuous, watches for silence it isn't allowed
-    past, and reopens it when what it should capture changes."""
+    past, and reopens it when what it should capture changes - or, after a
+    failure, when `Backoff` says: a failed open is tried again, and an error
+    nobody foresaw starts it again, each logged by `KIND` and the error's
+    type (polyglotic-hq 557, decision 0266)."""
 
     _permission: Permission
+    KIND = "a"
+    """What kind of capture it is, for the log: never an app's or a
+    device's name."""
 
     def __init__(self) -> None:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._capturing: str | None = None
         self._error: str | None = None
+        self._restarts = 0  # failures it tried again after (566)
 
     @property
     def capturing(self) -> str | None:
@@ -326,6 +338,10 @@ class _Capture:
     @property
     def error(self) -> str | None:
         return self._error
+
+    @property
+    def restarts(self) -> int:
+        return self._restarts
 
     def start(self, on_audio: AudioCallback) -> None:
         if self._thread is not None:
@@ -361,31 +377,64 @@ class _Capture:
         return True
 
     def _run(self, on_audio: AudioCallback) -> None:
+        stops = Backoff()
         try:
-            self._deliver(on_audio)
-        except Exception as e:  # noqa: BLE001 - the thread must not die quietly
-            # Report it by its type, never its text: it could hold anything.
-            self._error = f"Capture stopped: {type(e).__name__}"
+            while not self._stop.is_set():
+                began = time.monotonic()
+                try:
+                    self._deliver(on_audio)
+                    return  # stopped, or the app closed
+                except Exception as e:  # the thread must not die (decision 0266)
+                    # Said by its type, never its text: it could hold anything.
+                    self._capturing = None
+                    self._error = f"Capture stopped: {type(e).__name__}"
+                    wait = stops.failed(time.monotonic() - began)
+                    self._restarts += 1
+                    log.warning(
+                        "%s capture stopped (%s); starting again in %.0fs",
+                        self.KIND,
+                        why(e),
+                        wait,
+                        exc_info=True,
+                    )
+                    self._stop.wait(wait)
         finally:
             self._capturing = None
 
     def _deliver(self, on_audio: AudioCallback) -> None:
         timeline = Timeline()
         watch = SilenceWatch(self._permission)
+        opens = Backoff()
         failed: Hashable | None = None
+        again_at = 0.0  # when `failed` is tried again
         while not self._stop.is_set():
             target = self._target()
-            if target is None or target == failed:
+            if target is None or (target == failed and time.monotonic() < again_at):
                 self._capturing = None
                 self._stop.wait(DEVICE_POLL_SEC)
                 continue
             try:
                 opened = self._opened(target, watch)
             except OSError as e:
-                failed, self._capturing, self._error = target, None, str(e)
+                wait = opens.failed()
+                self._restarts += 1
+                failed, again_at = target, time.monotonic() + wait
+                self._capturing, self._error = None, str(e)
+                log.warning(
+                    "%s capture couldn't open (%s); trying again in %.0fs",
+                    self.KIND,
+                    why(e),
+                    wait,
+                )
                 continue
             if opened is None:  # stopped while macOS still held the open
                 return
+            log.info(
+                "%s capture open%s",
+                self.KIND,
+                f" after {opens.failures} failed tries" if opens.failures else "",
+            )
+            opens = Backoff()
             stream, name = opened
             failed, self._capturing = None, name
             self._error = NOT_ALLOWED if watch.not_allowed else None
@@ -393,13 +442,16 @@ class _Capture:
                 self._pump(stream, target, timeline, watch, on_audio)
             except OSError as e:  # the tap or device failed mid-stream: reopen
                 self._error = str(e)
+                self._restarts += 1
+                log.info("%s capture lost its stream (%s)", self.KIND, why(e))
                 self._stop.wait(DEVICE_POLL_SEC)  # not at once: it may fail again
             finally:
                 stream.close()
             if self._gone():
                 for piece in timeline.ending():
                     on_audio(*piece)
-                self._error = "The app has closed."
+                self._error = APP_CLOSED
+                log.info("%s capture over: its app closed", self.KIND)
                 return
 
     def _opened(self, target: Any, watch: SilenceWatch) -> tuple[Stream, str] | None:
@@ -594,6 +646,7 @@ class AppCapture(_Capture):
     change, ended once the app has closed."""
 
     _permission = TAPS
+    KIND = "app"
 
     def __init__(
         self,
@@ -665,6 +718,7 @@ class EverythingElseCapture(_GlobalCapture):
     heard twice. If the app closes it goes on hearing everything."""
 
     NAME = "everything else"
+    KIND = "everything else"
 
     def __init__(
         self,
@@ -705,6 +759,7 @@ class SystemCapture(_GlobalCapture):
     global tap, which follows macOS' default as it changes)."""
 
     NAME = "everything the Mac plays"
+    KIND = "system"
 
     def __init__(
         self,
@@ -803,6 +858,7 @@ class MicCapture(_Capture):
     default as it changes."""
 
     _permission = MIC
+    KIND = "mic"
 
     def __init__(
         self,

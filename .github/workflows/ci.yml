@@ -79,6 +79,11 @@ jobs:
       - name: Lint (ruff)
         run: uv run --no-sync ruff check --output-format=github
 
+      - name: Warn when a file gains unregistered literals (597)
+        env:
+          LITERALS_BASE: ${{ github.event.pull_request.base.sha }}
+        run: uv run --no-sync python -m tools.literals --warn --base "$LITERALS_BASE"
+
       - name: Format (ruff format --check)
         run: uv run --no-sync ruff format --check
 

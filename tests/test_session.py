@@ -33,6 +33,7 @@ from websockets.asyncio.server import ServerConnection
 
 from polyglotic_desktop.connection import protocol
 from polyglotic_desktop.connection.app import AppInfo
+from polyglotic_desktop.connection.exchange import DataExchange
 from polyglotic_desktop.connection.reconnect import Reconnects, StopReason
 from polyglotic_desktop.connection.session import (
     ListeningSession,
@@ -85,6 +86,7 @@ class Listener:
         self.plans: list[protocol.PlanState] = []
         self.windows: list[Maintenance | None] = []
         self.failed = 0
+        self.dropped: list[CaptionId] = []
         self.stalls: list[bool] = []
 
     def status_changed(self, status: Status) -> None:
@@ -104,6 +106,9 @@ class Listener:
 
     def caption_failed(self) -> None:
         self.failed += 1
+
+    def caption_dropped(self, caption_id: CaptionId) -> None:
+        self.dropped.append(caption_id)
 
     def connection_stalled(self, stalled: bool) -> None:
         self.stalls.append(stalled)
@@ -158,10 +163,13 @@ class Harness:
         timings: Timings | None = None,
         jitter: float = 0.0,
         url: str | None = None,
+        store: MemoryCredentialStore | None = None,
+        speech: Speech | None = None,
+        exchange: DataExchange | None = None,
     ) -> None:
-        self.store = MemoryCredentialStore(credentials)
+        self.store = store or MemoryCredentialStore(credentials)
         self.listener = Listener()
-        self.speech = Speech()
+        self.speech = speech or Speech()
         self.session = ListeningSession(
             url or server.url,
             self.store,
@@ -171,6 +179,7 @@ class Harness:
             self.listener,
             timings=timings or Timings(answer_within=2, close_within=1),
             reconnects=Reconnects(random=lambda: jitter),
+            exchange=exchange,
         )
 
     def __enter__(self) -> Self:
@@ -854,6 +863,8 @@ def test_a_caption_the_server_never_answers_doesnt_hold_the_stall_for_good(
     ended = app.session.ended()
     assert ended is not None
     assert (ended.captions, ended.dropped) == (1, 1)
+    # its live caption ends with what it shows, not provisional for good (557)
+    assert app.listener.dropped == ["lost"]
 
 
 def test_finished_speech_the_server_says_it_refused_is_answered(
@@ -878,6 +889,7 @@ def test_finished_speech_the_server_says_it_refused_is_answered(
     ended = app.session.ended()
     assert ended is not None
     assert (ended.captions, ended.dropped) == (0, 1)
+    assert app.listener.dropped == ["c1"]  # its live caption ends (557)
 
 
 def test_a_withdrawn_captions_finished_speech_isnt_waited_for(
@@ -957,6 +969,7 @@ def test_processing_failed_answers_the_finished_speech(server: FakeServer) -> No
     assert [(h.caption_id, h.kind) for h, _ in server.speech] == [("c1", "finished")]
     assert len(app.session.unanswered) == 0
     assert app.listener.failed == 1  # told: several in a row are said (145)
+    assert app.listener.dropped == ["c1"]  # its live caption ends (557)
     ended = app.session.ended()
     assert ended is not None
     assert (ended.captions, ended.dropped) == (0, 1)

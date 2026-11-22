@@ -26,6 +26,7 @@ in one click and changed as freely after.
 Holds no caption text.
 """
 
+import math
 import re
 from dataclasses import dataclass, replace
 
@@ -49,7 +50,7 @@ class ColourPreset:
 
 
 PRESETS: tuple[ColourPreset, ...] = (
-    ColourPreset("classic", "#ffffff", "#ffd76e", "#0a0c10", 0.72),
+    ColourPreset("classic", "#ffffff", "#ffd76e", "#0a0c10", 0.88),
     ColourPreset("broadcast", "#ffffff", "#ffe600", "#000000", 1.0),
     ColourPreset("teletext", "#ffffff", "#5ee3ff", "#000000", 1.0),
     ColourPreset("ember", "#dcecff", "#ffa64d", "#0b1a33", 0.88),
@@ -65,7 +66,8 @@ Ember's panel 85 -> 88 %, Paper's 94 -> 96 % and Quiet's 55 -> 85 % (284):
 the least that keeps every caption, older ones included, at 4.5:1 over a
 light video (#f3f5f7) and a black one. Quiet stays muted in its colours;
 its see-through panel couldn't (a white scene behind 55 % left its
-yellow at 2.1:1)."""
+yellow at 2.1:1). Classic's 72 -> 88 % (584): the app's default look,
+its text and translation at 7:1 over a white scene (`ui.settings.OPACITY`)."""
 
 BY_KEY = {preset.key: preset for preset in PRESETS}
 
@@ -253,6 +255,60 @@ def colour_difference(a: str, b: str) -> float:
     (about 2.3 is just noticeable side by side; thin text needs far more)."""
     return float(
         sum((p - q) ** 2 for p, q in zip(_lab(a), _lab(b), strict=True)) ** 0.5
+    )
+
+
+def ciede2000(a: str, b: str) -> float:
+    """How far apart two "#rrggbb" colours look as CIEDE2000 has it (its
+    weights all 1): nearer the eye than `colour_difference` across hues -
+    the told-apart rule for word links' colours (polyglotic-hq 446, 554)."""
+    return ciede2000_lab(_lab(a), _lab(b))
+
+
+def ciede2000_lab(
+    lab1: tuple[float, float, float], lab2: tuple[float, float, float]
+) -> float:
+    """CIEDE2000 between two CIELAB colours (Sharma, Wu and Dalal, 2005)."""
+    (l1, a1, b1), (l2, a2, b2) = lab1, lab2
+    c_bar = (math.hypot(a1, b1) + math.hypot(a2, b2)) / 2
+    g = 0.5 * (1 - math.sqrt(c_bar**7 / (c_bar**7 + 25**7)))
+    a1p, a2p = (1 + g) * a1, (1 + g) * a2
+    c1p, c2p = math.hypot(a1p, b1), math.hypot(a2p, b2)
+    h1p = math.degrees(math.atan2(b1, a1p)) % 360 if c1p else 0.0
+    h2p = math.degrees(math.atan2(b2, a2p)) % 360 if c2p else 0.0
+    if c1p * c2p == 0:
+        dhp = 0.0
+    elif abs(h2p - h1p) <= 180:
+        dhp = h2p - h1p
+    else:
+        dhp = h2p - h1p - 360 if h2p > h1p else h2p - h1p + 360
+    d_l, d_c = l2 - l1, c2p - c1p
+    d_h = 2 * math.sqrt(c1p * c2p) * math.sin(math.radians(dhp / 2))
+    l_bar, c_barp = (l1 + l2) / 2, (c1p + c2p) / 2
+    if c1p * c2p == 0:
+        h_bar = h1p + h2p
+    elif abs(h1p - h2p) <= 180:
+        h_bar = (h1p + h2p) / 2
+    else:
+        h_bar = (h1p + h2p + (360 if h1p + h2p < 360 else -360)) / 2
+    t = (
+        1
+        - 0.17 * math.cos(math.radians(h_bar - 30))
+        + 0.24 * math.cos(math.radians(2 * h_bar))
+        + 0.32 * math.cos(math.radians(3 * h_bar + 6))
+        - 0.20 * math.cos(math.radians(4 * h_bar - 63))
+    )
+    theta = 30 * math.exp(-(((h_bar - 275) / 25) ** 2))
+    r_c = 2 * math.sqrt(c_barp**7 / (c_barp**7 + 25**7))
+    s_l = 1 + 0.015 * (l_bar - 50) ** 2 / math.sqrt(20 + (l_bar - 50) ** 2)
+    s_c = 1 + 0.045 * c_barp
+    s_h = 1 + 0.015 * c_barp * t
+    r_t = -math.sin(math.radians(2 * theta)) * r_c
+    return math.sqrt(
+        (d_l / s_l) ** 2
+        + (d_c / s_c) ** 2
+        + (d_h / s_h) ** 2
+        + r_t * (d_c / s_c) * (d_h / s_h)
     )
 
 

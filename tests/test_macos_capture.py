@@ -5,6 +5,7 @@ known apps by bundle ID; the devices; and the capture threads, run against
 stand-in taps and mics. What only a Mac proves - catap's taps and PortAudio
 on real Core Audio - is in 411's report, for 410's macOS job."""
 
+import logging
 import sys
 import threading
 import time
@@ -15,6 +16,7 @@ import numpy as np
 import pytest
 
 from polyglotic_desktop.core.listening.sources import known_app_id
+from polyglotic_desktop.platform import capture_restarts
 from polyglotic_desktop.platform.macos import apps, capture, categories, devices
 from polyglotic_desktop.platform.macos.apps import AudioProcess
 from polyglotic_desktop.platform.macos.capture import (
@@ -658,6 +660,71 @@ def test_a_mic_that_wont_open_is_not_retried_until_another_is_wanted() -> None:
     finally:
         cap.stop()
     assert tries == ["usb-mic", "airpods"] and cap.error is None
+
+
+def test_a_mic_that_wont_open_is_tried_again_after_a_wait(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """polyglotic-hq 557 (529's B1): a failed open was never tried again
+    while the same device was wanted. Now it is, after `Backoff`'s wait,
+    each failure logged by the error's type - never the device's name."""
+    monkeypatch.setattr(capture_restarts, "FIRST_SEC", 0.02)
+    tries: list[str] = []
+
+    def open_mic(uid: str) -> tuple[Stream, str]:
+        tries.append(uid)
+        if len(tries) < 3:
+            raise OSError("Couldn't open AirPods Pro: PortAudioError")
+        return FakeStream(), "AirPods Pro"
+
+    caplog.set_level(logging.INFO, logger=capture.__name__)
+    cap = MicCapture(None, open_mic, list, lambda: "airpods")
+    cap.start(Heard())
+    try:
+        wait_for(lambda: cap.capturing == "AirPods Pro")
+    finally:
+        cap.stop()
+    assert tries == ["airpods"] * 3 and cap.error is None
+    assert cap.restarts == 2  # each failed open, for the summary (566)
+    said = "\n".join(r.getMessage() for r in caplog.records)
+    assert said.count("mic capture couldn't open (OSError)") == 2
+    assert "mic capture open after 2 failed tries" in said
+    assert "AirPods" not in said
+
+
+def test_a_capture_whose_callback_fails_starts_again_and_says_so(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """557 (529's B1): an error nobody foresaw on the capture's thread ended
+    it for good, quietly. Now it's logged by its type, `error` says the
+    capture stopped while it waits, and it starts again."""
+    monkeypatch.setattr(capture_restarts, "FIRST_SEC", 0.2)
+    opened: list[str] = []
+
+    def open_mic(uid: str) -> tuple[Stream, str]:
+        opened.append(uid)
+        return FakeStream(), "AirPods Pro"
+
+    calls: list[float] = []
+
+    def heard(start: float, samples: bytes) -> None:
+        calls.append(start)
+        if len(calls) == 2:
+            raise RuntimeError("a caption's text")
+
+    caplog.set_level(logging.INFO, logger=capture.__name__)
+    cap = MicCapture(None, open_mic, list, lambda: "airpods")
+    cap.start(heard)
+    try:
+        wait_for(lambda: cap.error == "Capture stopped: RuntimeError")
+        assert cap.capturing is None  # the check's "stopped" (speech_pipeline)
+        wait_for(lambda: len(opened) == 2 and len(calls) > 10)
+    finally:
+        cap.stop()
+    assert cap.error is None and cap.restarts == 1  # counted for the summary (566)
+    said = "\n".join(r.getMessage() for r in caplog.records)
+    assert "mic capture stopped (RuntimeError); starting again in 0s" in said
+    assert "caption" not in said
 
 
 def test_a_mic_giving_only_zeros_says_not_allowed() -> None:

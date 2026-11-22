@@ -21,7 +21,7 @@ from polyglotic_desktop.ui.recorded_captions import MIC
 from polyglotic_desktop.ui.settings import AppSettings, Settings
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
-from polyglotic_desktop.ui_next.main_window import MINIMUM, MainWindow, minimum_size
+from polyglotic_desktop.ui_next.main_window import ROOMY, MainWindow, roomy_size
 from polyglotic_desktop.ui_next.settings_page import SettingsPage
 
 SIZE = "interface_text_size"
@@ -81,7 +81,7 @@ def test_it_multiplies_windows_text_size(at_normal: QApplication) -> None:
     assert style.windows_text_scale() == 1.5
     assert style.text_scale() == pytest.approx(1.95)
     assert style.px(13) == 25
-    assert minimum_size() == (round(MINIMUM[0] * 1.95), round(MINIMUM[1] * 1.95))
+    assert roomy_size() == (round(ROOMY[0] * 1.95), round(ROOMY[1] * 1.95))
 
 
 def test_together_they_stay_in_the_range_the_interface_is_laid_out_for(
@@ -133,7 +133,6 @@ def test_settings_app_offers_it_and_shows_it(at_normal: QApplication) -> None:
     panels = Panels(Settings(None), windows)
     page = SettingsPage(
         [("margin", "Margin")],
-        {},
         QAction("Tell us"),
         look=panels.look,
         timing=panels.timing,

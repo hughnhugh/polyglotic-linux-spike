@@ -4,6 +4,8 @@ Drawn as SVG with the colours written in (so Qt's renderer can make the
 same close-ups PNGs) and class names the page's own style recolours for
 dark mode. The 8 segment groups take the 8 categorical slots in a fixed
 order (the dataviz skill's reference palette); the pause is neutral.
+Each source's stretches of sound without speech (polyglotic-hq 549) have
+a lane of their own, under the moments the screen changed.
 """
 
 import html
@@ -12,7 +14,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
-from polyglotic_desktop.perf.trace import APP_STAGES
+from polyglotic_desktop.perf.trace import APP_STAGES, UNHEARD
 from polyglotic_desktop.perf.trace_summary import (
     SEGMENTS,
     Hang,
@@ -35,8 +37,15 @@ GROUPS: tuple[tuple[str, str, str, str], ...] = (
 )
 PAUSE = ("gp", "waiting for the pause (finished speech)", "#d4d3cd", "#4a4945")
 UNSPLIT = ("gu", "not split (an older log)", "#a9a8a2", "#6b6a64")
+PACE = ("gc", "the caption mode's pace (Steady's playout)", "#bcb9ae", "#58564f")
+"""A paced mode's planned wait (polyglotic-hq 551): neutral, as the pause
+is - the mode's own, not a delay."""
+UNHEARD_LANE = ("gs", "sound without speech", "#9c8a6e", "#8a7a60")
 HANG = "#c62828"
 BURST = "#eb6834"
+UNHEARD_CLOSEUPS = 3
+"""The longest stretches of sound without speech given a close-up each,
+beside the worst other hangs."""
 
 _ENDS_IN = {  # the stage a span ends at -> its group's class
     "heard": "gp",
@@ -47,10 +56,11 @@ _ENDS_IN = {  # the stage a span ends at -> its group's class
     "sent": "g3",
     "handed": "g7",
     "applied": "g7",
+    "released": "gc",
     "windowed": "g8",
     "painted": "g8",
 }
-_COLOUR = {c: light for c, _, light, _ in (*GROUPS, PAUSE, UNSPLIT)}
+_COLOUR = {c: light for c, _, light, _ in (*GROUPS, PAUSE, PACE, UNSPLIT, UNHEARD_LANE)}
 
 WIDTH = 1100
 LEFT = 96
@@ -58,6 +68,7 @@ RIGHT = 16
 ROW = 7
 ROW_GAP = 3
 SCREEN = 16
+LANE = 9
 
 
 def _x(at: float, start: float, end: float) -> float:
@@ -74,7 +85,10 @@ def spans(record: Mapping[str, Any]) -> list[tuple[float, float, str]]:
         ta, tb = float(times[a]), float(times[b])
         if tb <= ta:
             continue
-        adjacent = APP_STAGES.index(b) - APP_STAGES.index(a) == 1
+        adjacent = APP_STAGES.index(b) - APP_STAGES.index(a) == 1 or (a, b) == (
+            "applied",
+            "windowed",  # a mode without a pace: no `released` between (551)
+        )
         if (a, b) == ("sent", "received") and record.get("srv"):
             found.extend(_round_trip(ta, tb, record["srv"]))
         elif (a, b) == ("sent", "received"):
@@ -114,14 +128,17 @@ def window_svg(
     title: str,
 ) -> str:
     """A close-up of `start` to `end`: per source, the moments the screen
-    changed (ticks; hangs as red bands, bursts as orange marks), and each
-    update as a bar from the sound to the screen."""
+    changed (ticks; hangs as red bands, bursts as orange marks), its
+    stretches of sound without speech, and each update as a bar from the
+    sound to the screen."""
     inside = [
         r
         for r in records
         if (r.get("t") or {}) and _first(r) <= end and _last(r) >= start
     ]
-    sources = sorted({str(r.get("src") or "?") for r in inside}) or ["-"]
+    unheard = [r for r in inside if r.get("kind") == UNHEARD]
+    inside = [r for r in inside if r.get("kind") != UNHEARD]
+    sources = sorted({str(r.get("src") or "?") for r in (*inside, *unheard)}) or ["-"]
     rows_of: dict[str, list[list[float]]] = {s: [] for s in sources}
     placed: list[tuple[str, int, Mapping[str, Any]]] = []
     for r in sorted(inside, key=_first):
@@ -139,7 +156,7 @@ def window_svg(
     y = top
     for s in sources:
         lane_top[s] = y
-        y += SCREEN + 6 + max(1, len(rows_of[s])) * (ROW + ROW_GAP) + 14
+        y += SCREEN + LANE + 10 + max(1, len(rows_of[s])) * (ROW + ROW_GAP) + 14
     height = y + 54
     out = [
         (
@@ -161,8 +178,18 @@ def window_svg(
             f"{html.escape(s)}</text>"
         )
         out.append(
-            f'<text class="ink3" x="6" y="{ly + SCREEN + 16:.0f}" fill="#8a8984"'
-            ' font-size="10">updates</text>'
+            f'<text class="ink3" x="6" y="{ly + SCREEN + LANE + 3:.0f}"'
+            ' fill="#8a8984" font-size="10">no speech heard</text>'
+        )
+        out.append(
+            f'<text class="ink3" x="6" y="{ly + SCREEN + LANE + 20:.0f}"'
+            ' fill="#8a8984" font-size="10">updates</text>'
+        )
+        out += _unheard_lane(
+            [r for r in unheard if str(r.get("src") or "?") == s],
+            start,
+            end,
+            ly + SCREEN + 3,
         )
         out.append(
             f'<rect class="track" x="{LEFT}" y="{ly}" width="{WIDTH - LEFT - RIGHT}"'
@@ -183,7 +210,7 @@ def window_svg(
                 f' font-weight="600">hang {h.seconds:.1f} s: {h.cause}</text>'
             )
     for source, row, r in placed:
-        ly = lane_top[source] + SCREEN + 6 + row * (ROW + ROW_GAP)
+        ly = lane_top[source] + SCREEN + LANE + 10 + row * (ROW + ROW_GAP)
         tip = _tip(r)
         out.append(f"<g><title>{html.escape(tip)}</title>")
         for a, b, group in spans(r):
@@ -222,6 +249,43 @@ def window_svg(
     return "\n".join(out)
 
 
+def _unheard_lane(
+    stretches: Sequence[Mapping[str, Any]], start: float, end: float, y: float
+) -> list[str]:
+    """A source's stretches of sound without speech, as bars at `y`."""
+    out = []
+    cls, _, light, _ = UNHEARD_LANE
+    for r in stretches:
+        times = r.get("t") or {}
+        a, b = float(times.get("began", 0.0)), float(times.get("ended", 0.0))
+        if b < start or a > end:
+            continue
+        x0, x1 = _x(max(a, start), start, end), _x(min(b, end), start, end)
+        out.append(
+            f'<rect class="{cls}" x="{x0:.1f}" y="{y:.1f}"'
+            f' width="{max(1.0, x1 - x0):.1f}" height="{LANE}" fill="{light}">'
+            f"<title>{html.escape(unheard_tip(r))}</title></rect>"
+        )
+    return out
+
+
+def unheard_tip(r: Mapping[str, Any]) -> str:
+    """A stretch of sound without speech in a line."""
+    times = r.get("t") or {}
+    seconds = float(times.get("ended", 0.0)) - float(times.get("began", 0.0))
+    p10, p50, p90 = r.get("dbfs") or (None, None, None)
+    resets = int(r.get("resets") or 0)
+    after = r.get("after_reset")
+    last = (
+        f", the last {after} s before its end" if resets and after is not None else ""
+    )
+    return (
+        f"sound without speech {seconds:.1f} s ({r.get('end')}): level"
+        f" p10/p50/p90 {p10}/{p50}/{p90} dBFS; speech detection forgot its"
+        f" state {resets} times in it{last}"
+    )
+
+
 def _axis(start: float, end: float, y0: float, y1: float) -> list[str]:
     span = end - start
     step = next(
@@ -248,7 +312,7 @@ def _legend(y: float) -> list[str]:
     """The segment groups' colours, in two rows from `y - 14`."""
     out = []
     x, row_y = float(LEFT), y - 14
-    for cls, label, light, _ in (*GROUPS, PAUSE):
+    for cls, label, light, _ in (*GROUPS, PAUSE, PACE, UNHEARD_LANE):
         width = 13 + 6.0 * len(label) + 16
         if x + width > WIDTH - RIGHT:
             x, row_y = float(LEFT), row_y + 14
@@ -285,15 +349,21 @@ def overview_svg(
     records: Sequence[Mapping[str, Any]], found: Summary, wall: float | None
 ) -> str:
     """The whole stretch: per source, each update's time from the sound to
-    the screen as a line (the worst in each pixel), hangs as red marks."""
+    the screen as a line (the worst in each pixel), hangs as red marks,
+    stretches of sound without speech as a band under the lane."""
     times = [shown_at(r) for r in records]
     shown = [(t, r) for t, r in zip(times, records, strict=False) if t is not None]
-    if not shown:
+    unheard = [r for r in records if r.get("kind") == UNHEARD and r.get("t")]
+    if not shown and not unheard:
         return "<p>Nothing was shown.</p>"
-    start = min(t for t, _ in shown)
-    end = max(t for t, _ in shown)
-    sources = sorted({str(r.get("src") or "?") for _, r in shown})
-    lane = 70
+    edges = [t for t, _ in shown]
+    edges += [_first(r) for r in unheard] + [_last(r) for r in unheard]
+    start, end = min(edges), max(edges)
+    sources = sorted(
+        {str(r.get("src") or "?") for _, r in shown}
+        | {str(r.get("src") or "?") for r in unheard}
+    )
+    lane = 96
     height = 34 + lane * len(sources) + 30
     out = [
         (
@@ -328,11 +398,17 @@ def overview_svg(
             total = segments(r).get("total", 0.0)
             pixels[px] = max(pixels.get(px, 0.0), total)
         for px, total in sorted(pixels.items()):
-            bar = min(1.0, total / top_ms) * (lane - 20)
+            bar = min(1.0, total / top_ms) * (lane - 40)
             out.append(
                 f'<line class="g1" x1="{px}" x2="{px}" y1="{base}" y2="{base - bar:.1f}"'
                 ' stroke="#2a78d6" stroke-width="1"/>'
             )
+        out += _unheard_lane(
+            [r for r in unheard if str(r.get("src") or "?") == s],
+            start,
+            end,
+            y0 + 18,  # under the name, above the tallest bar
+        )
         for h in found.hangs:
             if h.source == s:
                 x = _x(h.at, start, end)
@@ -362,7 +438,10 @@ def page(
 ) -> tuple[str, list[tuple[str, str]]]:
     """The page, and its close-ups as (name, svg) for pictures."""
     closeups = []
-    for n, h in enumerate(sorted(found.hangs, key=lambda h: -h.seconds)[:worst]):
+    longest = sorted(found.hangs, key=lambda h: -h.seconds)
+    picked = [h for h in longest if h.cause != UNHEARD][:worst]
+    picked += [h for h in longest if h.cause == UNHEARD][:UNHEARD_CLOSEUPS]
+    for n, h in enumerate(picked):
         start = h.at - h.seconds - 3.0
         end = h.at + 2.0
         title = (
@@ -422,11 +501,20 @@ def page(
         + _tile("hangs over 2 s", len(found.hangs))
         + _tile("bursts", len(found.bursts))
         + _tile("dropped", sum(found.drops.values()))
+        + _tile("sound without speech", found.unheard.stretches)
         + "</div>",
         f"<p>Dropped: {html.escape(drops)}. Held by a caption window:"
         f" {html.escape(held)}."
         + (f" Hangs not put down to a segment: {html.escape(other)}." if other else "")
         + "</p>",
+        (
+            "<p>Sound without speech (over 3 s of sound at -45 dBFS or more"
+            " that speech detection never heard as speech - music, a game's"
+            f" sound, or speech it missed): {html.escape(found.unheard.said())}."
+            " Heard just after the reset: speech heard within a second of"
+            " speech detection forgetting its state, so it had most likely"
+            " stopped hearing it.</p>"
+        ),
         "<h2>Where the time went</h2>",
         (
             "<table><tr><th>segment</th><th>p50</th><th>p95</th><th>p99</th>"
@@ -441,7 +529,8 @@ def page(
             "<p class=note>Each bar is one update, from the end of its speech to"
             " the screen; each tick on a source's track is a moment the screen"
             " changed. A red band: nothing new shown for over 2 s while the"
-            " speech went on. Hover a bar for its segments.</p>"
+            " speech went on, or sound went on that wasn't heard as speech"
+            " (the lane under it). Hover a bar for its segments.</p>"
         ),
         *(svg for _, svg in closeups),
     ]
@@ -458,7 +547,8 @@ def _ms(value: float | None) -> str:
 
 def _document(name: str, body: str) -> str:
     dark = "".join(
-        f".{c}{{fill:{d};stroke:{d}}}" for c, _, _, d in (*GROUPS, PAUSE, UNSPLIT)
+        f".{c}{{fill:{d};stroke:{d}}}"
+        for c, _, _, d in (*GROUPS, PAUSE, PACE, UNSPLIT, UNHEARD_LANE)
     )
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">

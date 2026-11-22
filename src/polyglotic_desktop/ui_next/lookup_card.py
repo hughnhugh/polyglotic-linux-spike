@@ -115,12 +115,13 @@ from polyglotic_desktop.core.shared import WordStatus
 from polyglotic_desktop.perf import spans
 from polyglotic_desktop.ports.dictionary import DictionaryProblem
 from polyglotic_desktop.ui_next import glyphs, style
+from polyglotic_desktop.ui_next.above_all import ABOVE_ALL, set_click_through
 from polyglotic_desktop.ui_next.caption_layout import CJK_FAMILIES, LATIN_FAMILIES
 from polyglotic_desktop.ui_next.caption_marks import STAGE_COLOURS
 from polyglotic_desktop.ui_next.copying import Painted, TextSelection, copy_quietly
-from polyglotic_desktop.ui_next.languages import learned_name
+from polyglotic_desktop.ui_next.languages import an_before, in_sentence, learned_name
 from polyglotic_desktop.ui_next.load_card import add_text, check_texts, stage_text
-from polyglotic_desktop.ui_next.os_words import hotkeys_here, pc_or_mac
+from polyglotic_desktop.ui_next.os_words import hotkeys_here, on_linux, pc_or_mac
 from polyglotic_desktop.ui_next.settings_popover import KeyState
 from polyglotic_desktop.ui_next.views.lookup import (
     Card,
@@ -212,43 +213,88 @@ def _trn(text: str, n: int) -> str:
     return QApplication.translate("LookupCard", text, None, n)
 
 
-def no_voice_steps(language: str) -> str:
+def no_voice_steps(language: str, system_voice: bool = True) -> str:
     """No voice for `language` on this PC, and how Windows adds one - or a
     Mac's steps: the card's "say it", and the selection's Say it
-    (polyglotic-hq 495)."""
+    (polyglotic-hq 495). On Linux, why (591): speech-dispatcher, the
+    system's voice, missing or not starting (`system_voice` False: none of
+    the PC's own voices answer), or without the language."""
     name = learned_name("zh" if language == "zh-hant" else language)
-    return pc_or_mac(
-        _tr(
-            "No {language} voice on this PC yet. Windows adds one for free: "
-            "Settings > Time & language > Speech > Add voices, then "
-            "{language}."
+    if on_linux():
+        if not system_voice:
+            return in_sentence(
+                _tr(
+                    "No {language} voice yet: Polyglotic speaks with the "
+                    "system's speech-dispatcher, which isn't installed or didn't "
+                    "start. Install speech-dispatcher and "
+                    "speech-dispatcher-espeak-ng from your software manager."
+                ),
+                language=name,
+            )
+        return in_sentence(
+            _tr(
+                "No {language} voice yet: the system's speech-dispatcher has "
+                "none. speech-dispatcher-espeak-ng, from your software manager, "
+                "adds voices for over 100 languages."
+            ),
+            language=name,
+        )
+    return in_sentence(
+        pc_or_mac(
+            _tr(
+                "No {language} voice on this PC yet. Windows adds one for free: "
+                "Settings > Time & language > Speech > Add voices, then "
+                "{language}."
+            ),
+            _tr(
+                "No {language} voice on this Mac yet. macOS adds one for free: "
+                "System Settings > Accessibility > Spoken Content > System "
+                "voice > Manage Voices, then {language}."
+            ),
         ),
-        _tr(
-            "No {language} voice on this Mac yet. macOS adds one for free: "
-            "System Settings > Accessibility > Spoken Content > System "
-            "voice > Manage Voices, then {language}."
-        ),
-    ).format(language=name)
+        language=name,
+    )
 
 
 def better_voice_steps(language: str) -> str:
     """A word or selection was said in a basic voice: how to add a better
     one of its language (polyglotic-hq 518; Apple's steps, 428). Only a
     Mac's voices are basic (`ports.speaker.Quality`): Windows' natural
-    voices are Narrator's own."""
+    voices are Narrator's own. On Linux every voice is speech-dispatcher's
+    basic one, and none better is open to the app yet (591; DECISIONS #243
+    item 3): the notice says so, and that recorded words sound natural."""
     name = learned_name(notice_language(language))
-    return _tr(
-        "That was macOS's basic {language} voice. A more natural one is "
-        "free: System Settings > Accessibility > Spoken Content > System "
-        "voice > Manage Voices, then a {language} voice marked Enhanced or "
-        "Premium."
-    ).format(language=name)
+    if on_linux():
+        return in_sentence(
+            _tr(
+                "That was the system's basic {language} voice, from "
+                "speech-dispatcher. Polyglotic can't use a more natural one on "
+                "Linux yet; words with a recording play in a natural voice."
+            ),
+            language=name,
+        )
+    if an_before(name):  # "an English voice" (551)
+        #: "an" before a language name said with a vowel first ("an English voice"). Translate as the text with "then a {language} voice"
+        said = _tr(
+            "That was macOS's basic {language} voice. A more natural one is "
+            "free: System Settings > Accessibility > Spoken Content > System "
+            "voice > Manage Voices, then an {language} voice marked Enhanced "
+            "or Premium."
+        )
+    else:
+        said = _tr(
+            "That was macOS's basic {language} voice. A more natural one is "
+            "free: System Settings > Accessibility > Spoken Content > System "
+            "voice > Manage Voices, then a {language} voice marked Enhanced or "
+            "Premium."
+        )
+    return in_sentence(said, language=name)
 
 
 def never_again_text(language: str) -> str:
     """The better-voice notice's checkbox (518)."""
     name = learned_name(notice_language(language))
-    return _tr("Don't show again for {language}").format(language=name)
+    return in_sentence(_tr("Don't show again for {language}"), language=name)
 
 
 def dismiss_text() -> str:
@@ -282,7 +328,8 @@ def answered_by(language: str) -> str:
     """The card's line naming the dictionary that answered, when it isn't
     the row's language's (polyglotic-hq 337)."""
     #: the card's word was found in another language's dictionary than its caption line's, e.g. "From the English dictionary"
-    return _tr("From the {language} dictionary").format(language=learned_name(language))
+    said = _tr("From the {language} dictionary")
+    return in_sentence(said, language=learned_name(language))
 
 
 def _here_font(card: Card) -> QFont:
@@ -615,7 +662,8 @@ class LookupCard(QWidget):
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.WindowDoesNotAcceptFocus
-            | Qt.WindowType.WindowTransparentForInput,  # until pinned
+            | Qt.WindowType.WindowTransparentForInput  # until pinned
+            | ABOVE_ALL,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -796,11 +844,8 @@ class LookupCard(QWidget):
                 return self.model.entry() if pinned else None
 
             self.act(shown)
-            transparent = not pinned
-            if bool(self.windowFlags() & Qt.WindowType.WindowTransparentForInput) != (
-                transparent
-            ):
-                self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, transparent)
+            # re-mapped, never live (550): shown below once it's drawn
+            set_click_through(self, not pinned, show=False)
             self._render()
             self.show()  # on top already, and never raise_()d: that activates
             self._watch(pinned)
@@ -896,7 +941,8 @@ class LookupCard(QWidget):
             self._top(painted, card, saying, room)
         self._headline(painted, card, room)
         if saying is not None and saying[1] is Say.NO_VOICE and self._voice_help:
-            self._no_voice(painted, saying[0])
+            system = self.speech is None or self.speech.system_voice()
+            self._no_voice(painted, saying[0], system)
         speech = self.speech
         if (
             saying is not None
@@ -922,15 +968,21 @@ class LookupCard(QWidget):
             painted.space(3)
             name = learned_name(card.language or "")
             painted.text(
-                _tr(
-                    "The {language} dictionary is used once you learn {language}. "
-                    "Captions and translation still work."
-                ).format(language=name)
+                in_sentence(
+                    _tr(
+                        "The {language} dictionary is used once you learn {language}. "
+                        "Captions and translation still work."
+                    ),
+                    language=name,
+                )
                 if tier_of(card.language or "") is Tier.FULL  # not learned (306)
-                else _tr(
-                    "No dictionary for {language} yet. Captions and translation "
-                    "still work."
-                ).format(language=name),
+                else in_sentence(
+                    _tr(
+                        "No dictionary for {language} yet. Captions and translation "
+                        "still work."
+                    ),
+                    language=name,
+                ),
                 _ui(13),
                 DIM,
             )
@@ -952,16 +1004,17 @@ class LookupCard(QWidget):
         if not card.offer:
             name = learned_name(card.added)
             painted.text(
-                _tr(
-                    "{language} is on your Learning page now, with its dictionary "
-                    "to download there ({size} MB)."
-                ).format(
+                in_sentence(
+                    _tr(
+                        "{language} is on your Learning page now, with its dictionary "
+                        "to download there ({size} MB)."
+                    ),
                     language=name,
                     size=QLocale().toString(card.added_pack / 1_000_000, "f", 1),
                 )
                 if card.added_pack
-                else _tr("{language} is on your Learning page now.").format(
-                    language=name
+                else in_sentence(
+                    _tr("{language} is on your Learning page now."), language=name
                 ),
                 _ui(12),
                 DIM,
@@ -969,7 +1022,7 @@ class LookupCard(QWidget):
             return
         name = learned_name(card.offer)
         painted.text(
-            _tr("Learning {language} too?").format(language=name),
+            in_sentence(_tr("Learning {language} too?"), language=name),
             _ui(12),
             DIM,
         )
@@ -977,7 +1030,7 @@ class LookupCard(QWidget):
         painted.row(
             [
                 _Piece(
-                    _tr("Learn {language} too").format(language=name),
+                    in_sentence(_tr("Learn {language} too"), language=name),
                     _ui(12, bold=True),
                     ACCENT,
                     (None, _alpha(ACCENT, 0.8)),
@@ -1020,12 +1073,15 @@ class LookupCard(QWidget):
                 right=room,
             )
 
-    def _no_voice(self, painted: _Painted, language: str) -> None:
+    def _no_voice(self, painted: _Painted, language: str, system: bool) -> None:
         """No voice for the word's language on this PC: how Windows adds
         one (Microsoft's steps, polyglotic-hq 286), and a button to it - on
-        a Mac, how macOS adds one (Apple's steps, 428)."""
+        a Mac, how macOS adds one (Apple's steps, 428). On Linux the steps
+        alone, and why (591): there is no settings page to open."""
         painted.space(4)
-        painted.text(no_voice_steps(language), _ui(12), DIM)
+        painted.text(no_voice_steps(language, system), _ui(12), DIM)
+        if on_linux():
+            return
         painted.space(2)
         painted.row(
             [
@@ -1438,10 +1494,13 @@ class LookupCard(QWidget):
         language, state = saying
         if state is Say.NO_VOICE:
             name = learned_name("zh" if language == "zh-hant" else language)
-            return pc_or_mac(
-                _tr("No {language} voice on this PC"),
-                _tr("No {language} voice on this Mac"),
-            ).format(language=name)
+            return in_sentence(
+                pc_or_mac(
+                    _tr("No {language} voice on this PC"),
+                    _tr("No {language} voice on this Mac"),
+                ),
+                language=name,
+            )
         if state is Say.SPEAKING:
             return _tr("Stop (R)")
         return _tr("Say it (R)")

@@ -36,9 +36,10 @@ from polyglotic_desktop.ports.learning import LearningDataProblem, SetAsideLearn
 from polyglotic_desktop.ui import theme as todays_theme
 from polyglotic_desktop.ui.app import ConnectionState, DesktopApp
 from polyglotic_desktop.ui.learning import LearningTools
+from polyglotic_desktop.ui_next import maintenance as maintenance_words
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
-from polyglotic_desktop.ui_next.main_window import minimum_size
+from polyglotic_desktop.ui_next.main_window import roomy_size
 from tools.ui_lab.caption_window import PLANNED, _areas, in_lab_zone
 from tools.ui_lab.lab import Lab, State
 from tools.ui_lab.lookup import sample_tools
@@ -63,6 +64,11 @@ def scaled(size: tuple[int, int]) -> tuple[int, int]:
 class MadeUpApps:
     def playing_apps(self) -> list[PlayingApp]:
         return list(APPS)
+
+
+class NoApps(MadeUpApps):
+    def playing_apps(self) -> list[PlayingApp]:
+        return []
 
 
 class QuietApps:
@@ -155,6 +161,12 @@ def picker_none(lab: Lab) -> QWidget:
     """Nothing chosen: a learner who stopped everything (a new learner
     captions everything the PC plays since 484: `everything`)."""
     built = hub(lab, {"whole_system": False})
+    no_horizontal_scrollbar(built)
+    return built.window
+
+
+def picker_no_apps(lab: Lab) -> QWidget:
+    built = hub(lab, {"whole_system": False}, apps=NoApps())
     no_horizontal_scrollbar(built)
     return built.window
 
@@ -274,6 +286,7 @@ def whats_new(lab: Lab) -> QWidget:
 
 def picker_one(lab: Lab) -> QWidget:
     built = hub(lab, {"apps": ["Discord"], "caption_mic": True})
+    built.desktop.set_connection(ConnectionState.LISTENING)
     lab.time(
         "language_chip",
         lambda: built.picker.set_translate_into(
@@ -342,16 +355,18 @@ def everything(lab: Lab) -> QWidget:
     it takes in, a call's voices too, and the apps playing to caption one
     instead with one click."""
     built = hub(lab, {})
+    built.desktop.set_connection(ConnectionState.LISTENING)
     return built.window
 
 
 def at_minimum(lab: Lab) -> QWidget:
-    """Narrowed from its usual size to the minimum (960 x 680, 248):
-    nothing scrolls sideways."""
+    """Narrowed from its usual size to the least it opens at (960 x 680
+    times the text size, 248; `roomy_size` - no longer its minimum, which
+    is `at_floor`'s, polyglotic-hq 586): nothing scrolls sideways."""
     built = hub(lab, {"apps": ["Discord", "Video Player", "Web Browser"]})
-    built.window.resize(*minimum_size())
+    built.window.resize(*roomy_size())
     lab.pump()
-    assert (built.window.width(), built.window.height()) == minimum_size()
+    assert (built.window.width(), built.window.height()) == roomy_size()
     no_horizontal_scrollbar(built)
     return built.window
 
@@ -500,6 +515,7 @@ def maintenance(when: datetime, lab: Lab) -> QWidget:
     built = hub(lab, {"apps": ["Discord"], "targets": ["en"]})
     built.home.state._wall_clock = lambda: when
     built.set_maintenance(PLANNED)
+    lab.closing.append(lambda: maintenance_words.hold(None))  # held for the windows
     desktop = built.desktop
     if when < PLANNED.starts_at:
         desktop.set_connection(ConnectionState.LISTENING)
@@ -607,6 +623,7 @@ STATES = [
     State(f"ui_next.w4_{name}", run, gated=True)
     for name, run in (
         ("picker_none", picker_none),
+        ("picker_no_apps", picker_no_apps),
         ("sample", sample),
         ("sample_ended", sample_ended),
         ("start_with_windows", start_with_windows),

@@ -253,9 +253,11 @@ def _hex(rgb: tuple[float, float, float]) -> str:
 
 # -- thickness -----------------------------------------------------------------------
 
-GREY_READING = 0.6
+GREY_READING = 0.8
 """Where a grey reading sits between its panel and what was said: this
-share of the way to what was said, in lightness (polyglotic-hq 532)."""
+share of the way to what was said, in lightness (polyglotic-hq 532) -
+0.6 until 584: on Everyday's panel over a white scene its pinyin was at
+2.9:1; at 0.8, 7.5:1 and still a step under the text's white."""
 
 
 def reading_grey(panel: str, said: str) -> str:
@@ -301,18 +303,38 @@ def reading_weight(thickness: int) -> int:
 # -- visibility --------------------------------------------------------------------
 
 
+_DIAGONAL = math.sqrt(0.5)
+_ROUND = (
+    (-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0),
+    (-_DIAGONAL, -_DIAGONAL), (_DIAGONAL, -_DIAGONAL),
+    (-_DIAGONAL, _DIAGONAL), (_DIAGONAL, _DIAGONAL),
+)  # fmt: skip
+"""Eight ways out, each as far: an outline's copies."""
+
 EDGE_PASSES: dict[TextEdge, tuple[tuple[float, float, float], ...]] = {
     TextEdge.NONE: (),
     TextEdge.SHADOW: ((1.0, 1.0, 0.55), (2.0, 2.0, 0.3)),
-    TextEdge.OUTLINE: tuple(
-        (dx, dy, 0.85)
-        for dx in (-1.0, 0.0, 1.0)
-        for dy in (-1.0, 0.0, 1.0)
-        if (dx, dy) != (0.0, 0.0)
+    TextEdge.OUTLINE: (
+        (0.0, 0.0, 1.0),  # under the letters themselves: see `OUTLINE_SOLID`
+        *((dx, dy, 1.0) for dx, dy in _ROUND),
     ),
 }
 """Each edge as the text drawn again under it: x and y in pixels at 21 px
-text (grown with the text), and how much of the text's own ink."""
+text (grown with the text; each moved by whole pixels of the screen, so
+every copy lands on the pixels the text does), and how much of the text's
+own ink. The outline is round - its corners as far out as its sides, not
+1.4 times as far - and solid: copies at 85 % left a grey fringe wherever
+only one reached, and at Video's 63 px text, three pixels out, it read
+as a blur (polyglotic-hq 584; the user, 2026-11-21: "Big fonts are
+blurry during video mode, especially when greyed")."""
+
+OUTLINE_SOLID = 0.3
+"""An outline is drawn at full strength under text this faint or more -
+and under the letters themselves - so faint text (the words still to
+come, an older caption stepped back, at the softest contrast too) is a
+solid grey on solid black: its faintness from its colour, never the
+video seen through its letters (584). Fainter than this the text is
+fading away, and its outline fades with it."""
 
 
 def edge_colour(text: str) -> str:

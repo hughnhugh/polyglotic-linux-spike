@@ -43,6 +43,7 @@ from polyglotic_desktop.adapters.sqlite_dictionary import (
 )
 from polyglotic_desktop.core.lexicon import chinese
 from polyglotic_desktop.core.lexicon.entries import DictionaryEntry
+from polyglotic_desktop.core.lexicon.readings import RESPELLED_WORD_LIMIT
 from polyglotic_desktop.ports.dictionary import EntryRecord
 from tools.dictionaries import (
     cedict,
@@ -335,7 +336,9 @@ def respellings(paths: Mapping[str, Path], lemmas: Mapping[str, str]) -> dict[st
     cmudict = respell.read_cmudict(paths["cmudict"].read_text(encoding="utf-8"))
     frequencies = wordfreq_ranks.frequencies(paths["wordfreq"])
     picks = respell.read_picks(respell.PICKS.read_text(encoding="utf-8"))
-    rows = respell.table(respell.commonest(frequencies, RESPELLED), cmudict, picks)
+    rows = respell.table(
+        respell.commonest(frequencies, RESPELLED_WORD_LIMIT), cmudict, picks
+    )
     found = {row.word: row.respelling for row in rows}
     heteronyms = {row.word for row in rows if any("(" in a for a in row.alternates)}
     forms = sorted(
@@ -350,12 +353,6 @@ def respellings(paths: Mapping[str, Path], lemmas: Mapping[str, str]) -> dict[st
         (row.word, row.respelling) for row in respell.table(forms, cmudict, picks)
     )
     return found
-
-
-RESPELLED = 10_000
-"""How many of the commonest English words are respelled: the 10,000 471
-picked pronunciations for and checked (99.5 % right, weighted by use) -
-with their inflected forms (`respellings`)."""
 
 
 ENGLISH_MEANINGS = "ecdict-en.sqlite"
@@ -468,7 +465,7 @@ def credits() -> str:
         "  them), CC BY-SA 4.0 and GFDL. Changes: chosen per sense and ordered,",
         "  converted to SQLite by ECDICT's entry IDs. It is shared under",
         "  **CC BY-SA 4.0**.",
-        "- Both English files carry respellings of the 10,000 commonest words",
+        f"- Both English files carry respellings of the {RESPELLED_WORD_LIMIT:,} commonest words",
         "  (KAY-oss), made by Polyglotic's own rules from CMUdict's American",
         "  pronunciations (its licence below), the usual one picked with",
         "  Wiktionary's help (CC BY-SA 4.0).",

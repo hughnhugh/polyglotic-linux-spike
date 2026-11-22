@@ -31,7 +31,7 @@ def test_normal_is_between_0_1_9s_larger_and_largest_and_the_default() -> None:
 
 def test_every_step_moves_with_it() -> None:
     """Smaller is 0.1.9's Normal, Larger its Largest, and a Largest above
-    it - no larger than the floor's (`tools.ui_lab.pages.FLOOR_SCALE`:
+    it - no larger than the floor's (`ui_next.main_window.FLOOR_SCALE`:
     the main window at a 1366 x 768 laptop's 150 %, every page fitting)."""
     steps = style.APP_TEXT_SIZES
     assert steps["smaller"] == STEPS_0_1_9["normal"]

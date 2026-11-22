@@ -25,7 +25,9 @@ from polyglotic_desktop.perf.trace import (
     APP_STAGES,
     DONE_AFTER_SEC,
     TRACE_LOG,
+    UNHEARD,
     Tracer,
+    Unheard,
     speech_key,
 )
 
@@ -72,11 +74,12 @@ def test_an_update_is_timed_from_the_sound_to_the_screen(
     seq = _through(tracer, clock)
     tracer.mark(seq, "handed", 100.31)
     tracer.mark(seq, "applied", 100.32)
+    tracer.released(seq, 1.75, 100.325)  # a paced mode's playout let it out
     tracer.windowed(seq, 100.33)
     tracer.painted(100.35)
     clock.now = 100.4
     [done] = tracer.recent()
-    assert done["end"] == "painted"
+    assert done["end"] == "painted" and done["pace"] == 1.75
     assert done["seq"] == seq and done["cap"] == "c1-aaaaa"  # 8 characters
     assert [s for s in APP_STAGES if s in done["t"]] == list(APP_STAGES)
     assert done["srv"] == {
@@ -96,6 +99,7 @@ def test_an_update_is_timed_from_the_sound_to_the_screen(
         "end",
         "srv",
         "held",
+        "pace",
     }
 
 
@@ -206,6 +210,78 @@ def test_the_detail_is_written_only_when_asked(tracer: Tracer, clock: Clock) -> 
         logger.propagate = before[1]
     [line] = caught.lines
     assert json.loads(line)["end"] == "received"
+
+
+# --- sound without speech (polyglotic-hq 549, decision 0256) -----------------
+
+
+def _going(ended: float = 99.0) -> Unheard:
+    return Unheard("video", 90.0, ended, (-40, -30, -24), 1, 4.0, "open")
+
+
+def test_sound_without_speech_is_given_as_it_stands_then_done(
+    tracer: Tracer, clock: Clock
+) -> None:
+    """A problem report sent during a long stretch has it as it stands;
+    once it ends it's a done record like any other: kept, heard by the
+    listeners, written to the trace file when asked."""
+    heard: list[dict[str, Any]] = []
+    tracer.listen(heard.append)
+    logger = logging.getLogger(TRACE_LOG)
+    caught = Lines()
+    before = (logger.level, logger.propagate)
+    logger.addHandler(caught)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    tracer.detail = True
+    try:
+        tracer.sounding(7, _going())
+        [now] = tracer.recent()
+        assert now["kind"] == UNHEARD and now["end"] == "open" and heard == []
+        tracer.sounding(7, _going(99.5))  # the same stretch, later
+        assert [r["t"]["ended"] for r in tracer.recent()] == [99.5]
+        ended = Unheard("video", 90.0, 100.0, (-40, -30, -24), 2, 0.3, "speech")
+        tracer.unheard(7, ended)
+    finally:
+        logger.removeHandler(caught)
+        logger.setLevel(before[0])
+        logger.propagate = before[1]
+    [done] = tracer.recent()
+    assert done == ended.as_json() and heard == [done]
+    [line] = caught.lines
+    assert json.loads(line) == done
+
+
+def test_a_stretch_given_as_it_stood_and_never_ended_is_forgotten(
+    tracer: Tracer, clock: Clock
+) -> None:
+    """Its source went before it ended (a capture's last callback after
+    its stop): it isn't kept going in every report after."""
+    tracer.sounding(7, _going())
+    clock.now = 99.0 + DONE_AFTER_SEC + 1
+    assert tracer.recent() == []
+
+
+def test_a_problem_reports_log_carries_the_stretches(tmp_path: Path) -> None:
+    from tools.trace.read import load
+
+    from polyglotic_desktop.main import log_with_timelines
+
+    made = Tracer(clock=Clock())
+    made.unheard(1, Unheard("game", 60.0, 88.2, (-38, -30, -24), 5, 0.4, "speech"))
+    made.sounding(2, _going())
+    folder = tmp_path / "logs"
+    folder.mkdir()
+    (folder / "polyglotic.log").write_text("started\n", "utf-8")
+    report = tmp_path / "report-log.txt"
+    report.write_text(log_with_timelines(folder, made.recent()) or "", "utf-8")
+    records, kind = load(report)
+    assert kind == "report"
+    assert [(r["kind"], r["src"], r["end"]) for r in records] == [
+        (UNHEARD, "game", "speech"),
+        (UNHEARD, "video", "open"),
+    ]
+    assert records[0]["len"] == 28.2 and records[0]["dbfs"] == [-38, -30, -24]
 
 
 # --- a listening session numbers its frames and reads the server's trace ------
@@ -423,3 +499,36 @@ def test_a_listening_sessions_timelines_go_with_consent_only(
     assert props["updates"] == 1 and props["shown"] == 1 and props["hangs"] == 0
     assert props["caption_mode"] == "steady" and props["platform"] == "windows"
     assert "total_p50_ms" in props and "listening_seconds" in props
+
+
+def test_a_session_that_sent_nothing_while_sound_went_unheard_says_so(
+    server: FakeServer,
+) -> None:
+    """polyglotic-hq 549: a session where speech detection heard nothing in
+    sound that went on is the one to see - its summary goes, with the hang
+    put down to sound_unheard."""
+    from tests.test_connection import App
+    from tests.test_session import SETTINGS
+
+    made = Tracer()
+    before = trace.use(made)
+    try:
+        app = App(server.url)
+        app.exchange.choose_consent(usage=True, crashes=False, exposures=False)
+        app.connection.start_listening(SETTINGS, app.speech.take)
+        wait_until(app.listener.listening)
+        at = time.perf_counter()
+        made.unheard(
+            1, Unheard("music", at, at + 28.2, (-38, -30, -24), 5, 0.4, "speech")
+        )
+        app.connection.stop_listening()
+        wait_until(lambda: len(server.app_closes) == 2)  # a sync after it
+        events = {
+            e["name"]: e["props"] for m in server.of_type("usage") for e in m["events"]
+        }
+        app.connection.close()
+    finally:
+        trace.use(before)
+    props = events["caption_timeline_summarised"]
+    assert props["updates"] == 0 and props["hangs"] == 1
+    assert props["hangs_sound_unheard"] == 1

@@ -204,6 +204,9 @@ def test_after_a_long_stretch_heard_as_not_speech_the_model_starts_afresh() -> N
     assert len(results) == frames
     assert not any(r.speech for r in results)
     assert detector.probability(after) == pytest.approx(expected, abs=1e-6)
+    # the frame it happened after says so (polyglotic-hq 549: the
+    # stretches of sound without speech count it)
+    assert [r.reset for r in results] == [False] * (frames - 1) + [True]
 
 
 def test_a_shorter_stretch_heard_as_not_speech_keeps_the_state() -> None:
@@ -215,8 +218,9 @@ def test_a_shorter_stretch_heard_as_not_speech_keeps_the_state() -> None:
 
     detector = SpeechDetector(model)
     frames = int(np.ceil(QUIET_RESET_SEC * SR / FRAME_SAMPLES)) - 1
-    detector.feed(0.0, _not_speech(frames))
+    results = detector.feed(0.0, _not_speech(frames))
     assert detector.probability(after) != pytest.approx(expected, abs=1e-6)
+    assert not any(r.reset for r in results)
 
 
 def _frame(peak: float) -> np.ndarray:

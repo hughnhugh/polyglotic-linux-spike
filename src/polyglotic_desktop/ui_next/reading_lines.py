@@ -10,7 +10,7 @@ characters it reads, centred on them. Where it is wider than they are,
 they get the room: the layout is told how much each character takes
 (`Ruby.before`, `.after`; the one layout measures its units with it,
 `views.flow.Above`), and Qt spaces the characters by the same amounts
-(`spaced`), so a word is still found, marked, selected and looked up by
+(`rooms`), so a word is still found, marked, selected and looked up by
 its row and character - a reading line changes where text is, never what
 it is. A reading may reach over its neighbour's character where that
 one's reading is narrower than it, so characters keep their own spacing
@@ -287,7 +287,7 @@ class Ruby:
     drop: float
     """How far above a line's top a reading's baseline is."""
     spacing: tuple[tuple[int, int, float], ...]
-    """The room as Qt is given it (`spaced`): Qt's index of a character,
+    """The room as Qt is given it (`rooms`): Qt's index of a character,
     its length there, and the room after it."""
     text_font: QFont
     """The text's own font: a mark (`Reading.mark`) is drawn in it."""
@@ -465,9 +465,10 @@ def _room(room: float) -> QTextCharFormat:
     return found
 
 
-def spaced(layout: QTextLayout, readings: Ruby) -> None:
-    """Gives `layout` (not yet begun) the room `readings` need: each
-    character followed by its own room after and the next one's before."""
+def rooms(readings: Ruby) -> list[QTextLayout.FormatRange]:
+    """The formats that give a layout (not yet begun) the room `readings`
+    need: each character followed by its own room after and the next
+    one's before."""
     ranges = []
     for start, length, room in readings.spacing:
         found = QTextLayout.FormatRange()
@@ -475,8 +476,7 @@ def spaced(layout: QTextLayout, readings: Ruby) -> None:
         found.length = length
         found.format = _room(room)
         ranges.append(found)
-    if ranges:
-        layout.setFormats(ranges)
+    return ranges
 
 
 def lead(text: str, readings: Ruby, unit: int) -> float:

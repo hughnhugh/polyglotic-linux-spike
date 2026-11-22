@@ -27,7 +27,7 @@ Low 2).
 
 import logging
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 
 from polyglotic_desktop.connection import listening, protocol
@@ -48,9 +48,10 @@ from polyglotic_desktop.core.listening.maintenance import Maintenance
 from polyglotic_desktop.core.listening.recheck import RecheckRequest, RecheckResult
 from polyglotic_desktop.core.listening.settings import ListeningSettings
 from polyglotic_desktop.core.listening.sources import Capture
-from polyglotic_desktop.core.listening.summary import SessionAction
+from polyglotic_desktop.core.listening.summary import PresetStep, SessionAction
 from polyglotic_desktop.core.listening.timing import (
     LIVE_UPDATE_INTERVAL_SEC,
+    CaptionId,
     CaptionMode,
 )
 from polyglotic_desktop.core.shared import LearningEvent
@@ -76,10 +77,14 @@ class Connection:
         sync_delay: float = SYNC_DELAY_SEC,
         retry_waits: Sequence[float] = RETRY_WAITS,
         milestones: Milestones | None = None,
+        capture_restarts: Callable[[], int] | None = None,
     ) -> None:
         """`listener` hears the listening session; sync sessions are this
         object's own business. `milestones`: the install's, told of the
-        first caption and sent when listening starts (project 134)."""
+        first caption and sent when listening starts (project 134).
+        `capture_restarts`: the captures' restarts since it was last called
+        (the speech pipeline's `take_restarts`), for each listening
+        session's summary (polyglotic-hq 566)."""
         self._server = server
         self._credentials = credentials
         self._app = app
@@ -89,6 +94,7 @@ class Connection:
         self._sync_delay = sync_delay
         self._retry_waits = retry_waits
         self.milestones = milestones
+        self._capture_restarts = capture_restarts
         self._lock = threading.Lock()
         self._listening: ListeningSession | None = None
         self._sync: ListeningSession | None = None
@@ -99,6 +105,7 @@ class Connection:
         self._moved = False  # the listening session stopped: listening moved
         self._capture: Capture | None = None  # what is captured, for summaries
         self._joined = False  # the joined window is on
+        self._songs = False  # a music player is heard in songs mode (595)
         self.sync_stopped: StopReason | None = None
         """Set when sync sessions stopped for good (the user must act)."""
         self.maintenance: Maintenance | None = None
@@ -123,11 +130,13 @@ class Connection:
         take_speech: SpeechSource,
         live_interval: float | None = LIVE_UPDATE_INTERVAL_SEC,
         caption_mode: CaptionMode | None = None,
+        preset: Mapping[str, protocol.UsageValue] | None = None,
     ) -> ListeningSession:
         """Opens the listening session (stopping a sync session); returns
         it, for `speech_ready` and `change_settings`. `live_interval` (the
-        live-update interval followed; None: none) and `caption_mode` are
-        for its summary."""
+        live-update interval followed; None: none), `caption_mode` and
+        `preset` (the preset in use, as the summary's properties:
+        polyglotic-hq 556) are for its summary."""
         with self._lock:
             if self._listening is not None:
                 raise RuntimeError("already listening")
@@ -147,8 +156,10 @@ class Connection:
                 caption_mode=caption_mode,
                 capture=self._capture,
                 maintenance=self.maintenance,
+                capture_restarts=self._capture_restarts,
             )
             listener.session = session
+            session.preset_usage = dict(preset or {})
             self._listening = session
             self._moved = False
         if sync is not None:
@@ -158,6 +169,8 @@ class Connection:
             self.milestones.send_due()
         if self._joined:
             session.did(SessionAction.JOINED_WINDOW)
+        if self._songs:
+            session.songs(True)
         return session
 
     def stop_listening(self) -> None:
@@ -188,10 +201,10 @@ class Connection:
             self._hand_on(session)
             summary = session.ended()
             if summary is not None:
+                properties = listening.session_ended(summary, self._app.platform)
+                properties.update(session.preset_usage)  # optional (556)
                 self._exchange.usage(
-                    listening.SESSION_ENDED,
-                    listening.session_ended(summary, self._app.platform),
-                    datetime.now(UTC),
+                    listening.SESSION_ENDED, properties, datetime.now(UTC)
                 )
             timelines = session.timelines()
             if timelines is not None:  # where its caption time went (543)
@@ -251,12 +264,31 @@ class Connection:
         if session is not None:
             session.did(action)
 
+    def preset_step(self, step: PresetStep, changes: int) -> None:
+        """A step on the chosen preset - saved, saved as new, discarded -
+        that carried `changes` settings, counted in the listening session's
+        summary (polyglotic-hq 587). Nothing while no one listens."""
+        session = self._listening
+        if session is not None:
+            session.preset_step(step, changes)
+
     def joined(self, on: bool) -> None:
         """The joined window is on (or off): a listening session open while
         it's on says so in its summary."""
         self._joined = on
         if on:
             self.did(SessionAction.JOINED_WINDOW)
+
+    def songs(self, on: bool) -> None:
+        """Whether a music player is heard in songs mode now (595): a
+        listening session's summary keeps how long - sent only with consent
+        to usage statistics."""
+        if on == self._songs:
+            return
+        self._songs = on
+        session = self._listening
+        if session is not None:
+            session.songs(on)
 
     def recheck(self, request: RecheckRequest) -> bool:
         """A flagged line's speech, to check on the best models: sent on the
@@ -446,6 +478,9 @@ class _ListeningListener:
     def caption_failed(self) -> None:
         self._listener.caption_failed()
 
+    def caption_dropped(self, caption_id: CaptionId) -> None:
+        self._listener.caption_dropped(caption_id)
+
     def connection_stalled(self, stalled: bool) -> None:
         if stalled and self._superseded():
             return  # its end still clears a stall it said (False goes on)
@@ -485,6 +520,9 @@ class _SyncListener:
         pass
 
     def caption_failed(self) -> None:
+        pass
+
+    def caption_dropped(self, caption_id: CaptionId) -> None:
         pass
 
     def connection_stalled(self, stalled: bool) -> None:

@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
 from polyglotic_desktop.core.listening.dictation import PIECE_MAX_SEC, quietest_cut
+from polyglotic_desktop.core.listening.respeaking import RESPEAK_GAIN, RESPEAK_PEAK
 from polyglotic_desktop.core.listening.timing import VAD_SAMPLE_RATE
 from polyglotic_desktop.platform.opus import encode_ogg_opus
 from polyglotic_desktop.platform.speech_detection import Audio
@@ -30,6 +31,14 @@ STEP_SEC = 0.1
 """The loudness is measured in steps this long to find where to cut."""
 LEVEL_GAIN = 12.0
 """Speech's loudness (RMS around 0.02-0.08) times this fills the meter."""
+
+
+def encode_respeaking(audio: Audio) -> bytes:
+    """Bring quiet held-mic audio up before encoding, with a gain limit."""
+    peak = float(np.max(np.abs(audio), initial=0.0))
+    if 0.0 < peak < RESPEAK_PEAK.configured:
+        audio = audio * min(RESPEAK_GAIN.configured, RESPEAK_PEAK.configured / peak)
+    return encode_ogg_opus(audio)
 
 
 class DictationMic:

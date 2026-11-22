@@ -6,6 +6,7 @@ choice. Made-up apps only."""
 import threading
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import Qt, QTimer
@@ -15,13 +16,22 @@ from tests.ui.fakes import FakeAppList, MemorySettingsStore
 
 from polyglotic_desktop.connection.reconnect import StopReason
 from polyglotic_desktop.connection.session import SessionState, Status
-from polyglotic_desktop.core.listening.captions import Language
+from polyglotic_desktop.core.listening.captions import (
+    CaptionKind,
+    CaptionUpdate,
+    Clause,
+    Language,
+)
+from polyglotic_desktop.core.listening.recent_speech import HeldSpeech
+from polyglotic_desktop.core.listening.recheck import RecheckOutcome, RecheckResult
+from polyglotic_desktop.core.listening.settings import ListeningSettings
 from polyglotic_desktop.core.listening.sources import (
     Capture,
     CaptureMode,
     Source,
     SourceId,
 )
+from polyglotic_desktop.core.listening.timing import CaptionId
 from polyglotic_desktop.main import (
     QtListener,
     SourcePlan,
@@ -32,6 +42,7 @@ from polyglotic_desktop.main import (
     plan_sources,
     plus_is_back,
     start_notice,
+    wire_continuation_refresh,
 )
 from polyglotic_desktop.platform.audio_buffer import AudioBuffer
 from polyglotic_desktop.ports.capture import (
@@ -64,6 +75,8 @@ class FakeCapture:
     @property
     def error(self) -> str | None:
         return None
+
+    restarts = 0  # never fails (566)
 
 
 class FakePipeline:
@@ -121,7 +134,11 @@ def test_the_settings_become_the_servers_settings() -> None:
     )
     settings = listening_settings(value)
     assert settings.targets == (Language("en"), Language("zh"))
-    assert settings.second_languages == {Language("en"): Language("zh")}
+    # Chinese's English by default (polyglotic-hq 555), English's chosen
+    assert settings.second_languages == {
+        Language("en"): Language("zh"),
+        Language("zh"): Language("en"),
+    }
     assert settings.spoken_language == Language("zh") and settings.translate_live
     assert settings.spelling_hints == ("Caleb",)
     assert listening_settings(AppSettings()).spoken_language is None
@@ -711,3 +728,65 @@ def test_the_accounts_cohort_reaches_the_interface_from_welcome(
     QApplication.processEvents()
     assert seen == ["alpha"]  # only a welcome says it
     desktop.close()
+
+
+@pytest.mark.parametrize("overtaken", [False, True])
+def test_invalidated_display_group_refreshes_only_its_later_audio(
+    qapp: QApplication, overtaken: bool
+) -> None:
+    desktop = DesktopApp(MemorySettingsStore({}), None, None)
+    pipeline, connection = Mock(), Mock()
+    listener = QtListener(desktop, None)
+    feed = desktop.feed
+    first = finished("a", clause("目前在。", "Currently at."))
+    whole = replace(
+        finished("b", clause("目前在上海。", "Currently in Shanghai.")),
+        continues=first.caption_id,
+    )
+    audio = HeldSpeech(
+        whole.caption_id, whole.source_id, SourceCategory.BROWSER, 5, 6, b"later audio"
+    )
+    pipeline.get.return_value = audio
+    connection.recheck.return_value = True
+    wire_continuation_refresh(
+        feed,
+        listener,
+        pipeline,
+        connection,
+        lambda: ListeningSettings(targets=(Language("en"),)),
+    )
+    received: list[CaptionUpdate] = []
+    feed.received.connect(received.append)
+    try:
+        feed.apply(first)
+        feed.apply(whole)
+        feed.apply(
+            CaptionUpdate(first.caption_id, first.source_id, CaptionKind.WITHDRAWN)
+        )
+        pipeline.get.assert_called_once_with(whole.caption_id)
+        request = connection.recheck.call_args.args[0]
+        assert (
+            request.caption_id,
+            request.audio,
+            request.speech_start,
+            request.speech_end,
+        ) == (
+            whole.caption_id,
+            audio.audio,
+            audio.start,
+            audio.end,
+        )
+        if overtaken:
+            feed.apply(finished("b", clause("北京。", "Beijing.")))
+        heard = len(received)
+        listener.rechecked(
+            RecheckResult(CaptionId("b"), RecheckOutcome.CHECKED, (Clause("上海。"),))
+        )
+        qapp.processEvents()
+        assert [c.original for c in feed.history.captions] == (
+            ["北京。"] if overtaken else ["上海。"]
+        )
+        assert len(received) == heard
+    finally:
+        desktop.close()
+        desktop.deleteLater()

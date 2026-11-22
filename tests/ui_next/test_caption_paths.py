@@ -41,7 +41,10 @@ def test_follow_puts_the_translation_first_in_a_paced_mode(
     style = window.canvas.engine.style
     assert style.text_px == pytest.approx(both.text_px * FOLLOW_SAID_SCALE)
     # the translation is larger than what was said was, in full ink
-    assert style.text_px * style.translation_size > both.text_px * both.translation_size
+    assert (
+        style.text_px * style.translation_factor
+        > both.text_px * both.translation_factor
+    )
     ink = window.canvas.ink
     assert ink.alpha == FOLLOW_SAID_ALPHA
     assert ink.alpha * ink.translation_alpha == pytest.approx(1.0)
@@ -98,6 +101,7 @@ def test_follows_lines_are_whole_and_never_split_across_the_divider(
     from polyglotic_desktop.core.listening.playout import PlayoutRules
 
     found = CaptionWindows(None, MIC, lambda: [AREA])
+    found.set_cards(False)  # the two zones: the card stack takes their place (0260)
     try:
         found.word_clock = zones.Clock()
         found.set_captioned([("app", APP)])

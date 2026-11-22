@@ -9,7 +9,8 @@ Reads the app's caption timelines (`perf.trace`): the rolling trace file
 problem report's log carries, or - for an app before the trace - the
 caption log (`captions.log*`: sent, answered and shown only). Writes one
 HTML page: what the stretch says (`perf.trace_summary`: each segment's
-percentiles, the hangs and their causes, bursts, drops), an overview, and
+percentiles, the hangs and their causes, bursts, drops, and the stretches
+of sound without speech - polyglotic-hq 549), an overview, and
 a close-up of each of the worst hangs - every update a bar from the sound
 to the screen, coloured by segment, and the moments the screen changed.
 `--pictures` also writes those close-ups as PNGs (Qt's SVG renderer,

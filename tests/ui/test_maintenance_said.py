@@ -36,7 +36,9 @@ from polyglotic_desktop.ui.app import DesktopApp
 from polyglotic_desktop.ui.settings import AppSettings
 from polyglotic_desktop.ui_next import home as home_page
 from polyglotic_desktop.ui_next import maintenance as words
+from polyglotic_desktop.ui_next.caption_window import notice_text
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.views.caption_window import Notice
 from polyglotic_desktop.ui_next.views.placement import Rect
 
 APP_1 = SourceId("app-1")
@@ -71,6 +73,8 @@ def stopped(monkeypatch: pytest.MonkeyPatch) -> None:
     fell between (2026-11-14, #622; polyglotic-hq 344)."""
     for module in (main, home_page):
         monkeypatch.setattr(module, "datetime", stopped_at(NOW))
+    monkeypatch.setattr(words, "wall_clock", lambda: NOW)
+    monkeypatch.setattr(words, "_held", [None])  # each test's own window
 
 
 def short(hour: int, minute: int) -> str:
@@ -367,9 +371,44 @@ def test_during_it_home_and_the_tray_say_until_when_not_down(
     assert "down" not in home.detail.text()
     assert desktop.state_title == title  # the tray's tooltip: "Polyglotic - ..."
     assert home.notice.isHidden()  # the state line says it: no banner beside it
+    # the caption windows say until when too, in the PC's zone, named (563:
+    # they said only "Planned maintenance - captions come back by themselves")
     caption = windows.windows["Web Browser"]
     caption._tick()
     assert caption.notice.text() == (
+        f"Planned maintenance until {until} ({words.zone_name(window.ends_at)})"
+        " - captions come back by themselves"
+    )
+
+
+def test_the_caption_windows_notice_names_the_zone_and_the_day_it_ends(
+    qapp: QApplication, in_australia: None
+) -> None:
+    """The user, 2026-11-20: "use the system timezone and specify it for
+    them to remove ambiguity" - the caption windows' notice too (563)."""
+    words.hold(TOMORROW_AT_SIX)
+    during = datetime(2026, 11, 20, 19, 30, tzinfo=UTC)
+    assert words.notice_until(during, MELBOURNE) == (
+        f"Planned maintenance until {short(7, 30)} (AEDT) - captions come back "
+        "by themselves"
+    )
+    # read on the evening before (the notice is for during it): its day named
+    the_day_before = datetime(2026, 11, 20, 9, tzinfo=UTC)
+    saturday = QLocale().dayName(6, QLocale.FormatType.LongFormat)
+    assert words.notice_until(the_day_before, MELBOURNE) == (
+        f"Planned maintenance until {saturday} {short(7, 30)} (AEDT) - captions "
+        "come back by themselves"
+    )
+
+
+def test_with_no_window_held_the_notice_says_only_that_its_planned(
+    qapp: QApplication,
+) -> None:
+    """The server said maintenance with no window told (or it was called
+    off): no time to say, as before."""
+    words.hold(None)
+    assert words.notice_until(NOW) is None
+    assert notice_text(Notice.MAINTENANCE, None) == (
         "Planned maintenance - captions come back by themselves"
     )
 

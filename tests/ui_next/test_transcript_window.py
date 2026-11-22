@@ -528,7 +528,9 @@ def test_it_opens_beside_its_caption_window(
     windows.windows["Discord.exe"].controls["transcript"].trigger()
     shown = transcripts.shown["Discord.exe"]
     assert shown.isVisible()
-    caption = windows.windows["Discord.exe"].geometry()
+    # joined, as two windows start (554): beside the window it's a column of
+    assert windows.joined_window is not None
+    caption = windows.joined_window.geometry()
     assert shown.geometry().size().toTuple() == (720, 520)
     assert not shown.geometry().intersects(caption)
 

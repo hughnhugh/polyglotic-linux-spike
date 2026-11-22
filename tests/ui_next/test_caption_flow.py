@@ -12,7 +12,7 @@ from itertools import cycle, pairwise
 
 import pytest
 import shiboken6
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QWidget
 from tests.budget_judge import sampled, within
@@ -115,6 +115,54 @@ def test_two_clauses_on_one_line_never_share_a_links_colour() -> None:
                 )
     assert len(colours[0]) == 4 and len(colours[1]) == 1
     assert colours[0].isdisjoint(colours[1])
+
+
+def test_joined_card_layout_and_links_match_a_fresh_paint_after_resizing(
+    qapp: QApplication,
+) -> None:
+    (line,) = lines_of(finished("card", WEEKEND, OKAY), links=WordLinks.ARROWS).lines
+    engine = engine_of(PAIRED, arrows=True)
+    marks = CaptionMarks(None)
+
+    def draw(laid: LaidLine, clip_top: int, alpha: float) -> QImage:
+        image = QImage(600, 350, QImage.Format.Format_ARGB32)
+        image.fill(QColor("black"))
+        painter = QPainter(image)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setClipRect(QRectF(0, clip_top, image.width(), image.height()))
+        ink = Ink(
+            said_in_link_colours=True, translation_in_link_colours=True, alpha=alpha
+        )
+        engine.paint(painter, line, laid, QPointF(5.25, 10.5), ink, marks)
+        painter.end()
+        return image
+
+    for width in (580, 575, 160, 580):
+        card = engine.laid_card(line, width, 1.0)
+        fresh = engine.laid(line, width, 1.0)
+        assert card.height == fresh.height
+        for links in (WordLinks.ARROWS, WordLinks.OFF, WordLinks.ARROWS):
+            marks.set_look(links, WordIntroductions.OFF)
+            for clip, alpha in ((0, 1.0), (0, 1.0), (45, 0.6), (0, 1.0)):
+                assert draw(card, clip, alpha) == draw(fresh, clip, alpha)
+
+
+def test_wrapped_translation_keeps_its_words_whole(qapp: QApplication) -> None:
+    clause = Clause(
+        "五六七八九十。",
+        {EN: "Found fifteen green flags on the other side of the great river."},
+    )
+    (line,) = lines_of(
+        finished(
+            "sample", Clause("一二三四", {EN: "Seven runners scored points."}), clause
+        )
+    ).lines
+    laid = engine_of(PAIRED).laid_card(line, 260, 1.0)
+    row = next(r for r in laid.rows if r.row.text == clause.translations[EN])
+    assert row.layout.lineCount() > 1
+    for n in range(1, row.layout.lineCount()):
+        at = row.layout.lineAt(n).textStart()
+        assert not (row.row.text[at - 1].isalpha() and row.row.text[at].isalpha())
 
 
 def painted(engine: CaptionLayout, line: Line, width: int) -> tuple[QImage, LaidLine]:
@@ -245,6 +293,7 @@ def test_the_labs_new_layout_puts_a_caption_window_on_the_one_layout(
     assert caption_style(arrows).arrows  # in every layout now
 
 
+@pytest.mark.usefixtures("fill_the_width_on")
 def test_the_new_layout_is_off_until_chosen_and_saved_leniently() -> None:
     lab = CaptionLab()
     assert (lab.flow, lab.run_on, lab.aligned) == (False, False, False)

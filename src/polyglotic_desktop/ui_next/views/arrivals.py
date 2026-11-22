@@ -41,6 +41,8 @@ Python, no Qt: times are seconds on whatever clock the window keeps.
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from polyglotic_desktop.ui_next.views.cards import ease
+
 OLDER_ALPHA = 0.72
 OLDER_TRANSLATION_ALPHA = 0.82
 """Older captions' ink alpha in B - what was said, and its translation,
@@ -140,7 +142,10 @@ class Slide:
 
     def offset(self, now: float) -> float:
         """How far below its place the stack is drawn at `now`."""
-        return self.from_px * _left(self.started, self.seconds, now)
+        # Keep the speech-paced duration. Easing into a long move avoids
+        # the abrupt first frame of a cubic ease-out and gets a new row
+        # clear of the lower edge sooner as the stack comes to rest.
+        return self.from_px * (1.0 - ease((now - self.started) / self.seconds))
 
     def done(self, now: float) -> bool:
         return now - self.started >= self.seconds

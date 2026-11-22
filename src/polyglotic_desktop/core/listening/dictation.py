@@ -123,6 +123,10 @@ class ToType:
     target: int
 
 
+MANDARIN_STOP = "。"
+"""A standalone Mandarin fragment loses its final stop when continued."""
+
+
 @dataclass(slots=True)
 class _Piece:
     caption_id: CaptionId
@@ -130,6 +134,7 @@ class _Piece:
     sent: float
     target: int
     last: bool  # the hold's last piece
+    continues: CaptionId | None = None
     text: str | None = None  # "" when nothing worth typing was heard
 
 
@@ -145,6 +150,8 @@ class Dictation:
         self._released = False
         """The key came up on a hold whose last piece isn't cut yet."""
         self._waiting: list[_Piece] = []
+        self._previous: tuple[CaptionId, int] | None = None
+        """Only the preceding piece's ID and prefix length, never its text."""
         self._typed: set[int] = set()
         """The holds some of whose text was typed."""
         self.said: Said | None = None
@@ -235,6 +242,7 @@ class Dictation:
         if piece is None:
             return []
         language = chosen or update.language
+        piece.continues = update.continues
         piece.text = (
             dictated_text([c.original for c in update.clauses], language, australian)
             if update.kind is CaptionKind.FINISHED
@@ -243,8 +251,22 @@ class Dictation:
         ready = []
         while self._waiting and self._waiting[0].text is not None:
             done = self._waiting.pop(0)
-            if done.text:
-                ready.append(ToType(done.text, done.target))
+            text = done.text or ""
+            if done.continues is not None:
+                # A caption window revises its earlier line. Dictation has
+                # already typed that piece, possibly into a different window.
+                previous = self._previous
+                text = (
+                    text[previous[1] :]
+                    if previous and previous[0] == done.continues
+                    else ""
+                )
+            self._previous = (
+                done.caption_id,
+                len(text.rstrip().removesuffix(MANDARIN_STOP)),
+            )
+            if text:
+                ready.append(ToType(text, done.target))
                 self._typed.add(done.hold)
             if done.last:
                 self._over(done.hold)

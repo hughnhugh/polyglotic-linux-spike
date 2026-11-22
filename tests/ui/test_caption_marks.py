@@ -25,7 +25,13 @@ from polyglotic_desktop.core.shared import WordStatus
 from polyglotic_desktop.ui.learning import LearningTools
 from polyglotic_desktop.ui.recorded_captions import APP, clause, finished, live
 from polyglotic_desktop.ui_next.caption_layout import LINK_MARK
-from polyglotic_desktop.ui_next.caption_marks import IN_DECK, CaptionMarks, Panel
+from polyglotic_desktop.ui_next.caption_marks import (
+    IN_DECK,
+    LINK_COLORS,
+    CaptionMarks,
+    Panel,
+    link_colours,
+)
 from polyglotic_desktop.ui_next.views.captions import CaptionLines
 from polyglotic_desktop.ui_next.views.presets import BY_KEY, contrast
 
@@ -129,6 +135,40 @@ def test_word_links_are_underlined_in_their_links_colour(qapp: QApplication) -> 
         for _, _, f in linked
     )
     assert len(linked) == sum(len(row.links) for row in line.rows) == 2
+
+
+def test_a_links_colour_is_never_its_lines_own(qapp: QApplication) -> None:
+    """The user, 2026-11-20 (polyglotic-hq 554, a picture of Classic's
+    look): "issue with word linkage matching font colours at times" - the
+    gold translation's linked words in orange and in olive read as its
+    other words. Those two are skipped on Classic, the next colours take
+    their turn, and the said and translated words of a link still share
+    one colour."""
+    classic = BY_KEY["classic"]
+    panel = Panel(classic.background, classic.original, classic.translation)
+    assert link_colours(panel) == tuple(
+        c for c in LINK_COLORS if c not in ("#ff9f43", "#acbf60")
+    )
+    pairs = (("我", "My"), ("电脑", "computer"), ("又", "again"), ("卡", "froze"))
+    view = CaptionLines(
+        (APP,), EN, keep=10, options=DisplayOptions(word_links=WordLinks.COLOURS)
+    )
+    view.apply(
+        finished("a", clause("我的电脑又卡了", "My computer froze again", pairs))
+    )
+    marks = CaptionMarks(None)
+    marks.set_look(WordLinks.COLOURS, WordIntroductions.A_FEW, panel)
+    line = view.lines[0]
+    drawn: dict[int, set[str]] = {}
+    for row in range(len(line.rows)):
+        for _, _, f in marks(line, row):
+            drawn.setdefault(f.property(LINK_MARK), set()).add(
+                f.underlineColor().name()
+            )
+    assert len(drawn) == len(pairs)
+    assert all(len(colours) == 1 for colours in drawn.values())  # one per link
+    used = {colour for colours in drawn.values() for colour in colours}
+    assert len(used) == len(pairs) and not used & {"#ff9f43", "#acbf60"}
 
 
 def test_a_new_caption_with_highlights_within_its_budget(qapp: QApplication) -> None:

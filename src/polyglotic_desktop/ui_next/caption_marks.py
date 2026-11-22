@@ -72,6 +72,7 @@ it.
 
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 
 from PySide6.QtGui import QColor, QTextCharFormat
 
@@ -83,7 +84,7 @@ from polyglotic_desktop.core.learning.vocabulary import Changed
 from polyglotic_desktop.core.lexicon.english import inside_sentence, is_capitalised
 from polyglotic_desktop.core.listening.display import LIVE_TRAIL, RowKind, WordLinks
 from polyglotic_desktop.core.shared import EntryId, WordInLine
-from polyglotic_desktop.ui_next.caption_layout import LINK_MARK, Mark
+from polyglotic_desktop.ui_next.caption_layout import LINK_CONTRAST, LINK_MARK, Mark
 from polyglotic_desktop.ui_next.views.caption_window import MarksIn, rows_marked
 from polyglotic_desktop.ui_next.views.captions import Line
 from polyglotic_desktop.ui_next.views.known_colours import (
@@ -96,6 +97,7 @@ from polyglotic_desktop.ui_next.views.links import RowLinks, hidden_links
 from polyglotic_desktop.ui_next.views.lookup import Learner
 from polyglotic_desktop.ui_next.views.presets import (
     AA_TEXT,
+    ciede2000,
     colour_difference,
     readable_on,
     readable_through,
@@ -122,7 +124,18 @@ polyglotic-hq 446: the user found orange and the brown that was last, 11
 apart, "not that distinguishable"). 446 changed three: the brown to an
 olive, the lime to a green and the magenta a little pinker. The vibrance
 slider (481) leaves them as they are: muted or made vivid, two pairs fell
-under 13 (`tests/ui_next/test_tone_on_captions.py`)."""
+under 13 (`tests/ui_next/test_tone_on_captions.py`). On a look whose text
+is near one of them, it is skipped there (`link_colours`, 554)."""
+APART_FROM_TEXT = 22.0
+"""The least CIEDE2000 between a link's colour, as a word is drawn in it
+(`caption_layout.link_ink`: made readable on the panel), and the text of
+the rows it links: one closer is skipped for the next (`link_colours`).
+The user, 2026-11-20 (polyglotic-hq 554): "issue with word linkage
+matching font colours at times" - Classic's gold translation with the
+orange link (18.8) and the olive one (18.0); every preset's nearer pairs
+go too (Ember's orange in its orange, 1.9; Teletext's cyan in its cyan,
+5.8; Paper's red by its brown, 21.2). The nearest kept, 23.3, is a light
+colour against an off-white (Ember's purple)."""
 UNFAMILIAR = "#ffd27a"
 """Dots under a word new to the learner."""
 IN_DECK = "#7ee0a8"
@@ -199,6 +212,42 @@ class Panel:
 
     def own(self, kind: RowKind) -> str:
         return self.original if kind is RowKind.ORIGINAL else self.translation
+
+
+def link_colours(panel: Panel) -> tuple[str, ...]:
+    """The word links' colours on `panel`, in `LINK_COLORS`' order: those
+    too close to its rows' own colours as a word is drawn in them
+    (`APART_FROM_TEXT`) skipped, so the next takes their turn - a linked
+    word mustn't read as one of its line's other words (polyglotic-hq 554).
+    Both rows', as a link joins a word of each in one colour."""
+    return _link_colours(
+        panel.background, panel.opacity, panel.original, panel.translation
+    )
+
+
+def link_colour(panel: Panel, link: int) -> str:
+    """Link number `link`'s colour on `panel` (`link_colours`)."""
+    colours = link_colours(panel)
+    return colours[link % len(colours)]
+
+
+@lru_cache(maxsize=64)
+def _link_colours(
+    background: str, opacity: float, original: str, translation: str
+) -> tuple[str, ...]:
+    kept = tuple(
+        colour
+        for colour in LINK_COLORS
+        if all(
+            ciede2000(
+                readable_through(colour, background, opacity, 1.0, LINK_CONTRAST),
+                row,
+            )
+            >= APART_FROM_TEXT
+            for row in (original, translation)
+        )
+    )
+    return kept or LINK_COLORS  # text in colours like every one of them
 
 
 def _said(line: Line, index: int) -> list[tuple[int, int, str]]:
@@ -336,7 +385,7 @@ class CaptionMarks:
                 for linked in row.links:
                     if (row.clause, linked.link) in hidden:
                         continue
-                    color = LINK_COLORS[linked.link % len(LINK_COLORS)]
+                    color = link_colour(self.panel, linked.link)
                     marks[index].append(
                         (
                             linked.start,

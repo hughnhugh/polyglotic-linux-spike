@@ -4,6 +4,7 @@ caption hands off when its last line has rolled out of the live zone."""
 
 import itertools
 from collections.abc import Iterator
+from dataclasses import replace
 
 import pytest
 from PySide6.QtCore import QPointF
@@ -23,6 +24,7 @@ from polyglotic_desktop.core.listening.timing import CaptionId, CaptionMode
 from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.views.lab import CAPTION_GAP_RANGE
 from polyglotic_desktop.ui_next.views.zones import (
     LIVE_LINES_CONVERSATION,
     LIVE_LINES_MONOLOGUE,
@@ -56,6 +58,7 @@ def windows(qapp: QApplication) -> Iterator[CaptionWindows]:
     found.word_clock = Clock()
     found.set_captioned([("app", APP)])
     found.set_playout(PlayoutRules(delay=0.0, hold_back=0))
+    found.set_cards(False)  # the card stack takes their place (decision 0260)
     found.set_timing(CaptionMode.STEADY)
     found.windows["app"].resize(900, 460)
     yield found
@@ -130,19 +133,63 @@ def test_a_caption_settles_when_its_last_line_has_rolled_out(
     assert window.zone.height() <= window.zone.line_height() * LIVE_LINES_MONOLOGUE + 3
 
 
-def test_the_live_zone_is_one_paragraph_and_a_pause_ends_it(
+def test_each_live_caption_starts_a_line_and_a_pause_settles_them(
     windows: CaptionWindows,
 ) -> None:
+    """548's picture, 2026-11-20: a caption began in the middle of a line,
+    after the one it ran on from had settled."""
     window = say(windows, caption(1, text="short"), caption(2, text="one"))
-    _first, second = (laid for _, laid, _ in reversed(window.zone.placed))
-    assert second.lead > 0.0  # it carries on in the line the first ended in
+    assert [laid.lead for _, laid, _ in window.zone.placed] == [0.0, 0.0]
     window._zone_paused()  # nothing new for 5 s
     assert window.zones is not None
     assert {ln.key for ln in window.view.lines} <= window.zones.settled
     window = say(windows, caption(3, text="after"))
     (third,) = (laid for _, laid, _ in window.zone.placed)
-    assert third.lead == 0.0  # a line of its own
+    assert third.lead == 0.0
     assert [ln.caption_id for ln, _, _ in window.canvas.placed] == ["c1", "c2"]
+
+
+def test_after_a_pause_the_transcript_has_the_window(windows: CaptionWindows) -> None:
+    """548's pictures, 2026-11-20: at the end of speech the live zone was
+    empty and still took its lines, and the transcript above showed only
+    the last caption's translation."""
+    window = windows.windows["app"]
+    window.set_language("fr")
+    say(windows, *(caption(n) for n in range(1, 6)))
+    window._zone_paused()
+    window.grab()
+    assert window.zone.height() == 0 and window.zone_room() == 0.0
+    drawn = window.canvas.placed
+    assert [ln.caption_id for ln, _, _ in drawn][-3:] == ["c3", "c4", "c5"]
+    clear = window.canvas.clear_top
+    for _, laid, rect in drawn[-3:]:  # each with what was said and its translation
+        assert rect.top() >= clear - 0.5 and rect.bottom() <= window.height()
+        assert {row.row.kind.value for row in laid.rows} == {"original", "translation"}
+    window = say(windows, caption(6))  # speech again: the zone is back
+    assert window.zone.height() > 0
+
+
+def test_a_long_captions_first_line_stays_until_it_hands_off(
+    windows: CaptionWindows,
+) -> None:
+    """548's picture, 2026-11-20: a long caption's first row had scrolled
+    out of the live zone before the caption handed off. The zone is taller
+    while a caption that began above its lines is still read."""
+    window = windows.windows["app"]
+    window.set_language("fr")
+    window.resize(520, 620)
+    long = " ".join([SAID] * 3)
+    zones = window.zones
+    assert zones is not None
+    for n in range(1, 7):
+        window = say(windows, caption(n, text=long if n % 2 else SAID))
+        top = window.zone.clear_top
+        for line, _, rect in window.zone.placed:  # none with its start cut off
+            assert rect.top() >= top - 0.5, (n, line.caption_id)
+        shown = {ln.key for ln, _, _ in window.zone.placed}
+        assert shown | zones.settled >= {ln.key for ln in window.view.lines}
+    assert window.zone.height() >= window.zone.lines_tall
+    assert zones.settled  # and they do hand off
 
 
 def test_a_word_in_the_live_zone_can_be_pointed_at(windows: CaptionWindows) -> None:
@@ -303,10 +350,18 @@ def test_the_transcript_fills_the_space_above_the_live_zone_with_whole_captions(
     assert drawn[0][1] - window.canvas.clear_top < tallest + 12, drawn
 
 
-def test_a_live_line_is_a_whole_pair_tall(windows: CaptionWindows) -> None:
+@pytest.mark.parametrize("caption_gap", [None, CAPTION_GAP_RANGE[1]])
+def test_a_live_line_is_a_whole_pair_tall(
+    windows: CaptionWindows, caption_gap: float | None
+) -> None:
     """The zone's height is so many lines: a line is what was said and
     its translation with the gap under them - it was a pair less its gap,
-    and three "lines" held 2.2 (the lab's picture, 2026-11-20)."""
+    and three "lines" held 2.2 (the lab's picture, 2026-11-20). The gap
+    under a caption's last pair is the one between captions, the Lab's
+    own (559: 66 for a pitch of 68 once Latin took the Latin face)."""
+    if caption_gap is not None:  # the Lab's widest space between captions
+        lab = replace(windows.look.lab, caption_gap=caption_gap)
+        windows.set_look(replace(windows.look, lab=lab))
     window = windows.windows["app"]
     window.set_language("fr")
     say(windows, *(spoken(n) for n in range(1, 6)))
@@ -319,3 +374,21 @@ def test_a_live_line_is_a_whole_pair_tall(windows: CaptionWindows) -> None:
     )
     pitch = max(b - a for a, b in itertools.pairwise(said))
     assert window.zone.line_height() >= pitch - 0.5
+
+
+def test_no_room_above_the_live_zone_shows_no_part_of_a_caption(
+    windows: CaptionWindows,
+) -> None:
+    """The lab's picture, 2026-11-20: with room for less than a caption
+    above the live zone, the newest settled caption's translation stood
+    there alone."""
+    window = windows.windows["app"]
+    window.set_language("fr")
+    say(windows, *(caption(n) for n in range(1, 8)))
+    for height in range(240, 480, 3):  # every room there could be above it
+        window.resize(900, height)
+        window.grab()
+        clear = window.canvas.clear_top
+        for line, _, rect in window.canvas.placed:
+            if rect.bottom() > clear + 0.5:  # drawn at all: from its start
+                assert rect.top() >= clear - 0.5, (height, line.caption_id)

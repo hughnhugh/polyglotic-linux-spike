@@ -7,7 +7,9 @@ They're in the `ui` package's assets beside the heading faces; adding all
 of them takes about 7 ms (482's measure on Windows).
 """
 
-from collections.abc import Callable, Iterable
+import logging
+import sys
+from collections.abc import Callable, Collection, Iterable
 from importlib.resources import files
 from pathlib import Path
 
@@ -15,6 +17,7 @@ from PySide6.QtGui import QFontDatabase
 
 from polyglotic_desktop.ui_next import fonts
 
+log = logging.getLogger(__name__)
 FOLDER = Path(str(files("polyglotic_desktop.ui") / "assets" / "fonts"))
 
 DOWNLOADED_SUFFIXES = (".ttf", ".otf")
@@ -29,6 +32,41 @@ text laid out before a face came and drawn after came out as boxes (479)."""
 _loaded: dict[str, list[str]] = {}
 """Each file added: the families Qt found in it (none: it wasn't there)."""
 _weights: dict[tuple[str, int], bool] = {}
+_cjk_checked = False
+
+
+def log_missing_cjk_fonts(
+    installed: Collection[str] | None = None, system: str = sys.platform
+) -> dict[str, tuple[str, ...]]:
+    """Log missing system CJK font families once per process (polyglotic-hq
+    647). Minimal Linux installs (or WSL) without `fonts-noto-cjk` show boxes
+    for Japanese and Traditional Chinese; Ubuntu and Fedora desktops ship CJK
+    fonts already, so nothing is logged there."""
+    global _cjk_checked
+    if _cjk_checked:
+        return {}
+    _cjk_checked = True
+    families = QFontDatabase.families() if installed is None else installed
+    missing = fonts.missing_cjk_families(families, system)
+    if missing:
+        wanted = list(
+            dict.fromkeys(
+                family for expected in missing.values() for family in expected
+            )
+        )
+        hint = (
+            " (install fonts-noto-cjk on Debian/Ubuntu or "
+            "google-noto-sans-cjk-vf-fonts on Fedora)"
+            if system.startswith("linux")
+            else ""
+        )
+        log.warning(
+            "missing system CJK font families for %s; looked for: %s%s",
+            ", ".join(missing),
+            ", ".join(wanted),
+            hint,
+        )
+    return missing
 
 
 def load(folder: Path = FOLDER) -> list[str]:
@@ -41,6 +79,7 @@ def load(folder: Path = FOLDER) -> list[str]:
             path for path in downloaded.iterdir() if path.suffix in DOWNLOADED_SUFFIXES
         )
     add(paths)
+    log_missing_cjk_fonts()
     return sorted({family for families in _loaded.values() for family in families})
 
 

@@ -604,8 +604,9 @@ class Card(QFrame):
         self.title = label(title, "CardTitle") if title else None
         if self.title is not None:
             self.column.addWidget(self.title)
-        if subtitle:
-            self.column.addWidget(label(subtitle, "Dim", wrap=True))
+        self.subtitle = label(subtitle, "Dim", wrap=True) if subtitle else None
+        if self.subtitle is not None:
+            self.column.addWidget(self.subtitle)
 
     def add(self, item: QWidget | QLayout) -> None:
         if isinstance(item, QWidget):
@@ -679,13 +680,16 @@ class Segmented(QFrame):
         row.setContentsMargins(3, 3, 3, 3)
         self.buttons: list[QPushButton] = []
         for index, (_, text) in enumerate(options):
-            button = QPushButton(text)
+            button = self._make_button(text)
             button.setCheckable(True)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.clicked.connect(lambda _=False, i=index: self._clicked(i))
             self.buttons.append(button)
             row.addWidget(button)
         self.set_value(value)
+
+    def _make_button(self, text: str) -> QPushButton:
+        return QPushButton(text)
 
     def _clicked(self, index: int) -> None:
         self.set_value(self._values[index])  # a click on the chosen one keeps it

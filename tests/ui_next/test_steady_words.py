@@ -18,8 +18,10 @@ from polyglotic_desktop.core.listening.captions import (
     SpeechTimes,
 )
 from polyglotic_desktop.core.listening.display import LIVE_TRAIL, RowKind
+from polyglotic_desktop.core.listening.history import CaptionHistory
 from polyglotic_desktop.core.listening.playout import Ahead, PlayoutRules
 from polyglotic_desktop.core.listening.timing import CaptionId, CaptionMode
+from polyglotic_desktop.ui.captions import CaptionFeed
 from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
 
@@ -68,6 +70,7 @@ def clock() -> Clock:
 @pytest.fixture
 def windows(qapp: QApplication, clock: Clock) -> Iterator[CaptionWindows]:
     found = CaptionWindows(None, MIC, lambda: [AREA])
+    found.set_cards(False)  # the playout through the one list; cards: test_card_stack
     found.word_clock = clock
     found.set_captioned([("app", APP)])
     found.set_playout(PlayoutRules(delay=2.0))
@@ -87,6 +90,9 @@ def test_steady_shows_a_word_when_its_time_comes(
     clock.now = 100.3
     windows.release_words()
     assert said(windows) == ["cat"]
+    clock.now = 100.8
+    windows.release_words()
+    assert said(windows) == ["cat dog"]
     clock.now = 101.5
     windows.release_words()
     assert said(windows) == [
@@ -141,6 +147,9 @@ def test_calm_shows_only_established_words(
     windows.apply(replace(update, established=len("cat dog")))
     clock.now = 110.0
     windows.release_words()
+    assert said(windows) == ["cat"]
+    clock.now += 0.5
+    windows.release_words()
     assert said(windows) == ["cat dog"]
 
 
@@ -164,3 +173,33 @@ def test_a_paced_modes_live_caption_doesnt_trail_off(
     assert trails(windows)
     windows.set_timing(CaptionMode.STEADY)
     assert not trails(windows)
+
+
+def test_a_paced_continuation_retires_its_live_line_when_cards_are_off(
+    windows: CaptionWindows,
+    clock: Clock,
+) -> None:
+    windows.set_timing(CaptionMode.STEADY)
+    feed = CaptionFeed(CaptionHistory(), None)
+    feed.applied.connect(windows.apply)
+    feed.apply(finished("Currently in.", 90.0, 91.0))
+    while (due := windows.playout.due()) is not None:
+        clock.now = max(clock.now, due)
+        windows.release_words()
+    clock.now = 105
+    later = CaptionId("later")
+    feed.apply(replace(live("Paris again", 105, 106), caption_id=later))
+    clock.now = 110
+    windows.release_words()
+    assert len(said(windows)) == 2
+    feed.apply(
+        replace(
+            finished("Currently in Paris again.", 105, 111),
+            caption_id=later,
+            continues=ONE,
+        )
+    )
+    while (due := windows.playout.due()) is not None:
+        clock.now = max(clock.now, due)
+        windows.release_words()
+    assert said(windows) == ["Currently in Paris again."]

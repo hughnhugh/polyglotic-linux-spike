@@ -119,6 +119,20 @@ def test_a_panel_that_goes_is_no_longer_told(qapp: QApplication) -> None:
     view.set_mode(CaptionMode.INSTANT)  # nothing left to refresh
 
 
+def test_the_card_stack_has_a_switch_in_the_paced_modes(qapp: QApplication) -> None:
+    view = TimingView(Timing(CaptionMode.STEADY))
+    panel = TimingPanel(view)
+    panel.show()
+    assert panel.cards_row.isVisible() and panel.cards_row.switch.isChecked()
+    assert not panel.zones_row.isVisible()  # the cards take the two zones' place
+    panel.cards_row.switch.setChecked(False)
+    assert not view.value.cards
+    assert panel.zones_row.isVisible()  # off: the two zones, and their switch
+    panel.mode.choose(CaptionMode.INSTANT)
+    assert not panel.cards_row.isVisible()
+    panel.close()
+
+
 def test_the_interval_only_with_live_updates(qapp: QApplication) -> None:
     view = TimingView(Timing(CaptionMode.WHOLE, 10.0))
     panel = TimingPanel(view)
@@ -203,9 +217,9 @@ def test_each_timing_shows_only_its_own_settings(qapp: QApplication) -> None:
         "wait": panel.wait_row,
     }
     own = {
-        CaptionMode.STEADY: {"newest", "ahead", "wait"},
-        CaptionMode.WHOLE: {"wait"},
         CaptionMode.INSTANT: {"live", "translate", "wait"},
+        CaptionMode.WHOLE: {"wait"},
+        CaptionMode.STEADY: {"newest", "ahead", "wait"},
         CaptionMode.CALM: {"ahead", "wait"},
     }
     assert tuple(own) == OFFERED_MODES
@@ -222,7 +236,7 @@ def test_each_timing_shows_only_its_own_settings(qapp: QApplication) -> None:
             Ahead.WAITING,
         )
         # each says what it trades; the one longest wait, for every timing
-        assert panel.live.detail.text().startswith("Shorter: text sooner")
+        assert "show text sooner" in panel.live.detail.text()
         assert "the same in every timing" in panel.wait_row.detail.text()
         # Live updates every offers 0.5 to 6 s and says nothing of 20 (before
         # 295: "from 0.5 to 20 seconds", with 6 s the most offered)
@@ -453,7 +467,8 @@ def test_live_updates_every_says_the_first_waits_for_a_second(
 
     panel = TimingPanel(TimingView(Timing()))
     try:
-        assert "first update waits for a second of speech" in panel.live.detail.text()
+        assert "first update waits for a second of speech" in panel.live.toolTip()
+        assert panel.interval.accessibleDescription() == panel.live.toolTip()
     finally:
         panel.deleteLater()
         QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

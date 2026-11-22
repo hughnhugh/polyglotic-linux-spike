@@ -42,25 +42,23 @@ def numbered(tracer: Tracer, updates: list[CaptionUpdate]) -> list[CaptionUpdate
     return out
 
 
-def test_updates_the_mouse_held_are_windowed_when_it_lets_them_in(
-    qapp: QApplication, tracer: Tracer
-) -> None:
+def test_the_mouse_holds_no_update(qapp: QApplication, tracer: Tracer) -> None:
+    # 583 (the user, 2026-11-21: "The mouse shouldn't hold up delivery"):
+    # with the mouse on the words, updates are windowed at once - the view
+    # holds instead - and no record says the mouse held one
     window = window_of(qapp, captions=2)
     try:
-        window._hold()  # the mouse moves over the window
+        window._hold()  # the mouse on the words
         updates = numbered(tracer, finished_updates(2, start=2))
         for update in updates:
-            assert window.receive(update) is False
-        tracer.painted()  # a paint while they wait shows none of them
-        assert all(r["end"] != "painted" for r in tracer.recent())
-        window.let_in()
+            assert window.receive(update) is True
         window.repaint()
         tracer.flush()
         done = {r["seq"]: r for r in tracer.recent()}
         for update in updates:
             assert update.times is not None
             record = done[update.times.seq]
-            assert record["held"] == "mouse"
+            assert record.get("held") != "mouse"
             assert "windowed" in record["t"] and record["end"] == "painted"
     finally:
         window.close()
@@ -92,3 +90,40 @@ def test_only_a_window_marks_an_update_on_screen(tracer: Tracer) -> None:
     tracer.flush()
     [done] = tracer.recent()
     assert "windowed" not in done["t"]
+
+
+def test_steadys_playout_marks_its_pace_not_a_windows_hold(
+    qapp: QApplication, tracer: Tracer
+) -> None:
+    """Steady keeps each word until its moment plus its delay: the trace
+    counted that as the window's hold, and every utterance's start as a
+    2-2.8 s hang (polyglotic-hq 551, 548's traces). The playout's wait is
+    `released` and the record's `pace`; the window shows it at once."""
+    from tests.ui_next.test_lookup_card import AREA
+    from tests.ui_next.test_steady_words import Clock, live
+
+    from polyglotic_desktop.core.listening.playout import PlayoutRules
+    from polyglotic_desktop.core.listening.timing import CaptionMode
+    from polyglotic_desktop.ui.recorded_captions import APP, MIC
+    from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+
+    clock = Clock()
+    windows = CaptionWindows(None, MIC, lambda: [AREA])
+    try:
+        windows.word_clock = clock
+        windows.set_captioned([("app", APP)])
+        windows.set_playout(PlayoutRules(delay=1.75))
+        windows.set_timing(CaptionMode.STEADY)
+        [update] = numbered(tracer, [live("cat dog bird fish", 98.0, 100.0)])
+        assert update.times is not None
+        seq = update.times.seq
+        windows.apply(update)  # nothing yet: its first word is due later
+        clock.now = 100.3
+        windows.release_words()
+        windows.windows["app"].repaint()
+        tracer.flush()
+        [done] = [r for r in tracer.recent() if r["seq"] == seq]
+        assert done["pace"] == 1.75 and "held" not in done
+        assert done["t"]["applied"] <= done["t"]["released"] <= done["t"]["windowed"]
+    finally:
+        windows.close()

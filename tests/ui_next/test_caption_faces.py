@@ -174,11 +174,12 @@ def test_chinese_is_in_calligraphy_with_its_sans_behind() -> None:
 
 def test_readings_skip_a_face_without_tone_marks() -> None:
     """Ma Shan Zheng has no ā or ǒ: a reading in it would be a brush's
-    consonants and another face's vowels in one word (532)."""
+    consonants and another face's vowels in one word (532). Nor over the
+    other brushed faces (551: Polyglotic Kai's are in Noto Sans SC too)."""
     families = fonts.caption_families("zh", system="win32")
     assert fonts.reading_families(families)[0] == "Noto Sans SC Captions"
-    chosen = fonts.caption_families("zh", "Polyglotic Kai", system="win32")
-    assert fonts.reading_families(chosen)[0] == "Polyglotic Kai"
+    chosen = fonts.caption_families("zh", "Noto Serif SC Captions", system="win32")
+    assert fonts.reading_families(chosen)[0] == "Noto Serif SC Captions"
     assert fonts.reading_families(["Some PC Font"]) == ["Some PC Font"]
 
 

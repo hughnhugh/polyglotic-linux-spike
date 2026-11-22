@@ -18,7 +18,7 @@ ending inside it names the zone after both times: "01:30 (AEDT)-02:30
 (AEST)".
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from PySide6.QtCore import QDateTime, QLocale, QTime, QTimeZone
 from PySide6.QtWidgets import QApplication
@@ -28,6 +28,23 @@ from polyglotic_desktop.core.listening.maintenance import Maintenance, Phase, ph
 
 def _tr(text: str) -> str:
     return QApplication.translate("Maintenance", text)
+
+
+_held: list[Maintenance | None] = [None]
+"""The window the app holds now (`hold`)."""
+
+
+def hold(window: Maintenance | None) -> None:
+    """The planned maintenance window the app holds now (None: none), as
+    Home is told it (`main.Hub.set_maintenance`): the caption windows'
+    notice during it says until when from it (`notice_until`)."""
+    _held[0] = window
+
+
+def wall_clock() -> datetime:
+    """This PC's time now, for the caption windows' notice (the UI lab and
+    the tests put a fixed one in its place)."""
+    return datetime.now(UTC)
 
 
 def pc_zone() -> QTimeZone:
@@ -154,6 +171,25 @@ def banner(
         "Planned maintenance tomorrow, {start}-{end}: captions pause then, "
         "and come back by themselves."
     ).format(start=start, end=end)
+
+
+def notice_until(
+    pc_now: datetime | None = None, zone: QTimeZone | None = None
+) -> str | None:
+    """The caption windows' notice while the server is away for planned
+    maintenance, with until when - the end Home's title says, in the PC's
+    zone, named: "Planned maintenance until 07:30 (AEDT) - captions come
+    back by themselves" (polyglotic-hq 563, 542's proposal: it said only
+    that it was planned). None with no window held: the notice then says
+    only that (`caption_window.notice_text`)."""
+    window = _held[0]
+    if window is None:
+        return None
+    now = window.server_now(wall_clock() if pc_now is None else pc_now)
+    #: the caption windows' line while Polyglotic's server is in it
+    return _tr(
+        "Planned maintenance until {time} - captions come back by themselves"
+    ).format(time=_until(window, now, zone))
 
 
 def soon_line(window: Maintenance, zone: QTimeZone | None = None) -> str:

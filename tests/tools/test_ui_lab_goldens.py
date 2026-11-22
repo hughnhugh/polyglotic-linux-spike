@@ -240,4 +240,4 @@ def test_approve_only_runs_the_states_named_and_prune_is_its_own_step(
 def test_every_new_state_has_a_golden_and_none_is_left_over() -> None:
     """Add a state, approve its golden (`python -m tools.ui_lab approve`)."""
     stored = {p.stem for p in goldens.GOLDENS.glob("*.png")}
-    assert stored == {state.name for state in cli.new_states()}
+    assert stored == {state.name for state in cli.visual_states()}

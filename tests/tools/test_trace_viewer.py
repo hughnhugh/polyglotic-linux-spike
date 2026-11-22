@@ -69,3 +69,50 @@ def test_the_older_caption_log_is_read_as_far_as_it_goes(tmp_path: Path) -> None
     out = tmp_path / "page.html"
     assert main([str(tmp_path), "--out", str(out)]) == 0
     assert "older caption log" in out.read_text("utf-8")
+
+
+def test_steadys_pace_is_drawn_as_its_own_neutral_span() -> None:
+    """551: the playout's wait is the mode's pace (neutral, as the pause),
+    not the window's hold; a mode without one has no `released` between
+    applied and windowed, and its hold is still the window's colour."""
+    from tests.test_trace_summary import paced
+    from tools.trace.page import spans
+
+    drawn = {
+        group: round((b - a) * 1000)
+        for a, b, group in spans(paced(1, 10.0, 10.81, 10.82))
+    }
+    assert drawn["gc"] == 660  # applied at 10.15, let out at 10.81
+    assert "gu" not in drawn
+    unpaced = spans(update(2, 10.0, 10.82, windowed=10.815))
+    assert "gc" not in {g for *_, g in unpaced} and "gu" not in {g for *_, g in unpaced}
+
+
+def test_the_page_has_a_lane_for_sound_without_speech(tmp_path: Path) -> None:
+    """polyglotic-hq 549: a stretch of sound nothing heard as speech is a
+    hang put down to sound_unheard, drawn in its source's own lane, with
+    its levels and resets on hover; the summary line counts it."""
+    from polyglotic_desktop.perf.trace import Unheard
+
+    stretch = Unheard("video", 12.0, 40.2, (-38, -30, -24), 5, 0.4, "speech")
+    records = [
+        update(1, 10.0, 10.2),
+        stretch.as_json(),
+        update(2, 40.5, 40.7, audio=0.5),
+    ]
+    path = tmp_path / "trace.jsonl"
+    path.write_text(
+        "".join(
+            f"2026-11-20 18:03:{n:02d},000 {json.dumps(r)}\n"
+            for n, r in enumerate(records)
+        ),
+        "utf-8",
+    )
+    out = tmp_path / "page.html"
+    assert main([str(path), "--out", str(out)]) == 0
+    page = out.read_text("utf-8")
+    assert "hang 28.2 s: sound_unheard" in page
+    assert 'class="gs"' in page and "no speech heard" in page
+    assert "sound without speech 28.2 s (speech)" in page
+    assert "-38/-30/-24 dBFS" in page and "forgot its state 5 times" in page
+    assert "sound unheard 1 over 3 s" in page

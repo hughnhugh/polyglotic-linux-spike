@@ -40,10 +40,16 @@ Channel = Literal[
     "macos-arm64-alpha",
     "macos-arm64-beta",
     "macos-arm64-stable",
+    "linux-x64-alpha",
+    "linux-x64-beta",
+    "linux-x64-stable",
 ]
 MacOs = Annotated[str, StringConstraints(pattern=r"^macos-[1-9][0-9]{0,2}$")]
 """`macos-<major version>` (`macos-26`), as protocol.md's `os` allows."""
-Os = Literal["windows-10", "windows-11"] | MacOs
+LinuxOs = Annotated[str, StringConstraints(pattern=r"^linux-[1-9][0-9]{0,2}$")]
+"""`linux-<the kernel's major version>` (`linux-6`), as protocol.md's `os`
+allows (the server's own smoke test says hello as `linux-6`)."""
+Os = Literal["windows-10", "windows-11"] | MacOs | LinuxOs
 Purpose = Literal["listen", "sync"]
 Category = Literal[
     "browser", "video", "call", "game", "music", "system", "other", "mic"
@@ -107,6 +113,7 @@ class Settings(Message):
     second_languages: dict[str, str] = {}
     spelling_hints: tuple[str, ...] = Field(default=(), repr=False)
     translate_live: bool = True
+    join_pause_fragments: bool = False
 
 
 class Source(Message):
@@ -553,6 +560,7 @@ class CaptionUpdate(Message):
     languages_heard: tuple[str, ...] | None = None
     clauses: tuple[Clause, ...] | None = None
     replaces: tuple[str, ...] | None = None
+    continues: str | None = None
     processing_ms: int | None = None
     established: int | None = None
     """Live updates: characters of the clauses' originals, counted in order,

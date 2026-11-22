@@ -32,7 +32,12 @@ quicker than it was.
 - **`perf.trace`**: one record per speech frame the timing asks for.
   - It has the moment the update passed each stage, on the app's monotonic
     clock: captured, heard, delivered, detected, encoded, taken, sent,
-    received, handed, applied, windowed, painted.
+    received, handed, applied, released, windowed, painted. *(Amended
+    2026-11-20, polyglotic-hq 551: `released` - a paced mode's playout let
+    it out, with the record's `pace`, its delay - so Steady's own wait is
+    the `pace` segment, not a window's hold, and a hang counts only what's
+    beyond the pace. Without it, every utterance's start in Steady was a
+    2-2.8 s hang of the window's.)*
   - It has the server's numbers. The answer echoes the frame's `seq`, which
     the app numbers in the speech header (the server's decision 0104).
   - It says how the update ended: painted, applied, unanswered (with the

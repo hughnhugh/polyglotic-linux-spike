@@ -27,6 +27,7 @@ Windows' own do. Captions keep their own size (a caption window's A- /
 A+): neither factor touches them.
 """
 
+import sys
 import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -35,7 +36,13 @@ from pathlib import Path
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication
 from PySide6.QtWidgets import QApplication, QMenu, QToolTip
 
-from polyglotic_desktop.ui_next import fonts
+from polyglotic_desktop.ui_next import caption_faces, fonts
+from polyglotic_desktop.ui_next.views.presets import readable_on
+
+
+def button_text(text: str) -> str:
+    """Show literal ampersands in a Qt button or menu action."""
+    return text.replace("&", "&&")
 
 
 def _chinese(traditional: bool) -> tuple[list[str], list[str]]:
@@ -60,18 +67,36 @@ Chinese ones (polyglotic-hq 294): a Japanese interface's kanji in a
 Japanese face, never YaHei's Chinese shapes; Hangul, Thai and Devanagari
 in Windows' own interface faces for them."""
 
+INTERFACE_SCRIPTS = {"ja": "ja", "ko": "ko", "th": "th", "hi": "deva"}
+"""An interface language's script, for another OS's own faces for it
+(`fonts.also`)."""
+
+
+def script_faces(language: str, system: str = sys.platform) -> list[str]:
+    """An interface language's own script's faces, before the Chinese ones:
+    Windows' (`SCRIPT_FACES`), then this OS's (`fonts.also`) - on Linux a
+    Japanese interface's kanji in Noto Sans CJK JP, never in the Chinese
+    face its list names next (Noto Sans CJK SC), whose shapes are China's
+    (polyglotic-hq 571); on a Mac in Hiragino Sans."""
+    script = INTERFACE_SCRIPTS.get(language, "")
+    return [*SCRIPT_FACES.get(language, []), *fonts.also(script, system)]
+
 
 def _ui_families(traditional: bool, language: str = "") -> list[str]:
-    """Windows' interface font, then the interface language's own script's
-    faces (`SCRIPT_FACES`), then its Chinese (`_chinese`), then another
-    OS's own (`fonts`)."""
+    """Windows' interface font and another OS's own Latin one (`fonts`),
+    then the interface language's own script's faces (`script_faces`), then
+    its Chinese (`_chinese`, and another OS's). Another OS's Latin face
+    comes before the script's, as Segoe UI does on Windows: on Linux a
+    Japanese or Korean interface's Latin letters were in Noto Sans CJK's,
+    and a Hindi one's in Noto Sans Devanagari's, beside Noto Sans
+    (polyglotic-hq 571's fonts check)."""
     chinese, others = _chinese(traditional)
     return [
         "Segoe UI Variable Text",
         "Segoe UI",
-        *SCRIPT_FACES.get(language, []),
-        *chinese,
         *fonts.also("latin"),
+        *script_faces(language),
+        *chinese,
         *others,
     ]
 
@@ -103,7 +128,9 @@ def use_interface_language(language: str, listed: bool = True) -> None:
     global _UI_FAMILY_CSS
     traditional = language == "zh_TW"
     use_symbols()
-    use_chinese_behind_every_font(traditional, SCRIPT_FACES.get(language, []), listed)
+    use_chinese_behind_every_font(traditional, script_faces(language), listed)
+    if listed:
+        caption_faces.log_missing_cjk_fonts()
     UI_FAMILIES[:] = _ui_families(traditional, language)
     _UI_FAMILY_CSS = ", ".join(f"'{f}'" for f in UI_FAMILIES)
 
@@ -113,7 +140,7 @@ CHINESE_FACES = frozenset(
     for faces in (
         *(_chinese(False)),
         *(_chinese(True)),
-        *SCRIPT_FACES.values(),
+        *(script_faces(language) for language in INTERFACE_SCRIPTS),
     )
     for face in faces
 )
@@ -143,7 +170,7 @@ def use_chinese_behind_every_font(
     Behind the symbols' face (`use_symbols`, which comes first) and before
     anything else behind a family; the faces' order follows the interface
     (changed, the old order goes). `own`: the interface language's own
-    script's faces (`SCRIPT_FACES`), before the Chinese ones - a Japanese
+    script's faces (`script_faces`), before the Chinese ones - a Japanese
     interface's menus draw their kanji in a Japanese face (polyglotic-hq
     294).
 
@@ -415,6 +442,11 @@ QCheckBox::indicator:checked:disabled {{ background: {TEXT_FAINT}; border-color:
 """
 
 
+CAPTION_BADGE_RADIUS = 8
+CAPTION_BADGE_INSET = (3, 8)
+"""Logical pixels, 0–12. Round the state badge and leave space around its words."""
+
+
 def stylesheet(t: Theme) -> str:
     """A window's stylesheet in theme `t`'s colours, its text at the text
     size now (`px`): today's, and the new parts'."""
@@ -429,6 +461,13 @@ QWidget {{ color: {TEXT}; font-size: {px(13)}px; font-family: {_UI_FAMILY_CSS}; 
 QMainWindow, QDialog, QTabWidget, #Page, #Content {{ background: {BG}; }}
 QToolTip {{ background: {SURFACE_2}; color: {TEXT}; border: 1px solid {BORDER}; padding: 4px 6px; }}
 #Card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 12px; }}
+#Card[captionIdle="true"] {{ border-color: {ACCENT}; }}
+#CaptionIdle {{
+    color: {readable_on(BG, WARNING)}; background: {WARNING};
+    border-radius: {CAPTION_BADGE_RADIUS}px; font-weight: 600;
+    padding: {CAPTION_BADGE_INSET[0]}px {CAPTION_BADGE_INSET[1]}px;
+}}
+#CaptionActive {{ color: {readable_on(t["SUCCESS"], SURFACE)}; font-weight: 600; }}
 #PageTitle {{ font-size: {px(24)}px; font-weight: 600; font-family: '{t.heading_family}', {_UI_FAMILY_CSS}; }}
 #PageSubtitle, #Dim, {_role("PageSubtitle")}, {_role("Dim")} {{ color: {TEXT_DIM}; }}
 #Faint, #machine_made, {_role("Faint")} {{ color: {TEXT_FAINT}; font-size: {px(12)}px; }}
@@ -496,6 +535,18 @@ QTabBar::tab {{ background: transparent; color: {TEXT_DIM}; padding: 8px 16px; }
 QTabBar::tab:selected {{ color: {TEXT}; border-bottom: 2px solid {ACCENT}; }}
 QTableWidget {{ background: {SURFACE}; border: 1px solid {BORDER}; gridline-color: {BORDER}; }}
 QHeaderView::section {{ background: {SURFACE_2}; color: {TEXT_DIM}; border: none; padding: 5px; }}
+QFileDialog QTreeView, QFileDialog QListView {{
+    background: {SURFACE}; alternate-background-color: {SURFACE_2};
+    color: {TEXT}; border: 1px solid {BORDER};
+}}
+QFileDialog QTreeView::item:hover, QFileDialog QListView::item:hover {{ background: {SURFACE_3}; }}
+QFileDialog QTreeView::item:selected, QFileDialog QListView::item:selected {{
+    background: {rgba(ACCENT, 0.22)}; color: {TEXT};
+}}
+QFileDialog QHeaderView {{ background: {SURFACE_2}; }}
+QFileDialog QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
+QFileDialog QScrollBar::handle:horizontal {{ background: {SURFACE_3}; border-radius: 3px; min-width: 30px; }}
+QFileDialog QScrollBar::handle:horizontal:hover {{ background: {TEXT_FAINT}; }}
 QCheckBox {{ spacing: 8px; }}
 {_indicators(t)}
 /* the first run's code box: its edge at least 3:1 (425; BORDER is 1.3:1) */
@@ -533,6 +584,7 @@ QMenu {{ background: {SURFACE}; border: 1px solid {BORDER}; padding: 6px; border
 QMenu::item {{ padding: 7px 22px 7px 12px; border-radius: 6px; }}
 QMenu::item:selected {{ background: {SURFACE_2}; }}
 QMenu::separator {{ height: 1px; background: {BORDER}; margin: 5px 4px; }}
+QFrame[banner="true"] {{ background: {SURFACE_2}; border: 1px solid {BORDER}; border-radius: 9px; }}
 #Segmented, QFrame[segmented="true"] {{ background: {SURFACE_2}; border: 1px solid {BORDER}; border-radius: 9px; }}
 #Segmented QPushButton {{
     background: transparent; border: none; border-radius: 6px; padding: 6px 12px; color: {TEXT_DIM};
@@ -557,4 +609,5 @@ QPushButton[switch="true"]:hover {{ background: {SURFACE_2}; }}
 #AddRow {{ background: transparent; border-radius: 6px; }}
 #AddRow:hover {{ background: {SURFACE_2}; }}
 #AddRow:disabled QLabel {{ color: {TEXT_FAINT}; }}
+#AddRow QPushButton[kind="primary"]:disabled {{ background: {SURFACE_2}; color: {TEXT_FAINT}; }}
 """

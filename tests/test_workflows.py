@@ -270,6 +270,13 @@ def test_every_upload_is_kept_a_week_at_most_and_can_fail_nothing() -> None:
     for name, step in uploads:
         kept = step.get("with", {}).get("retention-days")
         assert isinstance(kept, int) and 1 <= kept <= MOST_DAYS_KEPT, (name, step)
+        # 592's release-set upload must fail the build if missing (no set, no
+        # release; test_linux_release_check.py checks it has no continue-on-error)
+        if (
+            name == "linux-release.yml"
+            and step.get("with", {}).get("name") == "linux-publish-${{ github.run_id }}"
+        ):
+            continue
         assert step.get("continue-on-error") is True, (name, step)
     scans = [
         step

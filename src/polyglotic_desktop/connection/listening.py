@@ -158,6 +158,7 @@ def settings(chosen: ListeningSettings, limit: int) -> protocol.Settings:
         },
         spelling_hints=chosen.spelling_hints,
         translate_live=chosen.translate_live,
+        join_pause_fragments=True,
     )
 
 
@@ -255,6 +256,9 @@ def caption_update(message: protocol.CaptionUpdate) -> CaptionUpdate:
         language=Language(message.language) if message.language else None,
         languages_heard=tuple(Language(x) for x in message.languages_heard or ()),
         replaces=tuple(CaptionId(c) for c in message.replaces or ()),
+        continues=CaptionId(message.continues)
+        if message.kind == "finished" and message.continues
+        else None,
         reason=reason,
         processing_ms=message.processing_ms,
         established=max(0, message.established or 0) if message.kind == "live" else 0,

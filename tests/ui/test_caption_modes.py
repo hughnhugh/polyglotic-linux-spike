@@ -1,8 +1,6 @@
 """Caption timing as the learner's choice (polyglotic-hq project 064;
-DECISIONS.md #4, #107 and #230): Steady - word by word - by default
-(desktop decision 0246, polyglotic-hq 526; Quick preview from 2026-11-18,
-decision 0242, now retired), Whole captions (called Steady until
-2026-11-20), Instant (Live updates until then) or Calm - in the settings
+DECISIONS.md #4, #107 and #230): Instant by default (626), with
+Whole captions, Steady and Calm - in the settings
 (and for settings saved by earlier versions), and in what the speech
 pipeline follows (the Timing panel: tests/ui_next)."""
 
@@ -25,23 +23,20 @@ from polyglotic_desktop.platform.speech_pipeline import SpeechPipeline
 from polyglotic_desktop.ui.settings import FOLLOW_DEFAULT, AppSettings, Settings
 
 
-def test_a_new_install_has_steady_word_by_word() -> None:
+def test_a_new_install_has_instant() -> None:
     value = AppSettings.from_stored({})
-    assert value.caption_mode is CaptionMode.STEADY
-    assert value.live_interval == LIVE_UPDATE_INTERVAL_SEC  # what the playout is fed
-    assert value.caption_mode_chosen is None  # the default, not a choice
-    assert AppSettings().caption_mode is CaptionMode.STEADY
+    assert value.caption_mode is CaptionMode.INSTANT
+    assert value.live_interval == value.live_update_interval
+    assert value.caption_mode_chosen is None
+    assert AppSettings().caption_mode is CaptionMode.INSTANT
 
 
-def test_one_who_never_chose_moves_to_steady_and_a_choice_stays() -> None:
-    """Settings saved while another mode was the default: nothing was
-    chosen, so that learner is on Steady now (decision 0246). One who
-    chose what is now Whole captions (kept as "steady") or Instant
-    ("live") keeps it."""
+def test_one_who_never_chose_moves_to_instant_and_a_choice_stays() -> None:
+    """An implicit default follows Instant. Explicit choices survive."""
     never_chose = {"caption_mode_chosen": None, "caption_timing": "steady"}
-    assert AppSettings.from_stored(never_chose).caption_mode is CaptionMode.STEADY
+    assert AppSettings.from_stored(never_chose).caption_mode is CaptionMode.INSTANT
     never_chose = {"caption_mode_chosen": None, "caption_timing": "preview"}
-    assert AppSettings.from_stored(never_chose).caption_mode is CaptionMode.STEADY
+    assert AppSettings.from_stored(never_chose).caption_mode is CaptionMode.INSTANT
     chose = {"caption_mode_chosen": "steady", "caption_timing": "steady"}
     assert AppSettings.from_stored(chose).caption_mode is CaptionMode.WHOLE
     chose_live = {"caption_mode_chosen": "live", "caption_timing": "live"}
@@ -66,14 +61,14 @@ def test_steadys_options_are_kept_and_say_how_its_words_are_played_out() -> None
         PlayoutRules,
     )
 
-    assert AppSettings().playout_rules == PlayoutRules(DELAY_SEC, 1, Ahead.NONE)
+    assert AppSettings().playout_rules == PlayoutRules(DELAY_SEC, 1, Ahead.WAITING)
     value = AppSettings.from_stored(
         AppSettings(steady_newest_word=True, steady_words_ahead="waiting").to_stored()
     )
     assert value.playout_rules == PlayoutRules(EAGER_DELAY_SEC, 0, Ahead.WAITING)
     assert (
         AppSettings.from_stored({"steady_words_ahead": "far"}).steady_words_ahead
-        == "none"
+        == "waiting"  # the default (554)
     )
     calm = AppSettings(caption_mode_chosen="calm")
     assert calm.caption_mode is CaptionMode.CALM
@@ -92,8 +87,8 @@ def test_the_default_moves_everyone_who_hasnt_chosen(
     chosen = AppSettings.from_stored(
         AppSettings(caption_mode_chosen="steady").to_stored()
     )
-    monkeypatch.setattr(settings, "default_caption_mode", lambda: CaptionMode.INSTANT)
-    assert unchosen.caption_mode is CaptionMode.INSTANT
+    monkeypatch.setattr(settings, "default_caption_mode", lambda: CaptionMode.CALM)
+    assert unchosen.caption_mode is CaptionMode.CALM
     assert chosen.caption_mode is CaptionMode.WHOLE
 
 
@@ -185,7 +180,7 @@ def test_a_mode_once_chosen_is_kept_whatever_the_interval() -> None:
 def test_older_versions_read_the_mode_followed() -> None:
     """Versions before 176 read `caption_timing` (RELEASING.md section 5):
     it holds the mode the app follows, chosen or not."""
-    assert AppSettings().to_stored()["caption_timing"] == "words"
+    assert AppSettings().to_stored()["caption_timing"] == "live"
     chosen = AppSettings(caption_mode_chosen="steady").to_stored()
     assert (chosen["caption_timing"], chosen["caption_mode_chosen"]) == (
         "steady",
@@ -303,6 +298,32 @@ def test_an_interval_left_at_its_default_follows_todays(
     value = AppSettings.from_stored({"learning": "zh", **stored})
     assert value.live_update_interval == interval
     assert value.caption_mode_chosen == "live"
+
+
+def test_steadys_words_ahead_are_faint_until_the_learner_changes_them() -> None:
+    """The user, 2026-11-20 (polyglotic-hq 554): "Default faint ahead,
+    acquisition is preferable for me but probably default to both". Faint
+    words ahead by default - for a learner who never chose, as a file from
+    the preview holds them ("none", not in the record of changes) - and
+    Both stays the path; a learner's own choice is kept."""
+    from polyglotic_desktop.core.listening.playout import Ahead, ReadingPath
+    from polyglotic_desktop.main import timing_of
+    from polyglotic_desktop.ui_next.views.panels import Timing
+
+    assert "steady_words_ahead" in FOLLOW_DEFAULT
+    assert AppSettings().playout_rules.ahead is Ahead.WAITING
+    assert timing_of(AppSettings()).words_ahead is Ahead.WAITING
+    assert Timing().words_ahead is Ahead.WAITING
+    assert AppSettings().caption_path == ReadingPath.BOTH.value
+    store = MemorySettingsStore({})
+    settings = Settings(store)
+    settings.update(opacity=0.6)
+    preview = {**store.values, "steady_words_ahead": "none"}  # never chosen
+    assert AppSettings.from_stored(preview).steady_words_ahead == "waiting"
+    settings.update(steady_words_ahead="none")  # the learner's Off
+    changed = store.values["changed"]
+    assert isinstance(changed, list) and "steady_words_ahead" in changed
+    assert AppSettings.from_stored(store.values).steady_words_ahead == "none"
 
 
 def test_an_interval_follows_the_default_until_changed() -> None:

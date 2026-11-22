@@ -59,6 +59,7 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.perf import spans
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.above_all import set_click_through
 from polyglotic_desktop.ui_next.caption_window import (
     BAND_IN_MS,
     BAND_OUT_MS,
@@ -78,6 +79,7 @@ from polyglotic_desktop.ui_next.caption_window import (
     notice_style,
     preset_name,
     restore_minimised,
+    say_resized,
     to_qrect,
     to_rect,
     work_areas,
@@ -437,8 +439,8 @@ class JoinedWindow(QWidget):
 
     def leaveEvent(self, event: object) -> None:
         self._still_over.stop()
-        for column in self.columns:  # what waited under the mouse comes in
-            column.let_in()  # (a column leaves it to its window: 158; 543)
+        for column in self.columns:  # a view the mouse held goes live
+            column.let_go()  # (as each column's own leave does: 543, 554, 583)
         self._band_in.stop()
         if self._drag is None:
             self._band_out.start()
@@ -469,14 +471,16 @@ class JoinedWindow(QWidget):
         zones, and the window's controls beside it on the last column
         (`controls_width`) - at Windows' 200 % and the app's Normal (2.25,
         decision 0244) the last column's buttons were squashed past its
-        MIN_COLUMN (polyglotic-hq 524). Not the language chip's: it goes
-        where there's no room for it (`_fit_band`). Its columns share the
-        width equally unless dragged, so each gets the widest one's least."""
-        strip = column.band.minimumSizeHint().width()
-        layout = column.band.layout()
-        if column.chip.isVisibleTo(column.band) and layout is not None:
-            strip -= column.chip.sizeHint().width() + layout.spacing()
-        return strip + 2 * placement.CORNER_ZONE + self.controls_width(column)
+        MIN_COLUMN (polyglotic-hq 524). The minimum includes the chip icons.
+        Columns share the width equally unless dragged, so each gets at
+        least as much as the widest one needs."""
+        return column.strip_least() + self.controls_width(column)
+
+    def strips_changed(self) -> None:
+        """Keep the window and Qt's minimum wide enough for all columns
+        when the mic mark or report button changes (polyglotic-hq 635)."""
+        self._widen()
+        self._keep_minimum()
 
     def _keep_minimum(self) -> None:
         """Qt keeps it at least `_minimum` wide - a resize of the lab's or
@@ -551,10 +555,7 @@ class JoinedWindow(QWidget):
         if locked == self.locked:
             return
         self.locked = locked
-        visible = self.isVisible()
-        self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, locked)
-        if visible:
-            self.show()  # changing window flags hides it
+        set_click_through(self, locked)  # re-mapped, never live (550)
         if locked:
             self._band_in.stop()
             self.show_bands(False)
@@ -653,7 +654,9 @@ class JoinedWindow(QWidget):
         drag, self._drag = self._drag, None
         if drag is None or not drag.moved:
             return
-        if not drag.edges:
+        if drag.edges:
+            say_resized("joined window", drag, self._place(), self._minimum())
+        else:
             self.choices = replace(self.choices, preset=drag.snapped)
         self._saved()
         self._sync_controls()
@@ -665,6 +668,13 @@ class JoinedWindow(QWidget):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         self.lay_out()
+
+    def moveEvent(self, event: object) -> None:
+        """A column's set-up still asked goes with the window (554): the
+        column itself doesn't move in it, so it hears no move of its own."""
+        for column in self.columns:
+            if column.set_up is not None:
+                column.set_up.follow()
 
     def changeEvent(self, event: QEvent) -> None:
         super().changeEvent(event)
