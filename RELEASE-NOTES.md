@@ -66,6 +66,10 @@ change is being confirmed.
 
 ### Fixed
 
+- Turning "One key for both" off restores your Type what they said key, even
+  after a restart.
+- Switch a recommended look off to put your earlier caption appearance back.
+
 ## 0.1.11 - 2026-11-24
 
 ### Better

@@ -1655,11 +1655,16 @@ class SettingsPage(Page):
             }
 
     def show_respeaking(
-        self, on: bool, key: str, taken: bool = False, what: str = "original"
+        self,
+        on: bool,
+        key: str,
+        taken: bool = False,
+        what: str = "original",
+        last_own: str | None = None,
     ) -> None:
         """Speaker typing preferences and whether another program has its key."""
         for card in self.respeak_cards:
-            card.show_respeaking(on, key, taken, what)
+            card.show_respeaking(on, key, taken, what, last_own)
         self._show_keys()
 
     def respeak_key_not_taken(self, wanted: str) -> None:

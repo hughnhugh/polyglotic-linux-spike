@@ -160,6 +160,22 @@ LOOKS: tuple[RecommendedLook, ...] = (
 
 LOOKS_BY_KEY = {look.key: look for look in LOOKS}
 
+LOOK_FIELDS = (
+    "original",
+    "translation",
+    "background",
+    "opacity",
+    "contrast",
+    "vibrance",
+    "thickness",
+    "edge",
+    "reading_size",
+    "reading_colour",
+    "faces",
+)
+"""The settings a recommended look changes.  Kept together so undo can
+restore only values that are still the ones the look applied."""
+
 
 def with_look(look: CaptionLook, key: str) -> CaptionLook:
     """`look` as the recommended look `key` makes it: what it sets, and
@@ -181,6 +197,19 @@ def with_look(look: CaptionLook, key: str) -> CaptionLook:
         reading_colour=chosen.reading_colour,
         faces=tuple(sorted(faces.items())),
     )
+
+
+def without_look(
+    now: CaptionLook, applied: CaptionLook, before: CaptionLook
+) -> CaptionLook:
+    """Undo a recommended look: restore each setting still equal to what
+    the look applied, while keeping any setting the learner changed since."""
+    restored = {
+        field: getattr(before, field)
+        for field in LOOK_FIELDS
+        if getattr(now, field) == getattr(applied, field)
+    }
+    return replace(now, **restored)
 
 
 def look_of(look: CaptionLook) -> RecommendedLook | None:

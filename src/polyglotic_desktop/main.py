@@ -2501,8 +2501,23 @@ def look_changes(
     they're a choice, recorded as one even where it matches what an
     unchosen file holds (all off: ()) (polyglotic-hq 511)."""
     changes = look_settings(look)
+    default_lines = readings_by_default(value, own)
+    if (
+        value.quiet_view
+        and not look.quiet
+        and tuple(look.reading_lines) == default_lines
+        and tuple(value.reading_lines) != default_lines
+    ):
+        # Quiet view temporarily adds the current window's reading. If the
+        # learner was following the default before it was switched on, its
+        # switch back must restore that choice as well as the visible lines.
+        changes["reading_lines"] = ()
+        changes["changed"] = tuple(
+            name for name in value.changed if name != "reading_lines"
+        )
+        return changes
     if "reading_lines" not in value.changed:
-        if tuple(look.reading_lines) == readings_by_default(value, own):
+        if tuple(look.reading_lines) == default_lines:
             del changes["reading_lines"]
         else:
             changes["changed"] = (*value.changed, "reading_lines")
@@ -2651,6 +2666,12 @@ class Panels:
             caption_look(value, self.in_use()),
             self._look_changed,
             caption_look(AppSettings(), self.in_use()),
+            caption_look(
+                replace(value, **value.recommended_look_before),  # type: ignore[arg-type]
+                self.in_use(),
+            )
+            if value.recommended_look_before
+            else None,
         )
         self.downloads = DownloadsView()
         """The downloaded caption faces, as Look's Fonts card shows them
@@ -2685,6 +2706,8 @@ class Panels:
         windows.set_presets(self.presets.value)
         self.look_waiting = False
         """A look change waits to be saved."""
+        self._reading_lines_followed_default = "reading_lines" not in value.changed
+        """The current edit began with reading lines following the app default."""
         self._look_settles = QTimer(singleShot=True, interval=SETTLE_MS)
         self._look_settles.timeout.connect(self.save_look)
         style.use(window_theme())
@@ -2704,8 +2727,32 @@ class Panels:
         self._look_settles.stop()
         if self.look_waiting:
             self.look_waiting = False
-            changes = look_changes(self.settings.value, self.look.value, self.in_use())
-            self.settings.update(**changes)
+            value = self.settings.value
+            own = self.in_use()
+            changes = look_changes(value, self.look.value, own)
+            changes["recommended_look_before"] = (
+                look_settings(self.look.recommended_before)
+                if self.look.recommended_before is not None
+                else {}
+            )
+            if self._reading_lines_followed_default and tuple(
+                self.look.value.reading_lines
+            ) == readings_by_default(value, own):
+                changes["reading_lines"] = ()
+                changes["changed"] = tuple(
+                    name for name in value.changed if name != "reading_lines"
+                )
+            self.settings.update_following(
+                ("reading_lines",)
+                if self._reading_lines_followed_default
+                and tuple(self.look.value.reading_lines)
+                == readings_by_default(value, own)
+                else (),
+                **changes,
+            )
+            self._reading_lines_followed_default = (
+                "reading_lines" not in self.settings.value.changed
+            )
 
     # -- presets (polyglotic-hq 556) ----------------------------------------------------
 
@@ -2892,6 +2939,7 @@ class Panels:
 
     def follow(self) -> None:
         value = self.settings.value
+        self._reading_lines_followed_default = "reading_lines" not in value.changed
         style.use(window_theme())
         self.languages.follow(
             session_languages(value, self.in_use(), self.windows.recent_spoken())
@@ -10505,7 +10553,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             dictation_key.taken,
         )
         settings_page.show_respeaking(
-            value.type_theirs, other_binding, respeak_key.taken, value.type_what
+            value.type_theirs,
+            other_binding,
+            respeak_key.taken,
+            value.type_what,
+            value.last_respeak_key,
         )
         key = respeak_key if own else dictation_key
         windows.set_respeaking(
@@ -10527,7 +10579,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         if not wanted or respeak_key.try_key(
             wanted, value.type_theirs or value.legacy_respeaking
         ):
-            desktop.settings.update(respeak_key=wanted)
+            desktop.settings.update(
+                respeak_key=wanted,
+                **({"last_respeak_key": wanted} if wanted else {}),
+            )
         else:
             settings_page.respeak_key_not_taken(wanted)
             follow_dictation()

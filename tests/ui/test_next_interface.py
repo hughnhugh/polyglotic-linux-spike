@@ -330,6 +330,22 @@ def test_a_panel_change_is_saved_and_the_windows_follow(
     assert panels.look.value.opacity == 0.9
 
 
+def test_a_look_choice_survives_restart_while_reading_lines_follow_default(
+    switched: tuple[DesktopApp, CaptionWindows],
+) -> None:
+    desktop, windows = switched
+    panels = Panels(desktop.settings, windows)
+
+    panels.look.set_opacity(0.95)
+    panels.save_look()
+    restarted = AppSettings.from_stored(desktop.settings.value.to_stored())
+
+    assert restarted.opacity == 0.95
+    assert "opacity" in restarted.changed
+    assert "reading_lines" not in restarted.changed
+    assert restarted.reading_lines == AppSettings().reading_lines
+
+
 def test_the_looks_reset_leaves_the_windows_where_they_are(
     switched: tuple[DesktopApp, CaptionWindows],
 ) -> None:
