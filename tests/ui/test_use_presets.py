@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from tests.ui.fakes import MemorySettingsStore
 
+from polyglotic_desktop.core.listening.display import JapaneseReading
 from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.main import listening_settings
 from polyglotic_desktop.ui import use_presets
@@ -294,7 +295,11 @@ def test_save_as_makes_a_new_preset_and_switches_to_it() -> None:
 def test_switching_drops_changes_not_saved_and_undo_gives_them_back() -> None:
     settings = _settings()
     settings.change(use_presets.chosen(settings.value, LEARNING))
-    settings.update(word_links="hover", reading_lines=("zh",))
+    settings.update(
+        word_links="hover",
+        reading_lines=("ja", "zh"),
+        japanese_reading=JapaneseReading.BOTH.value,
+    )
     edited = settings.value
     was = use_presets.before(edited)
     settings.change(use_presets.chosen(edited, CONVERSATION))
@@ -305,7 +310,8 @@ def test_switching_drops_changes_not_saved_and_undo_gives_them_back() -> None:
     settings.change(use_presets.restored(settings.value, was))  # Undo
     value = settings.value
     assert value.preset == LEARNING and value.word_links == "hover"
-    assert value.reading_lines == ("zh",) and "reading_lines" in value.changed
+    assert value.reading_lines == ("ja", "zh") and "reading_lines" in value.changed
+    assert value.japanese_reading == JapaneseReading.BOTH.value
     assert use_presets.edits(value) == use_presets.edits(edited)  # still not saved
     assert value.interface_language == "fr"  # Undo leaves the rest as it is
 

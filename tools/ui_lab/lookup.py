@@ -37,6 +37,7 @@ from polyglotic_desktop.core.lexicon.english import EnglishDictionary
 from polyglotic_desktop.core.lexicon.entries import ENGLISH_FREQUENCY
 from polyglotic_desktop.core.listening.captions import Clause, Language
 from polyglotic_desktop.core.listening.display import (
+    JapaneseReading,
     ReadingColour,
     ReadingSize,
     ReadingSystem,
@@ -779,7 +780,9 @@ def english_card_in_english(lab: Lab) -> QWidget:
     return _photo(found)
 
 
-def japanese_card(lab: Lab) -> QWidget:
+def japanese_card_mode(
+    lab: Lab, mode: JapaneseReading = JapaneseReading.KANA
+) -> QWidget:
     """A Japanese word's card (a basic dictionary, Sudachi's word split),
     for a Mandarin learner hearing Japanese: its Japanese in a Japanese
     face."""
@@ -788,9 +791,87 @@ def japanese_card(lab: Lab) -> QWidget:
     tools = _tools(chinese, "hsk-2025")
     tools.basic["ja"] = BasicDictionary(JAPANESE_SAMPLE, JapaneseSplit(), "ja")
     found = _other_learners_windows(lab, tools, JAPANESE_CAPTIONS, JA)
+    assert found.card is not None
+    found.card.model.japanese_reading = mode
     _pinned(found, "勉強")
     lab.pump()
     return _photo(found)
+
+
+def japanese_card(lab: Lab) -> QWidget:
+    return japanese_card_mode(lab)
+
+
+def japanese_card_romaji(lab: Lab) -> QWidget:
+    return japanese_card_mode(lab, JapaneseReading.ROMAJI)
+
+
+def japanese_card_both(lab: Lab) -> QWidget:
+    return japanese_card_mode(lab, JapaneseReading.BOTH)
+
+
+def japanese_card_off(lab: Lab) -> QWidget:
+    return japanese_card_mode(lab, JapaneseReading.OFF)
+
+
+def japanese_caption_mode(
+    lab: Lab,
+    mode: JapaneseReading = JapaneseReading.KANA,
+    *,
+    translated: bool = False,
+) -> QWidget:
+    """Japanese readings on a real caption layout, including the less usual
+    case where Japanese is the translation rather than what was heard."""
+    chinese = ChineseDictionary(chinese_sample())
+    chinese.prepare()
+    tools = _tools(chinese, "hsk-2025")
+    tools.basic["ja"] = BasicDictionary(JAPANESE_SAMPLE, JapaneseSplit(), "ja")
+    captions = JAPANESE_CAPTIONS
+    language = JA
+    into = None
+    if translated:
+        captions = (
+            clause(
+                "I study Japanese every day.",
+                "毎日日本語を勉強しています。",
+                (("study", "勉強"),),
+                into=JA,
+            ),
+            clause(
+                "I like Japanese films.",
+                "日本の映画が好きです。",
+                (("films", "映画"),),
+                into=JA,
+            ),
+        )
+        language = EN
+        into = JA
+    found = _other_learners_windows(lab, tools, captions, language, into=into)
+    found.set_look(CaptionLook(reading_lines=("ja",), japanese_reading=mode))
+    lab.pump()
+    shown = window_of(found)
+    shown.canvas.repaint()
+    return shown
+
+
+def japanese_caption_kana(lab: Lab) -> QWidget:
+    return japanese_caption_mode(lab)
+
+
+def japanese_caption_romaji(lab: Lab) -> QWidget:
+    return japanese_caption_mode(lab, JapaneseReading.ROMAJI)
+
+
+def japanese_caption_both(lab: Lab) -> QWidget:
+    return japanese_caption_mode(lab, JapaneseReading.BOTH)
+
+
+def japanese_caption_off(lab: Lab) -> QWidget:
+    return japanese_caption_mode(lab, JapaneseReading.OFF)
+
+
+def japanese_translation_both(lab: Lab) -> QWidget:
+    return japanese_caption_mode(lab, JapaneseReading.BOTH, translated=True)
 
 
 def sense_classes_english(lab: Lab) -> QWidget:
@@ -1232,6 +1313,14 @@ STATES = [
         ("w3_english_card", english_card, False),
         ("w3_english_card_in_english", english_card_in_english, False),
         ("w3_japanese_card", japanese_card, False),
+        ("w3_japanese_card_romaji", japanese_card_romaji, False),
+        ("w3_japanese_card_both", japanese_card_both, False),
+        ("w3_japanese_card_off", japanese_card_off, False),
+        ("w1_japanese_reading_kana", japanese_caption_kana, True),
+        ("w1_japanese_reading_romaji", japanese_caption_romaji, True),
+        ("w1_japanese_reading_both", japanese_caption_both, True),
+        ("w1_japanese_reading_off", japanese_caption_off, True),
+        ("w1_japanese_translation_both", japanese_translation_both, True),
         ("w3_sense_classes_english", sense_classes_english, False),
         ("w3_sense_classes_japanese", sense_classes_japanese, False),
         ("w3_sense_classes_chinese", sense_classes_chinese, False),

@@ -7,15 +7,20 @@ default, as decision 0220's switches do; a change is kept."""
 
 from dataclasses import replace
 
+import pytest
+from PySide6.QtWidgets import QApplication
 from tests.ui.fakes import MemorySettingsStore
 
 from polyglotic_desktop.core.listening.display import READING_LANGUAGES
 from polyglotic_desktop.main import (
+    Panels,
     caption_look,
     look_changes,
     readings_by_default,
 )
+from polyglotic_desktop.ui.recorded_captions import MIC
 from polyglotic_desktop.ui.settings import FOLLOW_DEFAULT, AppSettings, Settings
+from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
 
 ENGLISH_LEARNER_OF_CHINESE = AppSettings(interface_language="en", targets=("en",))
 CHINESE_LEARNER_OF_ENGLISH = AppSettings(interface_language="zh_CN", targets=("zh",))
@@ -57,7 +62,9 @@ def test_a_choice_is_kept() -> None:
     settings.update(**look_changes(settings.value, replace(look, reading_lines=())))
     assert "reading_lines" in settings.value.changed
     again = AppSettings.from_stored(store.values)
-    assert caption_look(again).reading_lines == ()
+    # Japanese now has its own authoritative control; "all other readings
+    # off" does not silently turn that control off.
+    assert caption_look(again).reading_lines == ("ja",)
 
 
 def test_another_look_change_leaves_the_default_unchosen() -> None:
@@ -72,6 +79,53 @@ def test_another_look_change_leaves_the_default_unchosen() -> None:
     assert "reading_lines" not in settings.value.changed
 
 
+@pytest.mark.parametrize("explicit", [False, True])
+def test_quiet_and_opacity_preserve_how_the_learner_chose_reading_lines(
+    qapp: QApplication, explicit: bool
+) -> None:
+    value = ENGLISH_LEARNER_OF_CHINESE
+    if explicit:
+        value = replace(
+            value, reading_lines=readings_by_default(value), changed=("reading_lines",)
+        )
+    store = MemorySettingsStore(value.to_stored())
+    settings = Settings(store)
+    windows = CaptionWindows(None, MIC)
+    try:
+        panels = Panels(settings, windows)
+        panels.look.change(replace(panels.look.value, opacity=0.50))
+        panels.save_look()
+        panels.look.set_quiet(True, ("en",))
+        panels.save_look()
+        assert "en" in Settings(store).value.reading_lines
+        panels.look.set_quiet(False)
+        panels.save_look()
+        restored = Settings(store).value
+        assert restored.opacity == 0.50
+        assert restored.reading_lines == value.reading_lines
+        assert ("reading_lines" in restored.changed) == explicit
+    finally:
+        windows.close()
+
+
+def test_quiet_view_puts_following_the_default_back() -> None:
+    settings = Settings(
+        MemorySettingsStore({"interface_language": "en", "changed": []})
+    )
+    before = caption_look(settings.value)
+    quiet = replace(before, quiet=True, reading_lines=(*before.reading_lines, "en"))
+    settings.update(**look_changes(settings.value, quiet))
+    assert "reading_lines" in settings.value.changed
+
+    settings.update_following(
+        ("reading_lines",), **look_changes(settings.value, before)
+    )
+
+    assert settings.value.reading_lines == ()
+    assert "reading_lines" not in settings.value.changed
+    assert caption_look(settings.value).reading_lines == before.reading_lines
+
+
 # -- files from before the record (0.1.7) ---------------------------------------------
 
 
@@ -80,6 +134,7 @@ def test_an_old_file_with_no_reading_lines_follows_the_default() -> None:
     every untouched file holds - pinyin was never on by default - so it
     follows the new default, the user's own install among them."""
     old = {**AppSettings().to_stored(), "interface_language": "en"}
+    del old["japanese_reading"]  # genuinely predates the replacement control
     del old["changed"]
     value = AppSettings.from_stored(old)
     assert "reading_lines" not in value.changed
@@ -90,6 +145,7 @@ def test_an_old_file_with_no_reading_lines_follows_the_default() -> None:
 def test_an_old_files_reading_lines_are_kept() -> None:
     """A list with a language in it was turned on: a choice."""
     old = {**AppSettings().to_stored(), "interface_language": "en"}
+    del old["japanese_reading"]  # genuinely predates the replacement control
     del old["changed"]
     old["reading_lines"] = ["zh"]
     value = AppSettings.from_stored(old)
@@ -97,10 +153,10 @@ def test_an_old_files_reading_lines_are_kept() -> None:
 
 
 def test_a_new_file_keeps_all_off_as_a_choice() -> None:
-    """With the record, `[]` named in it is the learner's: none."""
+    """The old list can turn every other reading off, not Japanese's control."""
     stored = {
         **AppSettings().to_stored(),
         "interface_language": "en",
         "changed": ["reading_lines"],
     }
-    assert caption_look(AppSettings.from_stored(stored)).reading_lines == ()
+    assert caption_look(AppSettings.from_stored(stored)).reading_lines == ("ja",)

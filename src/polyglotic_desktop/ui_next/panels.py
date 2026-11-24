@@ -68,9 +68,11 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.core.learning.curriculum import SIZES as CURRICULUM_SIZES
 from polyglotic_desktop.core.learning.curriculum import ChosenWords
+from polyglotic_desktop.core.lexicon.pack_download import Step
 from polyglotic_desktop.core.lexicon.readings import RESPELLED_WORD_LIMIT
 from polyglotic_desktop.core.listening.display import (
     READING_LANGUAGES,
+    JapaneseReading,
     LinkDetail,
     LinkGap,
     LinkLine,
@@ -124,6 +126,7 @@ from polyglotic_desktop.ui_next.views.panels import (
     COLOUR_CHOICES,
     FADE_CHOICES,
     TRANSLATION_AFTER_CHOICES,
+    JapaneseReadingsView,
     LanguagesView,
     LookView,
     Shared,
@@ -1286,7 +1289,10 @@ class QuietViewPanel(_LookGroup):
     union of what's ticked, with our curriculum's size."""
 
     def __init__(
-        self, view: LookView, notes: bool = False, parent: QWidget | None = None
+        self,
+        view: LookView,
+        notes: bool = False,
+        parent: QWidget | None = None,
     ) -> None:
         super().__init__(_tr("Quiet view"), view, notes, parent=parent)
         value = view.value
@@ -1391,7 +1397,11 @@ class ReadingLinesPanel(_LookGroup):
     first."""
 
     def __init__(
-        self, view: LookView, notes: bool = False, parent: QWidget | None = None
+        self,
+        view: LookView,
+        notes: bool = False,
+        parent: QWidget | None = None,
+        japanese_readings: JapaneseReadingsView | None = None,
     ) -> None:
         #: Settings > Readings: the card of reading lines over captions - pinyin above Chinese, Jyutping above Cantonese, furigana above Japanese, stress marks over Russian, romanization above Korean and Hindi, a respelling above English
         super().__init__(_tr("Readings"), view, notes, parent=parent)
@@ -1406,6 +1416,13 @@ class ReadingLinesPanel(_LookGroup):
             ),
             lambda on: view.set_reading_line("zh", on),
         )
+        chinese_row = self.chinese.parentWidget()
+        assert isinstance(chinese_row, SwitchRow)
+        # SwitchRow's side insets otherwise take this note just beyond the
+        # readable measure with Segoe UI (about 82 characters on one line).
+        # Leave room for its natural word breaks while keeping it below the
+        # lab's 80-character limit on every native font.
+        chinese_row.detail.setMaximumWidth(round(chinese_row.detail.measure() * 1.2))
         self.reading_system = Segmented(
             [
                 (ReadingSystem.PINYIN, _tr("Pinyin")),
@@ -1435,16 +1452,33 @@ class ReadingLinesPanel(_LookGroup):
             ),
             lambda on: view.set_reading_line("yue", on),
         )
-        self.japanese = self._switch(
-            "reading_ja",
-            _tr("Furigana above Japanese"),
-            _tr(
-                "Small kana over each word's kanji, in what was said and in "
-                "translations into Japanese, from the Japanese dictionary - once "
-                "you learn Japanese and its dictionary is here."
-            ),
-            lambda on: view.set_reading_line("ja", on),
+        self.japanese = Segmented(
+            [
+                (JapaneseReading.KANA, _tr("Kana")),
+                (JapaneseReading.ROMAJI, _tr("Romaji")),
+                (JapaneseReading.BOTH, _tr("Both")),
+                (JapaneseReading.OFF, _tr("Off")),
+            ],
+            value.japanese_reading,
         )
+        self.japanese.setObjectName("look.japanese_reading")
+        self.japanese.changed.connect(
+            lambda v: view.set_japanese_reading(JapaneseReading(v))
+        )
+        self._row(
+            _tr("Japanese readings"),
+            _tr(
+                "Kana stays above each word's kanji. Romaji uses modified Hepburn; "
+                "Both keeps kana above and adds romaji below."
+            ),
+            self.japanese,
+        )
+        self.japanese_note = label("", "Faint", wrap=True)
+        self.japanese_note.setObjectName("look.reading_ja_availability")
+        self.add(self.japanese_note)
+        self._japanese_readings = japanese_readings or JapaneseReadingsView()
+        self._japanese_readings.subscribe(self._refresh_japanese)
+        self._refresh_japanese()
         self.russian = self._switch(
             "reading_ru",
             _tr("Stress marks over Russian"),
@@ -1456,6 +1490,7 @@ class ReadingLinesPanel(_LookGroup):
             ),
             lambda on: view.set_reading_line("ru", on),
         )
+
         self.korean = self._switch(
             "reading_ko",
             _tr("Romanization above Korean"),
@@ -1574,12 +1609,30 @@ class ReadingLinesPanel(_LookGroup):
         self.bind(view)
         self.refresh()
 
+    def _refresh_japanese(self) -> None:
+        state = self._japanese_readings.value
+        progress = state.progress
+        if not state.supported:
+            words = _tr("Japanese readings aren't in this version yet.")
+        elif progress is not None and progress.step not in (Step.DONE, Step.CANCELLED):
+            words = _tr("The Japanese dictionary is downloading: {percent}%.").format(
+                percent=round(progress.share * 100)
+            )
+        elif state.dictionary_here:
+            words = ""
+        else:
+            words = _tr("Shows once the Japanese dictionary is here.")
+        self.japanese_note.setText(words)
+        self.japanese_note.setVisible(bool(words))
+
     def refresh(self) -> None:
         value = self.view.value
         chinese = "zh" in value.reading_lines
         self.chinese.set_quietly(chinese)
         self.cantonese.set_quietly("yue" in value.reading_lines)
-        self.japanese.set_quietly("ja" in value.reading_lines)
+        # The four-way choice is authoritative.  `reading_lines` is only
+        # migration input for old settings files, not a second UI state.
+        self.japanese.set_value(value.japanese_reading)
         self.russian.set_quietly("ru" in value.reading_lines)
         self.korean.set_quietly("ko" in value.reading_lines)
         self.hindi.set_quietly("hi" in value.reading_lines)
@@ -1587,12 +1640,19 @@ class ReadingLinesPanel(_LookGroup):
         self.english.set_quietly(english)
         self.respelling_over.set_value(value.respelling_past)
         self.respelling_over.setEnabled(english)
-        on = bool(value.reading_lines)  # the rest are both's
+        japanese = value.japanese_reading is not JapaneseReading.OFF
+        # ``ja`` can remain in a migrated file as historical input, but the
+        # four-way choice above is the only source of truth for whether a
+        # Japanese reading is visible now.
+        other_readings = set(value.reading_lines) - {"ja"}
+        on = bool(other_readings) or japanese  # the rest are shared
         self.reading_size.set_value(value.reading_size)
         self.reading_size.setEnabled(on)
         self.reading_over.set_value(value.reading_past)
         # the scripts' readings: English's respelling has its own choice
-        self.reading_over.setEnabled(any(code != "en" for code in value.reading_lines))
+        self.reading_over.setEnabled(
+            japanese or any(code != "en" for code in other_readings)
+        )
         self.reading_system.set_value(value.reading_system)
         self.reading_system.setEnabled(chinese)
         self.reading_colour.set_value(value.reading_colour)

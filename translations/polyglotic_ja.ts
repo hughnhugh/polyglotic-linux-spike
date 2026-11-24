@@ -5824,6 +5824,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>{language} lookups aren&apos;t in this version yet. Captions and translation work.</source>
+        <translation type="unfinished">このバージョンでは、{language}の検索はまだ利用できません。字幕と翻訳は利用できます。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Its dictionary isn&apos;t ready to download yet.</source>
         <translation type="unfinished">この辞書はまだダウンロードできません。</translation>
     </message>
@@ -7563,13 +7568,23 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Furigana above Japanese</source>
-        <translation type="unfinished">日本語の上にふりがな</translation>
+        <source>Kana</source>
+        <translation type="unfinished">Kana</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Small kana over each word&apos;s kanji, in what was said and in translations into Japanese, from the Japanese dictionary - once you learn Japanese and its dictionary is here.</source>
-        <translation type="unfinished">各語の漢字の上に小さなかなを表示します。話された内容にも日本語への翻訳にも、日本語の辞書から。日本語を学習していて、その辞書がこのPCにあるときに表示されます。</translation>
+        <source>Romaji</source>
+        <translation type="unfinished">Romaji</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Japanese readings</source>
+        <translation type="unfinished">Japanese readings</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Kana stays above each word&apos;s kanji. Romaji uses modified Hepburn; Both keeps kana above and adds romaji below.</source>
+        <translation type="unfinished">かなは各単語の漢字の上に表示されます。ローマ字には修正ヘボン式を使用します。「両方」では、かなを上に残し、ローマ字を下に追加します。</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
@@ -7697,6 +7712,21 @@
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
         <source>The one colour readings are drawn in, over any line.</source>
         <translation type="unfinished">どの行でも読みをこの一色で表示します。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Japanese readings aren&apos;t in this version yet.</source>
+        <translation type="unfinished">このバージョンでは、日本語の読みはまだ利用できません。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>The Japanese dictionary is downloading: {percent}%.</source>
+        <translation type="unfinished">日本語辞書をダウンロードしています：{percent}%。</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Shows once the Japanese dictionary is here.</source>
+        <translation type="unfinished">日本語辞書が利用可能になると表示されます。</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>

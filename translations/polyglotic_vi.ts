@@ -5824,6 +5824,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>{language} lookups aren&apos;t in this version yet. Captions and translation work.</source>
+        <translation type="unfinished">Phiên bản này chưa hỗ trợ tra cứu {language}. Phụ đề và bản dịch vẫn hoạt động.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Its dictionary isn&apos;t ready to download yet.</source>
         <translation type="unfinished">Từ điển này chưa sẵn sàng để tải.</translation>
     </message>
@@ -7563,13 +7568,23 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Furigana above Japanese</source>
-        <translation type="unfinished">Furigana trên tiếng Nhật</translation>
+        <source>Kana</source>
+        <translation type="unfinished">Kana</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Small kana over each word&apos;s kanji, in what was said and in translations into Japanese, from the Japanese dictionary - once you learn Japanese and its dictionary is here.</source>
-        <translation type="unfinished">Kana nhỏ trên chữ Hán của mỗi từ, trong lời nói và trong bản dịch sang tiếng Nhật, từ từ điển tiếng Nhật - khi bạn học tiếng Nhật và từ điển của nó đã có ở đây.</translation>
+        <source>Romaji</source>
+        <translation type="unfinished">Romaji</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Japanese readings</source>
+        <translation type="unfinished">Japanese readings</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Kana stays above each word&apos;s kanji. Romaji uses modified Hepburn; Both keeps kana above and adds romaji below.</source>
+        <translation type="unfinished">Kana nằm phía trên kanji của mỗi từ. Romaji dùng hệ Hepburn cải biên; Cả hai giữ kana ở trên và thêm romaji ở dưới.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
@@ -7697,6 +7712,21 @@
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
         <source>The one colour readings are drawn in, over any line.</source>
         <translation type="unfinished">Màu duy nhất để vẽ cách đọc, trên mọi dòng.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Japanese readings aren&apos;t in this version yet.</source>
+        <translation type="unfinished">Phiên bản này chưa hỗ trợ cách đọc tiếng Nhật.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>The Japanese dictionary is downloading: {percent}%.</source>
+        <translation type="unfinished">Đang tải từ điển tiếng Nhật: {percent}%.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Shows once the Japanese dictionary is here.</source>
+        <translation type="unfinished">Hiển thị khi từ điển tiếng Nhật đã có.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>

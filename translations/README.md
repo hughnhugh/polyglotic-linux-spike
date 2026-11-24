@@ -7,9 +7,9 @@ server.
 | File | What it holds |
 |---|---|
 | `polyglotic_en.ts` | English's counts only: two forms each ("1 caption", "3 captions") |
-| `polyglotic_zh_CN.ts` | Simplified Chinese: every string - a draft for a native speaker's review (2026-11-07) |
+| `polyglotic_zh_CN.ts` | Simplified Chinese: every string, drafted 2026-11-07 and rewritten for meaning in polyglotic-hq 842 (2026-11-24) - a tick is one that rewrite was sure of, a "?" one still waiting for a native speaker |
 | `GLOSSARY-zh_CN.md` | Our Chinese words for the app's own terms, and how the Chinese is written - use them every time |
-| `polyglotic_zh_TW.ts` | Traditional Chinese, as Taiwan writes it (for Taiwan, Hong Kong and Macau): every string - drafted from the Simplified with OpenCC and Taiwan's words, for a native reader's review (2026-11-07) |
+| `polyglotic_zh_TW.ts` | Traditional Chinese, as Taiwan writes it (for Taiwan, Hong Kong and Macau): every string - drafted from the Simplified with OpenCC (2026-11-07), rewritten by hand in Taiwan's words in 842 (2026-11-24); ticks and "?" as the Simplified's |
 | `GLOSSARY-zh_TW.md` | Where Taiwan's words differ from the Simplified glossary, and how the draft was made |
 | `polyglotic_<code>.ts`, `GLOSSARY-<code>.md` | Spanish (es), French (fr), German (de), Portuguese as Brazil writes it (pt_BR, for Portugal too), Italian (it), Japanese (ja), Korean (ko), Vietnamese (vi), Indonesian (id), Turkish (tr), Russian (ru), Polish (pl), Dutch (nl), Ukrainian (uk), Filipino (fil), Thai (th), Hindi (hi), Malay (ms), Czech (cs): every string, machine drafts by Claude (polyglotic-hq 294, 2026-11-13) for a native reader's review, each with its glossary |
 

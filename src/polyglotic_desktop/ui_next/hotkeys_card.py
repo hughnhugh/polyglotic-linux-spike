@@ -409,6 +409,8 @@ class DictationForOthersCard(Card):
         self._dictation_key = ""
         self._respeaking = True
         self._own = DEFAULT_RESPEAK_KEY
+        self._last_own: str | None = None
+        """The learner's last own key, kept while one key for both is in use."""
         self.hotkeys: dict[str, DictationKey | None] = {}
         """The hotkeys' keys now, by name: an own key can't be one."""
         self.show_dictation(True, str(DEFAULT_KEY))
@@ -425,13 +427,22 @@ class DictationForOthersCard(Card):
         self._show_respeak()
 
     def show_respeaking(
-        self, on: bool, key: str, taken: bool = False, what: str = TypeWhat.ORIGINAL
+        self,
+        on: bool,
+        key: str,
+        taken: bool = False,
+        what: str = TypeWhat.ORIGINAL,
+        last_own: str | None = None,
     ) -> None:
         """Speaker typing settings now; `taken`: another program has its own
         key."""
         if (on, key) != (self._respeaking, self._own):
             self._say("")
         self._respeaking, self._own = on, key
+        if last_own:
+            self._last_own = last_own
+        if key:
+            self._last_own = key
         self.type_what.set_value(what)
         self._show_respeak()
         if on and key and taken:
@@ -444,6 +455,8 @@ class DictationForOthersCard(Card):
                 key=key_words(wanted)
             )
         )
+        self.respeak_box.setVisible(True)
+        self.respeak_box.setChecked(True)
 
     def _show_respeak(self) -> None:
         self.respeak.switch.set_quietly(self._respeaking)
@@ -477,9 +490,14 @@ class DictationForOthersCard(Card):
             if self._own:
                 self.respeak_changes.emit({"respeak_key": ""})
             self._show_respeak()
-        elif not self._own:  # its own, once a key is pressed: listening now
-            self.respeak_box.setVisible(True)
-            self.respeak_box.setChecked(True)
+        elif not self._own:
+            # Sharing is a reversible choice, not deletion of the learner's
+            # accepted own key. `main` still checks that it can take it now.
+            if self._last_own is not None:
+                self.respeak_key_wanted.emit(self._last_own)
+            else:  # no own key has been accepted yet: listen for the first one
+                self.respeak_box.setVisible(True)
+                self.respeak_box.setChecked(True)
 
     def _box_listening(self, on: bool) -> None:
         self.listening.emit(on)

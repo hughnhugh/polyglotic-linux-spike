@@ -5886,6 +5886,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>{language} lookups aren&apos;t in this version yet. Captions and translation work.</source>
+        <translation type="unfinished">Поиск на языке «{language}» пока недоступен в этой версии. Субтитры и перевод работают.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Its dictionary isn&apos;t ready to download yet.</source>
         <translation type="unfinished">Этот словарь пока нельзя загрузить.</translation>
     </message>
@@ -7639,13 +7644,23 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Furigana above Japanese</source>
-        <translation type="unfinished">Фуригана над японским</translation>
+        <source>Kana</source>
+        <translation type="unfinished">Kana</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
-        <source>Small kana over each word&apos;s kanji, in what was said and in translations into Japanese, from the Japanese dictionary - once you learn Japanese and its dictionary is here.</source>
-        <translation type="unfinished">Маленькая кана над иероглифами каждого слова, в сказанном и в переводах на японский, из японского словаря — когда вы учите японский и его словарь уже здесь.</translation>
+        <source>Romaji</source>
+        <translation type="unfinished">Romaji</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Japanese readings</source>
+        <translation type="unfinished">Japanese readings</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Kana stays above each word&apos;s kanji. Romaji uses modified Hepburn; Both keeps kana above and adds romaji below.</source>
+        <translation type="unfinished">Кана остаётся над кандзи каждого слова. Ромадзи использует модифицированную систему Хепбёрна; «Оба» сохраняет кану сверху и добавляет ромадзи снизу.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
@@ -7775,6 +7790,21 @@
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
         <source>The one colour readings are drawn in, over any line.</source>
         <translation type="unfinished">Единый цвет чтения над любой строкой.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Japanese readings aren&apos;t in this version yet.</source>
+        <translation type="unfinished">Чтения японских слов пока недоступны в этой версии.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>The Japanese dictionary is downloading: {percent}%.</source>
+        <translation type="unfinished">Загружается словарь японского языка: {percent}%.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>
+        <source>Shows once the Japanese dictionary is here.</source>
+        <translation type="unfinished">Появится, когда будет доступен словарь японского языка.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/panels.py"/>

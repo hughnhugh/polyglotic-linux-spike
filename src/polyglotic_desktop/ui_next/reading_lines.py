@@ -31,7 +31,7 @@ Holds caption text's sound in what it lays out: never log it.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol, cast
 
 from PySide6.QtCore import QPointF
@@ -54,7 +54,11 @@ from polyglotic_desktop.core.lexicon.jyutping import JyutpingReader
 from polyglotic_desktop.core.lexicon.korean import KoreanReader
 from polyglotic_desktop.core.lexicon.readings import Reading, Readings
 from polyglotic_desktop.core.lexicon.stress import StressReader
-from polyglotic_desktop.core.listening.display import READING_LANGUAGES, ReadingSize
+from polyglotic_desktop.core.listening.display import (
+    READING_LANGUAGES,
+    JapaneseReading,
+    ReadingSize,
+)
 from polyglotic_desktop.core.shared import EntryFacts
 from polyglotic_desktop.ui_next import caption_faces, fonts
 from polyglotic_desktop.ui_next.views.lookup import Learner
@@ -108,7 +112,10 @@ def language_of(language: str | None) -> str | None:
 
 
 def source_of(
-    learner: Learner, past: bool = False, respelling_past: bool = True
+    learner: Learner,
+    past: bool = False,
+    respelling_past: bool = True,
+    japanese: JapaneseReading = JapaneseReading.KANA,
 ) -> Readings:
     """Where a caption window's readings come from: pinyin from the
     Chinese dictionary on this PC (a learner's, `Learner.of`), Jyutping
@@ -133,23 +140,38 @@ def source_of(
             return None
         if not dictionary.ready:
             return None
-        found = dictionary.readings(text)
+        found: Sequence[Reading]
+        if isinstance(dictionary, FuriganaReader) and japanese is JapaneseReading.BOTH:
+            found = [
+                *dictionary.readings(text),
+                *(
+                    replace(reading, below=True)
+                    for reading in dictionary.romaji_readings(text)
+                ),
+            ]
+        elif (
+            isinstance(dictionary, FuriganaReader)
+            and japanese is JapaneseReading.ROMAJI
+        ):
+            found = dictionary.romaji_readings(text)
+        else:
+            found = dictionary.readings(text)
         only = respelling_past if language_of(language) == "en" else past
         return past_only(learner, text, language, found) if only and found else found
 
     return read
 
 
-def sources(learner: Learner) -> Callable[[bool, bool], Readings]:
+def sources(learner: Learner) -> Callable[[bool, bool, JapaneseReading], Readings]:
     """A window's sources of readings by how their words are chosen - the
     scripts' readings past what the learner knows or over every word, and
     English's respelling the same way (`source_of`) - each made once."""
-    made: dict[tuple[bool, bool], Readings] = {}
+    made: dict[tuple[bool, bool, JapaneseReading], Readings] = {}
 
-    def of(past: bool, respelling_past: bool) -> Readings:
-        key = (past, respelling_past)
+    def of(past: bool, respelling_past: bool, japanese: JapaneseReading) -> Readings:
+        key = (past, respelling_past, japanese)
         if key not in made:
-            made[key] = source_of(learner, past, respelling_past)
+            made[key] = source_of(learner, past, respelling_past, japanese)
         return made[key]
 
     return of
@@ -291,6 +313,8 @@ class Ruby:
     its length there, and the room after it."""
     text_font: QFont
     """The text's own font: a mark (`Reading.mark`) is drawn in it."""
+    below: "Ruby | None" = None
+    """A secondary reading measured for the same text, drawn underneath."""
 
     def room(self, start: int, end: int) -> float:
         return sum(self.before[start:end]) + sum(self.after[start:end])

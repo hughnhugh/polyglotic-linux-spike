@@ -147,6 +147,9 @@ from polyglotic_desktop.adapters.app_log import read_log
 from polyglotic_desktop.adapters.background_learning import BackgroundLearningStore
 from polyglotic_desktop.adapters.background_outbox import BackgroundOutbox
 from polyglotic_desktop.adapters.feedback_files import FeedbackFolder
+from polyglotic_desktop.adapters.japanese_dictionary import (
+    FILE_NAME as JAPANESE_DICTIONARY,
+)
 from polyglotic_desktop.adapters.japanese_split import JapaneseSplit
 from polyglotic_desktop.adapters.json_settings import (
     JsonSettingsStore,
@@ -251,6 +254,7 @@ from polyglotic_desktop.core.listening.delays import CAPTION_LOG
 from polyglotic_desktop.core.listening.dictation_keys import DictationKey
 from polyglotic_desktop.core.listening.display import (
     READING_LANGUAGES,
+    JapaneseReading,
     LinkDetail,
     LinkGap,
     LinkLine,
@@ -512,6 +516,7 @@ from polyglotic_desktop.ui_next.pack_row import (
 from polyglotic_desktop.ui_next.plan import plan_text
 from polyglotic_desktop.ui_next.preset_popover import preset_name, undo_note
 from polyglotic_desktop.ui_next.presets_card import change_words
+from polyglotic_desktop.ui_next.reading_lines import reader as reading_line_reader
 from polyglotic_desktop.ui_next.save_folder import SaveFolder
 from polyglotic_desktop.ui_next.selection_reading import SelectionReading
 from polyglotic_desktop.ui_next.settings_page import SettingsPage
@@ -562,6 +567,8 @@ from polyglotic_desktop.ui_next.views.load import load_view
 from polyglotic_desktop.ui_next.views.lookup import WordAt
 from polyglotic_desktop.ui_next.views.panels import (
     DownloadsView,
+    JapaneseReadings,
+    JapaneseReadingsView,
     LanguagesView,
     LookView,
     SessionLanguages,
@@ -1656,9 +1663,30 @@ def readings_by_default(value: AppSettings, own: Iterable[str] = ()) -> tuple[st
 def reading_lines_of(value: AppSettings, own: Iterable[str] = ()) -> tuple[str, ...]:
     """The reading lines shown: the learner's choice once they made one
     (`AppSettings.changed`), else `readings_by_default`."""
-    if "reading_lines" in value.changed:
-        return value.reading_lines
-    return readings_by_default(value, own)
+    lines = (
+        value.reading_lines
+        if "reading_lines" in value.changed
+        else readings_by_default(value, own)
+    )
+    # `japanese_reading` is the one current setting.  `reading_lines` is
+    # only migration input for the retired Furigana switch and must not
+    # override the four-way choice in a caption.
+    japanese = set(lines)
+    if value.japanese_reading == JapaneseReading.OFF.value:
+        japanese.discard("ja")
+    else:
+        japanese.add("ja")
+    return tuple(sorted(japanese))
+
+
+def japanese_readings_status(tools: LearningTools | None) -> str:
+    """Settings' honest availability note for Japanese word readings."""
+    if tools is None or reading_line_reader(tools, "ja") is None:
+        return "missing"
+    japanese = tools.of("ja")
+    if japanese.dictionary_problem is not None:
+        return "failed"
+    return "ready"
 
 
 def caption_look(value: AppSettings, own: Iterable[str] = ()) -> CaptionLook:
@@ -1694,6 +1722,7 @@ def caption_look(value: AppSettings, own: Iterable[str] = ()) -> CaptionLook:
         reading_past=value.reading_past,
         respelling_past=value.respelling_past,
         reading_system=ReadingSystem(value.reading_system),
+        japanese_reading=JapaneseReading(value.japanese_reading),
         reading_colour=ReadingColour(value.reading_colour),
         reading_custom=value.reading_custom_color,
         colour_links_by_word_class=value.colour_links_by_word_class,
@@ -2495,17 +2524,37 @@ def shortcut_text(action: QAction) -> str:
 def look_changes(
     value: AppSettings, look: CaptionLook, own: Iterable[str] = ()
 ) -> dict[str, object]:
-    """The settings saving `look` changes (`look_settings`). The reading
-    lines while they're still the default nobody chose are left out, so a
-    change of colour doesn't make them a choice; once they differ from it
-    they're a choice, recorded as one even where it matches what an
-    unchosen file holds (all off: ()) (polyglotic-hq 511)."""
+    """The settings saving `look` changes (`look_settings`). An implicit
+    reading list stays implicit across unrelated and Japanese-only edits;
+    an explicit list keeps both its exact value and marker, even when it
+    happens to equal today's defaults (polyglotic-hq 511, 898)."""
     changes = look_settings(look)
-    if "reading_lines" not in value.changed:
-        if tuple(look.reading_lines) == readings_by_default(value, own):
-            del changes["reading_lines"]
-        else:
-            changes["changed"] = (*value.changed, "reading_lines")
+    effective_before = reading_lines_of(value, own)
+
+    def non_japanese(lines: Iterable[str]) -> tuple[str, ...]:
+        return tuple(code for code in lines if code != "ja")
+
+    scripts_changed = non_japanese(look.reading_lines) != non_japanese(effective_before)
+    explicit_scripts = "reading_lines" in value.changed
+    if not scripts_changed:
+        # A Japanese-mode or unrelated look edit must not turn an explicit
+        # script list into today's implicit default (or make an implicit
+        # list explicit). Keep the filed value and its provenance exactly.
+        changes["reading_lines"] = value.reading_lines
+    # `changed` is supplied explicitly so Settings.update cannot infer the
+    # other fields in this compound edit.  Infer them here before applying
+    # the two reading choices' follow-default semantics; otherwise changing
+    # (for example) opacity while readings are at their defaults loses the
+    # opacity marker and the value reverts on the next start.
+    updated = replace(value, **changes)  # type: ignore[arg-type]
+    markers = list(with_changed(value, updated).changed)
+    for name in ("reading_lines", "japanese_reading"):
+        markers = [marked for marked in markers if marked != name]
+    if explicit_scripts or scripts_changed:
+        markers.append("reading_lines")
+    if look.japanese_reading is not JapaneseReading.KANA:
+        markers.append("japanese_reading")
+    changes["changed"] = tuple(markers)
     return changes
 
 
@@ -2536,6 +2585,7 @@ def look_settings(look: CaptionLook) -> dict[str, object]:
         "reading_past": look.reading_past,
         "respelling_past": look.respelling_past,
         "reading_system": look.reading_system.value,
+        "japanese_reading": look.japanese_reading.value,
         "reading_colour": look.reading_colour.value,
         "reading_custom_color": look.reading_custom,
         "colour_links_by_word_class": look.colour_links_by_word_class,
@@ -2651,10 +2701,17 @@ class Panels:
             caption_look(value, self.in_use()),
             self._look_changed,
             caption_look(AppSettings(), self.in_use()),
+            caption_look(
+                replace(value, **value.recommended_look_before),  # type: ignore[arg-type]
+                self.in_use(),
+            )
+            if value.recommended_look_before
+            else None,
         )
         self.downloads = DownloadsView()
         """The downloaded caption faces, as Look's Fonts card shows them
         (`FontDelivery`'s; polyglotic-hq 482)."""
+        self.japanese_readings = JapaneseReadingsView()
         self.presets = PresetsView(preset_menu(value, self.look.value))
         """The presets, as Settings > Presets and the windows' dropdown
         show them (polyglotic-hq 556)."""
@@ -2685,6 +2742,13 @@ class Panels:
         windows.set_presets(self.presets.value)
         self.look_waiting = False
         """A look change waits to be saved."""
+        self._reading_lines_followed_default = "reading_lines" not in value.changed
+        """The current edit began with reading lines following the app default."""
+        self._reading_lines_preference = (
+            value.reading_lines,
+            "reading_lines" in value.changed,
+        )
+        """The stored reading-lines value and whether it was an explicit choice."""
         self._look_settles = QTimer(singleShot=True, interval=SETTLE_MS)
         self._look_settles.timeout.connect(self.save_look)
         style.use(window_theme())
@@ -2704,8 +2768,32 @@ class Panels:
         self._look_settles.stop()
         if self.look_waiting:
             self.look_waiting = False
-            changes = look_changes(self.settings.value, self.look.value, self.in_use())
-            self.settings.update(**changes)
+            reading_lines_followed_default = self._reading_lines_followed_default
+            value = self.settings.value
+            own = self.in_use()
+            changes = look_changes(value, self.look.value, own)
+            changes["recommended_look_before"] = (
+                look_settings(self.look.recommended_before)
+                if self.look.recommended_before is not None
+                else {}
+            )
+            follows = reading_lines_followed_default and (
+                set(self.look.value.reading_lines) - {"ja"}
+                == set(readings_by_default(value, own)) - {"ja"}
+            )
+            self.settings.update_following(
+                ("reading_lines",) if follows else (), **changes
+            )
+            # ``Settings.change`` emits synchronously, so ``follow`` sees the
+            # deliberately temporary choice after the first half of an
+            # off/on pair. Keep how this edit began until an outside settings
+            # refresh says otherwise; returning to the default can then put
+            # the implicit preference back instead of fixing today's list.
+            self._reading_lines_followed_default = reading_lines_followed_default
+            self._reading_lines_preference = (
+                self.settings.value.reading_lines,
+                "reading_lines" in self.settings.value.changed,
+            )
 
     # -- presets (polyglotic-hq 556) ----------------------------------------------------
 
@@ -2892,6 +2980,16 @@ class Panels:
 
     def follow(self) -> None:
         value = self.settings.value
+        reading_lines_preference = (
+            value.reading_lines,
+            "reading_lines" in value.changed,
+        )
+        if (
+            not value.quiet_view
+            and reading_lines_preference != self._reading_lines_preference
+        ):
+            self._reading_lines_followed_default = "reading_lines" not in value.changed
+            self._reading_lines_preference = reading_lines_preference
         style.use(window_theme())
         self.languages.follow(
             session_languages(value, self.in_use(), self.windows.recent_spoken())
@@ -3248,6 +3346,7 @@ class Hub:
             speech=panels.languages,
             sound=self.sound,
             downloads=panels.downloads,
+            japanese_readings=panels.japanese_readings,
             presets=panels.presets,
         )
         app = QApplication.instance()
@@ -4347,10 +4446,7 @@ def pack_reader(version: str) -> Reader:
         *("spaced", "elided", "marks", "clitics", "turkish", "vietnamese"),
         *("joiners", "affixes", "thai", "han", "korean"),
     }
-    if all(
-        importlib.util.find_spec(m) is not None
-        for m in ("sudachipy", "sudachidict_small")
-    ):
+    if importlib.util.find_spec("sudachipy") is not None:
         splits.add("japanese")
     from polyglotic_desktop.adapters import audio_file, meanings_file
 
@@ -4372,8 +4468,14 @@ def open_pack(path: Path, language: str) -> tuple[BasicDictionary, SqliteDiction
     from polyglotic_desktop.core.lexicon.han import HanSplit
     from polyglotic_desktop.core.lexicon.thai import ThaiSplit
 
+    japanese_dictionary = path.parent / JAPANESE_DICTIONARY
     split: WordSplit = (
-        JapaneseSplit()
+        JapaneseSplit(japanese_dictionary)
+        if language == "ja" and japanese_dictionary.is_file()
+        # A pack may predate the separately delivered Sudachi dictionary.
+        # Keep it open for exact lookups, captions and translation while the
+        # rider is fetched instead of letting Sudachi fail on its first use.
+        else SpacedSplit(language, simplemma=False)
         if language == "ja"
         else VietnameseSplit(file)
         if language == "vi"
@@ -4868,7 +4970,10 @@ class PackDelivery(QObject):
             recorded.close()
         if held is not None and self.deliveries is not None:
             folder = self.deliveries.folder
-            freed = folder.remove([held[1], *folder.riders(held[0].dictionary)])
+            extra: list[Path] = []
+            if code == "ja":
+                extra.append(folder.folder / JAPANESE_DICTIONARY)
+            freed = folder.remove([held[1], *folder.riders(held[0].dictionary), *extra])
             log.info("dictionary pack %s: removed, %d bytes freed", code, freed)
         self.progress.pop(code, None)
         self.changed.emit()
@@ -10055,6 +10160,24 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     )
     hub.use_packs(packs)
     packs.notice.connect(desktop.home_notice)
+
+    def show_japanese_readings() -> None:
+        interface.panels.japanese_readings.follow(
+            JapaneseReadings(
+                supported=(
+                    "japanese" in packs.reader.splits
+                    and japanese_readings_status(desktop.tools) != "failed"
+                ),
+                dictionary_here=(packs.folder_path / JAPANESE_DICTIONARY).is_file(),
+                progress=packs.progress.get("ja"),
+            )
+        )
+
+    if desktop.tools is not None:
+        desktop.tools.dictionary_out.connect(show_japanese_readings)
+    packs.changed.connect(show_japanese_readings)
+    packs.line_changed.connect(lambda _code: show_japanese_readings())
+    show_japanese_readings()
     if desktop.tools is not None:
         windows.class_evidence = partial(
             desktop.tools.word_class_evidence, ready_packs=packs.ready
@@ -10505,7 +10628,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             dictation_key.taken,
         )
         settings_page.show_respeaking(
-            value.type_theirs, other_binding, respeak_key.taken, value.type_what
+            value.type_theirs,
+            other_binding,
+            respeak_key.taken,
+            value.type_what,
+            value.last_respeak_key,
         )
         key = respeak_key if own else dictation_key
         windows.set_respeaking(
@@ -10527,7 +10654,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         if not wanted or respeak_key.try_key(
             wanted, value.type_theirs or value.legacy_respeaking
         ):
-            desktop.settings.update(respeak_key=wanted)
+            desktop.settings.update(
+                respeak_key=wanted,
+                **({"last_respeak_key": wanted} if wanted else {}),
+            )
         else:
             settings_page.respeak_key_not_taken(wanted)
             follow_dictation()

@@ -174,6 +174,7 @@ from polyglotic_desktop.ui_next.views.captions import (
 )
 from polyglotic_desktop.ui_next.views.panels import (
     DownloadsView,
+    JapaneseReadingsView,
     LanguagesView,
     LookView,
     TimingView,
@@ -507,6 +508,7 @@ class SettingsPage(Page):
         speech: LanguagesView,
         sound: SoundView | None = None,
         downloads: DownloadsView | None = None,
+        japanese_readings: JapaneseReadingsView | None = None,
         presets: PresetsView | None = None,
     ) -> None:
         """`themes`: each window theme's key and name;
@@ -517,6 +519,7 @@ class SettingsPage(Page):
         super().__init__(_tr("Settings"))
         self._sound = sound
         self._downloads = downloads
+        self._japanese_readings = japanese_readings
         self._presets = presets or PresetsView()
         """The presets (polyglotic-hq 556): their section, and the line
         saying which one is in use and what it hasn't saved (587)."""
@@ -1389,7 +1392,9 @@ class SettingsPage(Page):
             self._quiet = QuietViewPanel(look, notes=True)
             placed = ((self._word_links, Glyph.LINKS), (self._quiet, Glyph.QUIET))
         elif key == "readings":
-            self._reading = ReadingLinesPanel(look, notes=True)
+            self._reading = ReadingLinesPanel(
+                look, notes=True, japanese_readings=self._japanese_readings
+            )
             placed = ((self._reading, Glyph.READINGS),)
         elif key == "timing":
             self._timing = TimingPanel(timing, languages=speech, presets=self._presets)
@@ -1655,11 +1660,16 @@ class SettingsPage(Page):
             }
 
     def show_respeaking(
-        self, on: bool, key: str, taken: bool = False, what: str = "original"
+        self,
+        on: bool,
+        key: str,
+        taken: bool = False,
+        what: str = "original",
+        last_own: str | None = None,
     ) -> None:
         """Speaker typing preferences and whether another program has its key."""
         for card in self.respeak_cards:
-            card.show_respeaking(on, key, taken, what)
+            card.show_respeaking(on, key, taken, what, last_own)
         self._show_keys()
 
     def respeak_key_not_taken(self, wanted: str) -> None:

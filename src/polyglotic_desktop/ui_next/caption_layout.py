@@ -46,11 +46,13 @@ from PySide6.QtGui import (
 )
 
 from polyglotic_desktop.core.lexicon.readings import Readings
+from polyglotic_desktop.core.lexicon.romaji import romaji
 from polyglotic_desktop.core.lexicon.zhuyin import zhuyin
 from polyglotic_desktop.core.listening.captions import Language
 from polyglotic_desktop.core.listening.display import (
     LIVE_TRAIL,
     CaptionRow,
+    JapaneseReading,
     LinkGap,
     LinkLine,
     ReadingColour,
@@ -228,6 +230,7 @@ class CaptionStyle:
     reading_system: ReadingSystem = ReadingSystem.PINYIN
     """Chinese's readings in pinyin or zhuyin (395): converted as they're
     read, so a change lays the rows out again."""
+    japanese_reading: JapaneseReading = JapaneseReading.KANA
     reading_past: bool = False
     """Readings only over the words past what the learner knows: the
     source's to say which (`reading_lines.source_of`); here, so a change
@@ -340,6 +343,9 @@ class LaidRow:
     """The height of its reading line's band above each of its lines: a
     point over a reading is over its characters (`char_under`), a hovered
     word's highlight and an arrow's tip reach over it (369)."""
+    below: tuple[Placed, ...] = ()
+    """A secondary, quieter reading below each word (Japanese romaji)."""
+    below_font: QFont | None = None
 
     start: int = 0
     """First character in the full source row for a whole-line page fragment."""
@@ -563,14 +569,41 @@ class CaptionLayout:
         chinese = language.split("-")[0] == "zh"  # Cantonese's is Jyutping
         if chinese and self.style.reading_system is ReadingSystem.ZHUYIN:
             read = [replace(r, text=zhuyin(r.text)) for r in read]
+        if (
+            language.split("-")[0] == "ja"
+            and self.style.japanese_reading is JapaneseReading.ROMAJI
+        ):
+            read = [replace(r, text=romaji(r.text)) for r in read]
+        above = [r for r in read if not r.below]
+        below = [r for r in read if r.below]
         found = reading_lines.ruby(
             row.text,
-            read,
+            above,
             font,
             self.style.reading_share,
             self.style.reading_weight,
             band=not reading_lines.marked(language),
         )
+        if below:
+            secondary = reading_lines.ruby(
+                row.text,
+                below,
+                font,
+                self.style.reading_share * 0.9,
+                QFont.Weight.Normal,
+                band=False,
+            )
+            found = replace(
+                found,
+                before=tuple(
+                    max(a, b)
+                    for a, b in zip(found.before, secondary.before, strict=True)
+                ),
+                after=tuple(
+                    max(a, b) for a, b in zip(found.after, secondary.after, strict=True)
+                ),
+                below=secondary,
+            )
         self._rubies[key] = found
         if len(self._rubies) > RUBIES_KEPT:
             self._rubies.popitem(last=False)
@@ -948,6 +981,15 @@ class CaptionLayout:
                         row.above, links, ink, color, laid.link_paint, row.index
                     ),
                 )
+            if row.below and row.below_font is not None:
+                reading_lines.draw(
+                    painter,
+                    row.below,
+                    row.below_font,
+                    top_left,
+                    drawn_ink(grey(ink), min(1.0, today * 0.72), ink),
+                    [],
+                )
             if row.trails:
                 _trails(painter, row, top_left, color)
             if dotted:
@@ -1064,7 +1106,11 @@ class CaptionLayout:
                 y + layout.lineAt(n).y() + layout.lineAt(n).height()
                 for n in range(count - 1)
             )
-            y += height + (self._link_room(font) if style.link_room else 0.0)
+            y += (
+                height
+                + (ruby.below.band if ruby and ruby.below else 0.0)
+                + (self._link_room(font) if style.link_room else 0.0)
+            )
             ends.append(y)
             self.laid_out += 1
         if single_rows and len({row.row.clause for row in rows}) > 1:
@@ -2483,14 +2529,33 @@ def _badge(
 
 def _above(
     layout: QTextLayout, row: CaptionRow, ruby: Ruby | None
-) -> tuple[tuple[Placed, ...], QFont | None, float]:
+) -> tuple[tuple[Placed, ...], QFont | None, float, tuple[Placed, ...], QFont | None]:
     """A laid-out row's reading line where it is drawn, its font, and its
     band's height (kept where the line has no reading: no jump)."""
     if ruby is None:
-        return (), None, 0.0
+        return (), None, 0.0, (), None
+    secondary = ruby.below
+    below = _below(layout, row.text, secondary) if secondary is not None else ()
     if not ruby.readings:
-        return (), None, ruby.band
-    return reading_lines.placed(layout, row.text, ruby), ruby.font, ruby.band
+        return (), None, ruby.band, below, secondary.font if secondary else None
+    return (
+        reading_lines.placed(layout, row.text, ruby),
+        ruby.font,
+        ruby.band,
+        below,
+        secondary.font if secondary else None,
+    )
+
+
+def _below(layout: QTextLayout, text: str, ruby: Ruby) -> tuple[Placed, ...]:
+    """Place a secondary reading under the line containing its word."""
+    placed = reading_lines.placed(layout, text, ruby)
+    moved = []
+    for mark in placed:
+        line = layout.lineForTextPosition(max(0, mark.start))
+        baseline = line.y() + line.height() + QFontMetricsF(ruby.font).ascent()
+        moved.append(replace(mark, y=baseline))
+    return tuple(moved)
 
 
 def _carried_breaks(

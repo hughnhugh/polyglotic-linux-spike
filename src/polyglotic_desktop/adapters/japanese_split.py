@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from polyglotic_desktop.ports.word_split import SplitWord
@@ -52,7 +53,8 @@ _KATAKANA = re.compile(r"[ァ-ヺー・]+")
 class JapaneseSplit:
     """Japanese words by Sudachi. Loads its dictionary when first asked."""
 
-    def __init__(self) -> None:
+    def __init__(self, dictionary: Path | None = None) -> None:
+        self._dictionary = dictionary
         self._tokenizer: Any = None
 
     def _tokenize(self, text: str) -> Any:
@@ -60,7 +62,10 @@ class JapaneseSplit:
             from sudachipy import Dictionary, SplitMode
 
             self._mode = SplitMode.C
-            self._tokenizer = Dictionary(dict="small").tokenizer(mode=self._mode)
+            dictionary = (
+                str(self._dictionary) if self._dictionary is not None else "small"
+            )
+            self._tokenizer = Dictionary(dict=dictionary).tokenizer(mode=self._mode)
         return self._tokenizer.tokenize(text, self._mode)
 
     def words(self, text: str) -> Sequence[SplitWord]:
@@ -81,7 +86,14 @@ class JapaneseSplit:
             )
             kana = _kana(surface, m.reading_form(), before)
             out.append(
-                SplitWord(m.begin(), m.end(), lemmas, content=pos in CONTENT, kana=kana)
+                SplitWord(
+                    m.begin(),
+                    m.end(),
+                    lemmas,
+                    content=pos in CONTENT,
+                    kana=kana,
+                    particle=pos == "助詞",
+                )
             )
             before = m
         return out

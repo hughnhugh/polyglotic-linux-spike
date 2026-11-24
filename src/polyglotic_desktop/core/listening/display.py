@@ -153,6 +153,15 @@ class ReadingSystem(StrEnum):
     """Bopomofo (注音), from the same pinyin (`core.lexicon.zhuyin`)."""
 
 
+class JapaneseReading(StrEnum):
+    """How Japanese pronunciation help is shown."""
+
+    KANA = "kana"
+    ROMAJI = "romaji"
+    BOTH = "both"
+    OFF = "off"
+
+
 READING_LANGUAGES = ("zh", "yue", "ja", "en", "ru", "ko", "hi")
 """The languages a reading line can be put over (decision 0155): Chinese,
 read in pinyin (or zhuyin), Cantonese, read in Jyutping (decision 0160;

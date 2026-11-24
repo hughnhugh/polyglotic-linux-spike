@@ -605,6 +605,7 @@ class TranscriptList(QWidget):
             reading_past=look.reading_past,
             respelling_past=look.respelling_past,
             reading_system=look.reading_system,
+            japanese_reading=look.japanese_reading,
         )
         if style != self.engine.style:
             self._lay_out_again(style)
@@ -627,7 +628,9 @@ class TranscriptList(QWidget):
 
     def _lay_out_again(self, style: CaptionStyle) -> None:
         readings = (
-            self._readings(style.reading_past, style.respelling_past)
+            self._readings(
+                style.reading_past, style.respelling_past, style.japanese_reading
+            )
             if self._readings
             else None
         )

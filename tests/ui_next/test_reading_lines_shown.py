@@ -29,6 +29,7 @@ from polyglotic_desktop.core.learning.vocabulary import Changed
 from polyglotic_desktop.core.listening.captions import Clause, Language
 from polyglotic_desktop.core.listening.display import (
     DisplayOptions,
+    JapaneseReading,
     ReadingSize,
     ReadingSystem,
     RowKind,
@@ -73,7 +74,7 @@ from polyglotic_desktop.ui_next.views.lab import CaptionLab, Fill
 from polyglotic_desktop.ui_next.views.panels import LookView
 from polyglotic_desktop.ui_next.views.transcript import Transcript, TranscriptChoices
 
-PINYIN = CaptionLook(reading_lines=("zh",))
+PINYIN = CaptionLook(reading_lines=("zh",), japanese_reading=JapaneseReading.OFF)
 MADE: list[QWidget] = []
 
 
@@ -391,9 +392,10 @@ def test_a_live_update_with_pinyin_is_within_a_new_captions_budget(
 
 
 def test_pinyin_is_off_until_switched_on_and_saved() -> None:
-    assert CaptionLook().reading_lines == ()
-    assert not caption_style(CaptionLook()).reading_lines
-    view = LookView(CaptionLook())
+    chinese_only = CaptionLook(japanese_reading=JapaneseReading.OFF)
+    assert chinese_only.reading_lines == ()
+    assert not caption_style(chinese_only).reading_lines
+    view = LookView(chinese_only)
     panel = ReadingLinesPanel(view, notes=True)
     try:
         assert not panel.chinese.isChecked() and not panel.reading_size.isEnabled()

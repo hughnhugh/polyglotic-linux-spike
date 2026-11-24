@@ -823,6 +823,7 @@ def caption_style(
         reading_past=look.reading_past,
         respelling_past=look.respelling_past,
         reading_system=look.reading_system,
+        japanese_reading=look.japanese_reading,
     )
     if look.quiet:  # every line italic, a size step bigger, a reading over each
         # word - and never a link's underline or curve, whatever word links say
@@ -5251,7 +5252,9 @@ class CaptionWindow(QWidget):
         """A caption layout for `style`, its reading lines from the
         learner's dictionary (369)."""
         readings = (
-            self._readings(style.reading_past, style.respelling_past)
+            self._readings(
+                style.reading_past, style.respelling_past, style.japanese_reading
+            )
             if self._readings
             else None
         )

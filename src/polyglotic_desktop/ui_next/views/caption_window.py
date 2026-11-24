@@ -47,6 +47,7 @@ from polyglotic_desktop.core.learning.curriculum import DEFAULT_SIZE as CURRICUL
 from polyglotic_desktop.core.learning.highlights import WordIntroductions
 from polyglotic_desktop.core.listening.captions import Language
 from polyglotic_desktop.core.listening.display import (
+    JapaneseReading,
     LinkDetail,
     LinkGap,
     LinkLine,
@@ -648,6 +649,8 @@ class CaptionLook:
     (polyglotic-hq 511, DECISIONS #200: "only over new words")."""
     reading_system: ReadingSystem = ReadingSystem.PINYIN
     """Chinese's reading line in pinyin or zhuyin (395)."""
+    japanese_reading: JapaneseReading = JapaneseReading.KANA
+    """Japanese readings as kana, romaji, both, or off (898)."""
     reading_colour: ReadingColour = ReadingColour.GREY
     """What colour a reading is drawn in (polyglotic-hq 395): a muted grey
     by default, its word link's where one joins it, so word links on show

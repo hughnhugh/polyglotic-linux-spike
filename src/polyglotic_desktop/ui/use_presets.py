@@ -82,6 +82,7 @@ PRESET_SETTINGS = (
     "word_links",
     "quiet_view",
     "reading_lines",
+    "japanese_reading",
     "reading_past",
     "marks_off",
     "common_words_only",

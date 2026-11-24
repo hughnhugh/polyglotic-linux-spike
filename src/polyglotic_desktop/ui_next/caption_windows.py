@@ -1620,6 +1620,8 @@ class CaptionWindows(QObject):
     def set_look(self, look: CaptionLook) -> None:
         recolour = look.background != self.look.background
         self.look = look
+        if self.card is not None:
+            self.card.model.japanese_reading = look.japanese_reading
         self.show_on_speech = look.show_on_speech
         if look.pause_hidden_after != self.sights.limit:
             self.sights.limit = look.pause_hidden_after

@@ -449,7 +449,12 @@ def needs_newer_app(
     """`language` has packs, but only ones this app can't read: a newer
     Polyglotic reads them (say so; never offer them)."""
     found = _for(offers, language, meanings)
-    return bool(found) and not any(reader.reads(o) for o in found)
+    compatible = [
+        o for o in found if o.format in reader.formats and o.split in reader.splits
+    ]
+    return bool(compatible) and not any(
+        reader.new_enough(o.min_app) for o in compatible
+    )
 
 
 def riders_wanted(

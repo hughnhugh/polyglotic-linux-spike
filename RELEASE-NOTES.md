@@ -62,9 +62,18 @@ change is being confirmed.
 
 ### New
 
+- Japanese readings can now be shown as kana, romaji, both, or turned off.
+
 ### Better
 
+- The Chinese interface, Simplified and Traditional, now says plainly what each control does.
+
 ### Fixed
+
+- Turning "One key for both" off restores your Type what they said key, even
+  after a restart.
+- Switch a recommended look off to put your earlier caption appearance back.
+- Japanese dictionary lookups and furigana now work after its dictionary downloads.
 
 ## 0.1.11 - 2026-11-24
 

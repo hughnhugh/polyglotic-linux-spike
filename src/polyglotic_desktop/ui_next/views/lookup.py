@@ -82,7 +82,12 @@ from polyglotic_desktop.core.lexicon.meanings import (
     meaning_of,
     short_meaning,
 )
-from polyglotic_desktop.core.listening.display import CaptionRow, counterpart
+from polyglotic_desktop.core.lexicon.romaji import romaji
+from polyglotic_desktop.core.listening.display import (
+    CaptionRow,
+    JapaneseReading,
+    counterpart,
+)
 from polyglotic_desktop.core.listening.history import Caption
 from polyglotic_desktop.core.shared import EntryFacts, EntryId, WordInLine, WordStatus
 from polyglotic_desktop.ports.dictionary import DictionaryProblem
@@ -484,6 +489,7 @@ class Lookup:
         """`offer`: the languages being learned, for "Learn it too?" (none:
         never asked)."""
         self.learner = learner
+        self.japanese_reading = JapaneseReading.KANA
         self.offer = offer
         self.pinned = False
         self._shown: _Shown | None = None
@@ -897,6 +903,14 @@ class Lookup:
             # the reading as the pack has it: kana, IPA with its slashes, or
             # the word with its stress marked
             reading = entry.reading
+            if language and language.split("-")[0] == "ja" and reading:
+                latin = romaji(reading)
+                if self.japanese_reading is JapaneseReading.ROMAJI:
+                    reading = latin
+                elif self.japanese_reading is JapaneseReading.BOTH:
+                    reading = f"{reading} · {latin}"
+                elif self.japanese_reading is JapaneseReading.OFF:
+                    reading = ""
             if entry.headword != word:
                 # the form's own, where the pack marks it ("руку": "ру́ку")
                 own = self.learner.form_reading(word, language)

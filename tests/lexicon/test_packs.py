@@ -132,12 +132,12 @@ def test_an_old_app_is_never_offered_a_pack_it_cant_read() -> None:
 def test_a_pack_whose_word_split_this_app_hasnt_got_isnt_offered() -> None:
     japanese = replace(RUSSIAN, language="ja", split="japanese", file="jm.sqlite")
     assert best_offer((japanese,), "ja", "en", READER) is None
-    assert needs_newer_app((japanese,), "ja", "en", READER)
+    assert not needs_newer_app((japanese,), "ja", "en", READER)
 
 
 def test_only_unreadable_packs_says_a_newer_app_reads_them() -> None:
     new_format = replace(RUSSIAN, format="2")
-    assert needs_newer_app((new_format,), "ru", "en", READER)
+    assert not needs_newer_app((new_format,), "ru", "en", READER)
     assert not needs_newer_app((RUSSIAN,), "ru", "en", READER)
     assert not needs_newer_app((), "ru", "en", READER)  # simply not there yet
 

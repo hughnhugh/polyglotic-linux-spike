@@ -37,6 +37,7 @@ from polyglotic_desktop.main import (
 from polyglotic_desktop.ui.app import ConnectionState, DesktopApp
 from polyglotic_desktop.ui.settings import AppSettings
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.panels import ReadingLinesPanel
 from polyglotic_desktop.ui_next.views.caption_window import STORED_KEY, CaptionLook
 from polyglotic_desktop.ui_next.views.home import AppStatus
 from polyglotic_desktop.ui_next.views.placement import Rect
@@ -328,6 +329,70 @@ def test_a_panel_change_is_saved_and_the_windows_follow(
     assert panels.languages.value.in_use == ("ja",)
     desktop.settings.update(opacity=0.9)  # elsewhere: the panels show it
     assert panels.look.value.opacity == 0.9
+
+
+def test_a_look_choice_survives_restart_while_reading_lines_follow_default(
+    switched: tuple[DesktopApp, CaptionWindows],
+) -> None:
+    desktop, windows = switched
+    panels = Panels(desktop.settings, windows)
+
+    panels.look.set_opacity(0.95)
+    panels.save_look()
+    restarted = AppSettings.from_stored(desktop.settings.value.to_stored())
+
+    assert restarted.opacity == 0.95
+    assert "opacity" in restarted.changed
+    assert "reading_lines" not in restarted.changed
+    assert restarted.reading_lines == AppSettings().reading_lines
+
+
+@pytest.mark.parametrize("started_explicit", [False, True])
+def test_a_reading_line_off_on_pair_preserves_how_the_list_started(
+    switched: tuple[DesktopApp, CaptionWindows], started_explicit: bool
+) -> None:
+    """Two settled panel saves don't turn an implicit default into a choice."""
+    desktop, windows = switched
+    panels = Panels(desktop.settings, windows)
+    initial = panels.look.value.reading_lines
+    if started_explicit:
+        desktop.settings.update(reading_lines=initial)
+    panel = ReadingLinesPanel(panels.look, notes=True)
+
+    panel.chinese.setChecked(False)
+    panels.save_look()
+    changed = AppSettings.from_stored(desktop.settings.value.to_stored())
+    assert "zh" not in changed.reading_lines
+    assert "reading_lines" in changed.changed
+
+    # An unrelated save can refresh every panel between the two settled
+    # switch changes without changing what the reading-lines choice began as.
+    desktop.settings.update(opacity=0.95)
+
+    panel.chinese.setChecked(True)
+    panels.save_look()
+    restarted = AppSettings.from_stored(desktop.settings.value.to_stored())
+    assert restarted.reading_lines == (() if not started_explicit else initial)
+    assert ("reading_lines" in restarted.changed) is started_explicit
+
+    desktop.settings.update(interface_language="zh_CN")
+    after_language_change = caption_look(desktop.settings.value, panels.in_use())
+    assert ("zh" in after_language_change.reading_lines) is started_explicit
+
+
+def test_a_reading_line_choice_left_changed_survives_restart(
+    switched: tuple[DesktopApp, CaptionWindows],
+) -> None:
+    desktop, windows = switched
+    panels = Panels(desktop.settings, windows)
+    panel = ReadingLinesPanel(panels.look, notes=True)
+
+    panel.chinese.setChecked(False)
+    panels.save_look()
+
+    restarted = AppSettings.from_stored(desktop.settings.value.to_stored())
+    assert "zh" not in restarted.reading_lines
+    assert "reading_lines" in restarted.changed
 
 
 def test_the_looks_reset_leaves_the_windows_where_they_are(
