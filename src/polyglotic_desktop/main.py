@@ -146,6 +146,10 @@ from polyglotic_desktop.adapters.app_log import LIMIT as LOG_LIMIT
 from polyglotic_desktop.adapters.app_log import read_log
 from polyglotic_desktop.adapters.background_learning import BackgroundLearningStore
 from polyglotic_desktop.adapters.background_outbox import BackgroundOutbox
+from polyglotic_desktop.adapters.caption_word_breaks import (
+    CaptionWordSplit,
+    PackWordBreaks,
+)
 from polyglotic_desktop.adapters.feedback_files import FeedbackFolder
 from polyglotic_desktop.adapters.japanese_split import JapaneseSplit
 from polyglotic_desktop.adapters.json_settings import (
@@ -2501,8 +2505,23 @@ def look_changes(
     they're a choice, recorded as one even where it matches what an
     unchosen file holds (all off: ()) (polyglotic-hq 511)."""
     changes = look_settings(look)
+    default_lines = readings_by_default(value, own)
+    if (
+        value.quiet_view
+        and not look.quiet
+        and tuple(look.reading_lines) == default_lines
+        and tuple(value.reading_lines) != default_lines
+    ):
+        # Quiet view temporarily adds the current window's reading. If the
+        # learner was following the default before it was switched on, its
+        # switch back must restore that choice as well as the visible lines.
+        changes["reading_lines"] = ()
+        changes["changed"] = tuple(
+            name for name in value.changed if name != "reading_lines"
+        )
+        return changes
     if "reading_lines" not in value.changed:
-        if tuple(look.reading_lines) == readings_by_default(value, own):
+        if tuple(look.reading_lines) == default_lines:
             del changes["reading_lines"]
         else:
             changes["changed"] = (*value.changed, "reading_lines")
@@ -2578,6 +2597,18 @@ def chinese_word_split(tools: LearningTools) -> Split:
     return split
 
 
+def caption_word_breaks(tools: LearningTools) -> PackWordBreaks:
+    """Word edges from the installed pack for each caption language."""
+
+    def splitter(code: str) -> CaptionWordSplit | None:
+        found = next((each for each in tools.every if each.language == code), None)
+        if found is None or not hasattr(found.dictionary, "split"):
+            return None
+        return CaptionWordSplit(found.dictionary.split)
+
+    return PackWordBreaks(splitter)
+
+
 def timing_of(value: AppSettings) -> Timing:
     """The Timing panel's value from the settings: the caption mode, the
     Live updates interval and the longest wait for text (277)."""
@@ -2651,6 +2682,12 @@ class Panels:
             caption_look(value, self.in_use()),
             self._look_changed,
             caption_look(AppSettings(), self.in_use()),
+            caption_look(
+                replace(value, **value.recommended_look_before),  # type: ignore[arg-type]
+                self.in_use(),
+            )
+            if value.recommended_look_before
+            else None,
         )
         self.downloads = DownloadsView()
         """The downloaded caption faces, as Look's Fonts card shows them
@@ -2685,6 +2722,13 @@ class Panels:
         windows.set_presets(self.presets.value)
         self.look_waiting = False
         """A look change waits to be saved."""
+        self._reading_lines_followed_default = "reading_lines" not in value.changed
+        """The current edit began with reading lines following the app default."""
+        self._reading_lines_preference = (
+            value.reading_lines,
+            "reading_lines" in value.changed,
+        )
+        """The stored reading-lines value and whether it was an explicit choice."""
         self._look_settles = QTimer(singleShot=True, interval=SETTLE_MS)
         self._look_settles.timeout.connect(self.save_look)
         style.use(window_theme())
@@ -2704,8 +2748,40 @@ class Panels:
         self._look_settles.stop()
         if self.look_waiting:
             self.look_waiting = False
-            changes = look_changes(self.settings.value, self.look.value, self.in_use())
-            self.settings.update(**changes)
+            reading_lines_followed_default = self._reading_lines_followed_default
+            value = self.settings.value
+            own = self.in_use()
+            changes = look_changes(value, self.look.value, own)
+            changes["recommended_look_before"] = (
+                look_settings(self.look.recommended_before)
+                if self.look.recommended_before is not None
+                else {}
+            )
+            if reading_lines_followed_default and tuple(
+                self.look.value.reading_lines
+            ) == readings_by_default(value, own):
+                changes["reading_lines"] = ()
+                changes["changed"] = tuple(
+                    name for name in value.changed if name != "reading_lines"
+                )
+            self.settings.update_following(
+                ("reading_lines",)
+                if reading_lines_followed_default
+                and tuple(self.look.value.reading_lines)
+                == readings_by_default(value, own)
+                else (),
+                **changes,
+            )
+            # ``Settings.change`` emits synchronously, so ``follow`` sees the
+            # deliberately temporary choice after the first half of an
+            # off/on pair. Keep how this edit began until an outside settings
+            # refresh says otherwise; returning to the default can then put
+            # the implicit preference back instead of fixing today's list.
+            self._reading_lines_followed_default = reading_lines_followed_default
+            self._reading_lines_preference = (
+                self.settings.value.reading_lines,
+                "reading_lines" in self.settings.value.changed,
+            )
 
     # -- presets (polyglotic-hq 556) ----------------------------------------------------
 
@@ -2892,6 +2968,13 @@ class Panels:
 
     def follow(self) -> None:
         value = self.settings.value
+        reading_lines_preference = (
+            value.reading_lines,
+            "reading_lines" in value.changed,
+        )
+        if reading_lines_preference != self._reading_lines_preference:
+            self._reading_lines_followed_default = "reading_lines" not in value.changed
+            self._reading_lines_preference = reading_lines_preference
         style.use(window_theme())
         self.languages.follow(
             session_languages(value, self.in_use(), self.windows.recent_spoken())
@@ -5155,6 +5238,7 @@ def new_interface(
     )
     if tools is not None:
         windows.word_split = chinese_word_split(tools)
+        windows.word_breaks = caption_word_breaks(tools)
         windows.class_evidence = tools.word_class_evidence
     found_apps = desktop.apps
     assert found_apps is not None  # the app is always given an app list
@@ -5722,6 +5806,8 @@ class QtListener(QObject):
     refresh_answer = Signal(object)
     _stalled = Signal(bool)
     _pace = Signal(object)
+    _speaking_pace = Signal(object)
+    listening_ended = Signal(object)
     _plan = Signal(object)
     allowance_seen = Signal(object)
     plan_shown = Signal(object)
@@ -5824,6 +5910,20 @@ class QtListener(QObject):
         if self.pipeline is not None:
             self.pipeline.set_pace_hint(live_interval_min)
         self._pace.emit(live_interval_min)
+
+    def speaking_pace(
+        self,
+        pace: tuple[
+            dict[str, tuple[int, int]],
+            dict[str, tuple[int, int]],
+        ],
+    ) -> None:
+        """Queue measured speaking pace from the listening-session thread."""
+        self._speaking_pace.emit(pace)
+
+    def session_ended(self, summary: object) -> None:
+        """Queue the completed local summary for Home's last-session card."""
+        self.listening_ended.emit(summary)
 
     def minutes_changed(self, used: float, left: float | None) -> None:
         self._minutes.emit(used, left)
@@ -9191,6 +9291,25 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         daemon=True,
     ).start()
     listener = QtListener(desktop, pipeline, updates, hub.account)
+    listener._speaking_pace.connect(
+        windows.set_pace, Qt.ConnectionType.QueuedConnection
+    )
+    listener.listening_ended.connect(
+        hub.home.show_last_session, Qt.ConnectionType.QueuedConnection
+    )
+    pace_timer = QTimer(desktop, interval=1000)
+    pace_timer.setObjectName("speaking_pace_timer")
+
+    def pace_timer_for(status: Status) -> None:
+        from polyglotic_desktop.connection.session import SessionState
+
+        if status.state is SessionState.LISTENING:
+            if not pace_timer.isActive():
+                pace_timer.start()
+        else:
+            pace_timer.stop()
+
+    listener._status.connect(pace_timer_for, Qt.ConnectionType.QueuedConnection)
 
     def chinese() -> ChineseDictionary | None:
         """The Chinese dictionary open now, the learner's or one beside."""
@@ -9224,6 +9343,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         capture_restarts=pipeline.take_restarts,  # each summary counts them (566)
         time_zone=system_time_zone(),
     )
+    pace_timer.timeout.connect(connection.speaking_pace)
     wire_continuation_refresh(desktop.feed, listener, pipeline, connection, chosen)
     wire_maintenance(connection, listener, desktop, hub, windows)
     account = hub.account
@@ -10505,7 +10625,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
             dictation_key.taken,
         )
         settings_page.show_respeaking(
-            value.type_theirs, other_binding, respeak_key.taken, value.type_what
+            value.type_theirs,
+            other_binding,
+            respeak_key.taken,
+            value.type_what,
+            value.last_respeak_key,
         )
         key = respeak_key if own else dictation_key
         windows.set_respeaking(
@@ -10527,7 +10651,10 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         if not wanted or respeak_key.try_key(
             wanted, value.type_theirs or value.legacy_respeaking
         ):
-            desktop.settings.update(respeak_key=wanted)
+            desktop.settings.update(
+                respeak_key=wanted,
+                **({"last_respeak_key": wanted} if wanted else {}),
+            )
         else:
             settings_page.respeak_key_not_taken(wanted)
             follow_dictation()

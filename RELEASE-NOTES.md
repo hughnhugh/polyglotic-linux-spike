@@ -29,6 +29,10 @@ the app's What's new, the website's What's new and the Discord post.
 
 ## Unreleased
 
+Better
+
+Caption lines fill the window more steadily and continue overflowing text on a new line.
+
 <!-- open beta:
 When the open-beta server is live, move this copy into the release groups
 before cutting its notes. For another alpha cut, lift this block out before
@@ -64,7 +68,14 @@ change is being confirmed.
 
 ### Better
 
+- The Chinese interface, Simplified and Traditional, now says plainly what each control does.
+
 ### Fixed
+
+- Turning "One key for both" off restores your Type what they said key, even
+  after a restart.
+- Switch a recommended look off to put your earlier caption appearance back.
+- Captions no longer jump when one finishes, splits or grows a line: the window glides instead.
 
 ## 0.1.11 - 2026-11-24
 

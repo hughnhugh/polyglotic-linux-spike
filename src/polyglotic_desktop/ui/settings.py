@@ -255,6 +255,9 @@ class AppSettings:
     link_gap: str = LinkGap.MEDIUM.value  # and how far below the text
     text_scale: float = 1.0
     opacity: float = OPACITY  # the panel's: follows the default until changed
+    recommended_look_before: dict[str, object] = field(default_factory=dict)
+    """The learner's look before a recommended look, so its second click can
+    put their choices back after a restart. Internal UI state, not a choice."""
     show_language: bool = True
     fade_after: float | None = None  # seconds of quiet; None: never (the default, F15)
     # how a new caption arrives: "step_and_slide" (the default) or "step"
@@ -520,6 +523,8 @@ class AppSettings:
     type_theirs: bool = True
     type_what: str = TypeWhat.ORIGINAL
     respeak_key: str = DEFAULT_RESPEAK_KEY
+    last_respeak_key: str = DEFAULT_RESPEAK_KEY
+    """The last accepted own key, retained while one key for both is used."""
     # Developer-only opt-in to the former microphone behaviour on that binding.
     legacy_respeaking: bool = False
     # presets for use cases (polyglotic-hq 556, decision 0264; `use_presets`):
@@ -712,6 +717,16 @@ class AppSettings:
                     if f.name in _TUPLES and isinstance(value, list | tuple)
                     else value
                 )
+        if "recommended_look_before" in found:
+            snapshot = found["recommended_look_before"]
+            assert isinstance(snapshot, dict)  # checked by `_CHECKS`
+            found["recommended_look_before"] = {
+                name: valid[0]
+                for name, value in snapshot.items()
+                if name in _LOOK_SETTINGS
+                and (valid := as_valid(name, value, getattr(defaults, name)))
+                is not None
+            }
         # The retired switch remains a readable dataclass field for callers
         # opening old files, but its stored value has no effect.
         found.pop("translate_live", None)
@@ -1351,6 +1366,7 @@ _CHECKS: dict[str, Callable[[object], bool]] = {
     "preset_languages": _preset_languages,
     "preset_second_languages": _language_map,
     "respeak_key": lambda v: v == "" or _dictation_key(v),
+    "last_respeak_key": _dictation_key,
     "type_what": lambda v: v in (TypeWhat.ORIGINAL, TypeWhat.TRANSLATION),
     "dictation_language": lambda v: v is None or v in DICTATION_LANGUAGES,
     "cohort": _text_or_none,
@@ -1361,6 +1377,7 @@ _CHECKS: dict[str, Callable[[object], bool]] = {
     "link_gap": lambda v: v in {g.value for g in LinkGap},
     "text_scale": _number_in(*TEXT_SCALES),
     "opacity": _number_in(0.0, 1.0),
+    "recommended_look_before": lambda v: isinstance(v, dict),
     "fade_after": _number_in(1.0, 600.0, optional=True),
     "caption_arrival": lambda v: v in ARRIVALS,
     "pause_hidden_after": lambda v: (
@@ -1447,6 +1464,49 @@ _CHECKS: dict[str, Callable[[object], bool]] = {
     "own_presets": _languages,  # their keys: "own1"...
 }
 
+# The fields captured by Settings > Look's reversible recommended looks.
+# A snapshot is internal UI state rather than an open-ended settings update:
+# filtering it on read makes renamed or hand-edited fields harmless.
+_LOOK_SETTINGS = frozenset(
+    {
+        "opacity",
+        "background_color",
+        "original_color",
+        "translation_color",
+        "caption_font",
+        "caption_faces",
+        "show_original",
+        "show_language",
+        "show_source",
+        "fade_after",
+        "caption_arrival",
+        "pause_hidden_after",
+        "show_hidden_on_speech",
+        "word_links",
+        "link_detail",
+        "link_line",
+        "link_gap",
+        "caption_lab",
+        "reading_lines",
+        "reading_size",
+        "reading_past",
+        "respelling_past",
+        "reading_system",
+        "reading_colour",
+        "reading_custom_color",
+        "said_in_link_colours",
+        "translation_in_link_colours",
+        "quiet_view",
+        "quiet_words",
+        "marks_in",
+        "curriculum_size",
+        "caption_contrast",
+        "caption_vibrance",
+        "caption_weight",
+        "caption_edge",
+    }
+)
+
 
 def as_valid(name: str, value: object, default: object) -> tuple[object] | None:
     """`value` as setting `name` keeps it, if it's valid for it - a list
@@ -1466,7 +1526,7 @@ def with_changed(before: AppSettings, after: AppSettings) -> AppSettings:
     moved = [
         f.name
         for f in fields(AppSettings)
-        if f.name != "changed"
+        if f.name not in ("changed", "recommended_look_before")
         and f.name not in after.changed
         and getattr(before, f.name) != getattr(after, f.name)
     ]
@@ -1501,10 +1561,22 @@ class Settings(QObject):
         self._unknown = {k: v for k, v in stored.items() if k not in known}
 
     def update(self, **changes: object) -> None:
+        self.update_following((), **changes)
+
+    def update_following(self, following: tuple[str, ...], **changes: object) -> None:
+        """Update, with settings in ``following`` resuming app defaults."""
         new = replace(self.value, **changes)  # type: ignore[arg-type]
         if new == self.value:
             return
-        self.change(with_changed(self.value, new))
+        # Record every real move even when a caller also supplies a changed
+        # record. A caller may then name settings which deliberately resume
+        # following the app default (currently reading lines).
+        new = with_changed(self.value, new)
+        if following:
+            new = replace(
+                new, changed=tuple(n for n in new.changed if n not in following)
+            )
+        self.change(new)
 
     def update_from_bar(self, **changes: object) -> None:
         """Apply and save the fields picked on the bar in one settings write."""

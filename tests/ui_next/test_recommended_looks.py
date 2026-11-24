@@ -89,6 +89,73 @@ def test_changed_after_it_is_no_longer_that_look_but_keeps_the_rest() -> None:
     assert view.value.reading_size is ReadingSize.MEDIUM
 
 
+def test_turning_a_recommended_look_off_restores_every_changed_setting() -> None:
+    mine = CaptionLook(
+        original="#cfe8ff",
+        translation="#a5f28a",
+        background="#2d1f2f",
+        opacity=0.73,
+        contrast=20,
+        vibrance=40,
+        thickness=400,
+        edge=TextEdge.OUTLINE,
+        reading_size=ReadingSize.SMALL,
+        reading_colour=ReadingColour.SAME,
+        faces=(("zh", "KaiTi"), ("zh-hant", "MingLiU")),
+    )
+    view = LookView(mine)
+    view.set_recommended("quiet")
+    assert view.value != mine
+    view.set_recommended("quiet")
+    assert view.value == mine
+
+
+def test_reclick_after_an_edit_reapplies_then_turns_the_look_off() -> None:
+    mine = CaptionLook(contrast=20, opacity=0.73)
+    view = LookView(mine)
+    view.set_recommended("quiet")
+    view.set_contrast(40)
+    view.set_recommended("quiet")
+    assert look_of(view.value) is LOOKS_BY_KEY["quiet"]
+    view.set_recommended("quiet")
+    assert view.value.contrast == mine.contrast
+    assert view.value.opacity == mine.opacity
+
+
+def test_an_active_look_can_be_turned_off_after_a_restart() -> None:
+    mine = CaptionLook(opacity=0.73, thickness=400)
+    first = LookView(mine)
+    first.set_recommended("quiet")
+
+    restarted = LookView(first.value, recommended_before=first.recommended_before)
+    restarted.set_recommended("quiet")
+
+    assert restarted.value == mine
+
+
+def test_an_invalid_stored_look_snapshot_is_dropped_before_startup() -> None:
+    value = AppSettings.from_stored(
+        {
+            "recommended_look_before": {
+                "opacity": "nearly solid",
+                "setting_removed_by_a_later_version": 1,
+            }
+        }
+    )
+
+    assert value.recommended_look_before == {}
+    assert caption_look(value) == caption_look(AppSettings())
+
+
+def test_switching_recommended_looks_keeps_the_original_snapshot() -> None:
+    mine = CaptionLook(background="#2d1f2f", thickness=400)
+    view = LookView(mine)
+    view.set_recommended("quiet")
+    view.set_recommended("paper")
+    view.set_recommended("paper")
+    assert view.value == mine
+
+
 def test_a_new_install_is_none_of_them() -> None:
     """Classic stays the default look (248's Q7 A); the three are offered."""
     assert look_of(CaptionLook()) is None
@@ -149,6 +216,10 @@ def test_a_click_sets_the_look_and_shows_it_chosen(made: list[object]) -> None:
     assert tiles.tiles["quiet"].isChecked()
     assert panel.presets.tiles["quiet"].isChecked()  # its colours, too
     assert panel.text.thickness_now() == "Semibold"
+    tiles.tiles["quiet"].click()
+    assert view.value == CaptionLook()
+    assert not tiles.tiles["quiet"].isChecked()
+    tiles.tiles["quiet"].click()
     view.set_thickness(500)  # changed after: none chosen, the colours still Quiet
     assert not any(tile.isChecked() for tile in tiles.tiles.values())
     assert panel.presets.tiles["quiet"].isChecked()

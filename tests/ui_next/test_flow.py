@@ -274,6 +274,92 @@ def test_a_caption_still_being_spoken_trails_off() -> None:
     assert not Flow(Pitch()).compose(captions, 900, ROWS, trail=False).lines[-1].joins
 
 
+def test_every_closed_live_pair_keeps_its_unit_break_when_more_arrives() -> None:
+    flow = Flow(Pitch())
+    before = models(
+        live("a", clause("one two three four five", "un deux trois quatre cinq"))
+    )
+    first = flow.compose(before, 100, PAIRED)
+    assert len(first.frozen) == 3  # not merely the first closed pair
+
+    after = models(
+        live(
+            "a",
+            clause("one two three four five six", "un deux trois quatre cinq six"),
+        )
+    )
+    revised = flow.compose(after, 100, PAIRED, frozen=first.frozen)
+    for pair, expected in enumerate(("one two", "three", "four")):
+        assert text_of(after, revised, pair, SAID) == expected
+
+
+def test_a_correction_before_a_closed_break_is_remapped_by_units() -> None:
+    flow = Flow(Pitch())
+    before = models(live("a", clause("one two three four", "un deux trois quatre")))
+    first = flow.compose(before, 100, PAIRED)
+    corrected = models(live("a", clause("one too three four", "un deux trois quatre")))
+    revised = flow.compose(corrected, 100, PAIRED, frozen=first.frozen)
+    assert text_of(corrected, revised, 0, SAID) == "one too"
+
+
+def test_a_correction_before_it_does_not_rewrap_the_open_growing_line() -> None:
+    """The closed boundary, rather than a fresh fit, anchors the open line."""
+    flow = Flow(Pitch())
+    before = models(
+        live("a", clause("one two three four five", "un deux trois quatre cinq"))
+    )
+    first = flow.compose(before, 100, PAIRED)
+    open_start = min(
+        run.words.start
+        for line in first.lines
+        if line.pair == max(item.pair for item in first.lines) and line.side is SAID
+        for run in line.runs
+    )
+
+    corrected = models(
+        live("a", clause("one too three four five", "un deux trois quatre cinq"))
+    )
+    revised = flow.compose(corrected, 100, PAIRED, frozen=first.frozen)
+    assert (
+        min(
+            run.words.start
+            for line in revised.lines
+            if line.pair == max(item.pair for item in revised.lines)
+            and line.side is SAID
+            for run in line.runs
+        )
+        == open_start
+    )
+
+
+def test_an_overflowing_frozen_pair_is_condensed_and_refitted() -> None:
+    """A correction may make retained units too wide; no line may overflow."""
+    flow = Flow(Pitch())
+    before = models(live("a", clause("one two three four", "un deux trois quatre")))
+    first = flow.compose(before, 100, PAIRED)
+    corrected = models(
+        live("a", clause("wonderful two three four", "formidable deux trois quatre"))
+    )
+    revised = flow.compose(corrected, 100, PAIRED, frozen=first.frozen)
+    assert all(line.end <= 100.5 for line in revised.lines)
+    assert (
+        "".join(
+            corrected[run.caption].text(run.words)
+            for line in revised.lines
+            if line.side is SAID
+            for run in line.runs
+        ).replace(" ", "")
+        == "wonderfultwothreefour"
+    )
+
+
+def test_growing_lines_always_leave_room_for_the_real_ellipsis() -> None:
+    captions = models(live("a", clause("one two three four", "un deux trois quatre")))
+    flowed = Flow(Pitch()).compose(captions, 100, PAIRED)
+    for line in flowed.lines[:-2]:
+        assert line.end <= 90  # Pitch measures the real ellipsis at 10 px
+
+
 def test_originals_hidden_only_the_translations_are_laid() -> None:
     captions = one(GAME, CONTROLS)
     hidden = FlowOptions(share=True, split=True, show_original=False)

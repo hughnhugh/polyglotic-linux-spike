@@ -65,9 +65,12 @@ from polyglotic_desktop.ui_next.views.caption_window import (
 from polyglotic_desktop.ui_next.views.lab import CaptionLab
 from polyglotic_desktop.ui_next.views.presets import (
     BY_KEY,
+    LOOKS_BY_KEY,
     hex_colour,
+    look_of,
     preset_of,
     with_look,
+    without_look,
 )
 from polyglotic_desktop.ui_next.views.tone import (
     CONTRAST_RANGE,
@@ -497,6 +500,7 @@ class LookView(Shared[CaptionLook]):
         value: CaptionLook,
         on_change: Callable[[CaptionLook], None] | None = None,
         first: CaptionLook | None = None,
+        recommended_before: CaptionLook | None = None,
     ) -> None:
         super().__init__(value, on_change)
         self.first = first
@@ -522,6 +526,9 @@ class LookView(Shared[CaptionLook]):
         self.started_from: str | None = None
         """The colour preset the look's colours last were (`presets`), while
         the app runs: custom colours are "Custom, from" it."""
+        self._recommended_before = recommended_before
+        """The learner's look before the first recommended look. It stays
+        across switches and restarts so the active look can be turned off."""
         self._remember(saved=True)
 
     def _remember(self, saved: bool = False) -> None:
@@ -559,8 +566,22 @@ class LookView(Shared[CaptionLook]):
     def set_recommended(self, key: str) -> None:
         """A recommended look (`presets.LOOKS`, polyglotic-hq 532): its
         colours, caption text, readings and Chinese faces at once - each
-        changed as freely after."""
-        self.change(with_look(self.value, key))
+        changed as freely after. Choosing the active one again turns it off
+        and restores the learner's earlier values."""
+        if look_of(self.value) is LOOKS_BY_KEY[key]:
+            before = self._recommended_before
+            if before is not None:
+                self.change(without_look(self.value, self.value, before))
+            self._recommended_before = None
+            return
+        if self._recommended_before is None:
+            self._recommended_before = self.value
+        applied = with_look(self.value, key)
+        self.change(applied)
+
+    @property
+    def recommended_before(self) -> CaptionLook | None:
+        return self._recommended_before
 
     def set_opacity(self, opacity: float) -> None:
         self.change(replace(self.value, opacity=round(min(1.0, max(0.0, opacity)), 2)))

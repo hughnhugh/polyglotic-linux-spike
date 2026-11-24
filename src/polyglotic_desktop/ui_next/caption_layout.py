@@ -848,6 +848,8 @@ class CaptionLayout:
         at: QPointF,
         ink: Ink,
         marks: Marks | None = None,
+        *,
+        pair_opacity: dict[int, float] | None = None,
     ) -> None:
         """Draws `laid` (the layout of `line`) with its top left at `at`."""
         today = _line_alpha(line, ink)
@@ -873,6 +875,7 @@ class CaptionLayout:
         clip = painter.clipBoundingRect() if painter.hasClipping() else None
         above: dict[int, list[QPointF]] = {}  # Arrows: the clause's upper row's ends
         flowed: list[tuple[LaidRow, QPointF, list[Linked]]] = []
+        base_opacity = painter.opacity() if pair_opacity else 1.0
         for row in laid.rows:
             top_left = QPointF(at.x(), at.y() + row.top)
             if clip is not None and (
@@ -881,6 +884,8 @@ class CaptionLayout:
             ):
                 continue  # out of view, marks included: dots sit below a row's
                 # box, and a row under the hover band leaked them into the gap
+            if pair_opacity:
+                painter.setOpacity(base_opacity * pair_opacity[row.row.clause])
             original = row.row.kind is RowKind.ORIGINAL
             base = ink.original if original else ink.translation
             unfinished = line.live or line.provisional
@@ -971,6 +976,8 @@ class CaptionLayout:
                 elif links and above:
                     _arrows(painter, row, top_left, links, above, alpha, self.style)
 
+        if pair_opacity:
+            painter.setOpacity(base_opacity)
         if flowed:
             _flow_arrows(painter, at, flowed, alpha, self.style, laid.link_paint)
 
@@ -2800,6 +2807,52 @@ def panned_row(
             above=tuple(replace(mark, x=mark.x - advance) for mark in visible.above),
         )
     return visible
+
+
+def moving_layout(full: QTextLayout) -> QTextLayout:
+    """A private copy of the shaped lines whose positions a glide can change."""
+    text = full.text()
+    copy = QTextLayout(text, full.font())
+    copy.setTextOption(full.textOption())
+    copy.setFormats(full.formats())
+    copy.setPosition(full.position())
+    copy.setCacheEnabled(True)
+    copy.beginLayout()
+    for n in range(full.lineCount()):
+        source = full.lineAt(n)
+        line = copy.createLine()
+        line.setLineWidth(source.width())
+        end = source.textStart() + source.textLength()
+        if line.textStart() + line.textLength() != end:
+            _break_at(line, text, _codepoints(text, end))
+        line.setPosition(source.position())
+    copy.endLayout()
+    return copy
+
+
+def move_wrapped_lines(
+    row: LaidRow, layout: QTextLayout, offsets: list[float]
+) -> LaidRow:
+    """Put glyphs, readings, trailing ellipses and word hits at the drawn positions."""
+    full = row.layout
+    for n, dy in enumerate(offsets):
+        layout.lineAt(n).setPosition(full.lineAt(n).position() + QPointF(0, dy))
+    above = []
+    for mark in row.above:
+        cursor = _units(row.row.text, 0, mark.start)
+        dy = offsets[full.lineForTextPosition(cursor).lineNumber()]
+        above.append(replace(mark, y=mark.y + dy))
+    trails = []
+    if row.trails:
+        baselines = [
+            full.lineAt(n).y() + full.lineAt(n).ascent() for n in range(len(offsets))
+        ]
+        for point in row.trails:
+            nearest = min(
+                range(len(baselines)), key=lambda n: abs(baselines[n] - point.y())
+            )
+            trails.append(point + QPointF(0, offsets[nearest]))
+    return replace(row, layout=layout, above=tuple(above), trails=tuple(trails))
 
 
 def visible_row(row: LaidRow, first: int, end: int, offset: QPointF) -> LaidRow:

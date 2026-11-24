@@ -620,13 +620,13 @@ def test_the_dropdown_holds_every_section_at_the_largest_text_size(
             "預設集",
             "字幕外觀",
             "詞語對應",
-            "讀音",
-            "時機",
+            "標音",
+            "出字方式",
             "語音",
-            "聽寫",
+            "語音輸入",
             "快速鍵",
-            "應用程式",
-            "實驗室",
+            "一般",
+            "實驗功能",
         )
         for index, name in enumerate(names):  # zh_TW's, as its .ts file has them
             picker.setItemText(index, name)

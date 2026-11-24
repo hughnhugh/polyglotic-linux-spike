@@ -10,6 +10,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QWidgetAction
 
 from polyglotic_desktop.core.listening.hidden import Sight
+from polyglotic_desktop.core.listening.summary import ListeningSessionEnded
 from polyglotic_desktop.core.releases.updates import UpdateNow
 from polyglotic_desktop.ui import theme
 from polyglotic_desktop.ui_next import style
@@ -77,6 +78,61 @@ def home(picker: Picker) -> tuple[HomePage, Commands]:
     )
     page._actions = actions  # type: ignore[attr-defined]  # kept alive
     return page, commands
+
+
+def test_home_shows_the_last_sessions_mean_and_peak(qapp: QApplication) -> None:
+    page, _ = home(Picker())
+    summary = ListeningSessionEnded(
+        1.0,
+        2,
+        None,
+        "steady",
+        None,
+        None,
+        0.0,
+        0.0,
+        0,
+        0,
+        None,
+        pace_them_mean=135,
+        pace_them_peak=188,
+        pace_you_mean=110,
+        pace_you_peak=142,
+    )
+
+    page.show_last_session(summary)
+
+    assert page.last_session.isVisibleTo(page)
+    assert page.last_session_pace.text() == (
+        "Them 135 avg · 188 peak\nYou 110 avg · 142 peak"
+    )
+
+
+def test_home_keeps_both_speakers_in_a_saved_session_with_no_own_speech(
+    qapp: QApplication,
+) -> None:
+    page, _ = home(Picker())
+    summary = ListeningSessionEnded(
+        1.0,
+        2,
+        None,
+        "steady",
+        None,
+        None,
+        0.0,
+        0.0,
+        0,
+        0,
+        None,
+        pace_them_mean=135,
+        pace_them_peak=188,
+    )
+
+    page.show_last_session(summary)
+
+    assert page.last_session_pace.text() == (
+        "Them 135 avg · 188 peak\nYou 0 avg · 0 peak"
+    )
 
 
 def test_a_row_per_captioned_app_and_the_add_list(qapp: QApplication) -> None:

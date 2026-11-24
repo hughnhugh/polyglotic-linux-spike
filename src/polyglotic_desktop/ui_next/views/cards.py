@@ -1057,7 +1057,14 @@ class Glide:
         self._w = omega
         self._at: float | None = None
 
-    def push(self, now: float, px: float, most: float | None = None) -> None:
+    def push(
+        self,
+        now: float,
+        px: float,
+        most: float | None = None,
+        *,
+        travel_share: float = 1.0,
+    ) -> None:
         """The stack's place rose `px`: that much further to go - never
         more than `most` in all: a burst of cards isn't followed from
         below the window."""
@@ -1068,7 +1075,9 @@ class Glide:
         # From rest, the spring's peak speed is distance * w / e. At the
         # speed limit, distance * w <= 2 * limit keeps it from accelerating
         # further. Interpolate between those bounds for the speed it kept.
-        limit = GLIDE_FASTEST.value
+        # A row closing an entry gap travels further than the stack.
+        limit = GLIDE_FASTEST.value / travel_share
+        self.speed = max(-limit, min(limit, self.speed))
         spare = max(0.0, limit - abs(self.speed))
         distance = max(1.0, abs(self.px))
         max_rate = (2.0 * limit + (math.e - 2.0) * spare) / distance

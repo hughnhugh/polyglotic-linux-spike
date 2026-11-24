@@ -16,6 +16,7 @@ from polyglotic_desktop.core.listening.captions import (
     CaptionUpdate,
     Clause,
     Language,
+    WordTime,
 )
 from polyglotic_desktop.core.listening.sources import Source, SourceId
 from polyglotic_desktop.core.listening.summary import (
@@ -44,6 +45,7 @@ def finished(
     end: float,
     source: Source = VIDEO,
     replaces: tuple[str, ...] = (),
+    voiced_seconds: float | None = None,
 ) -> TranscriptionRequest:
     return TranscriptionRequest(
         CaptionId(caption),
@@ -52,6 +54,7 @@ def finished(
         start,
         end,
         replaces=tuple(CaptionId(r) for r in replaces),
+        voiced_seconds=voiced_seconds,
     )
 
 
@@ -61,8 +64,17 @@ def update(
     text: str = "",
     translation: str = "",
     replaces: tuple[str, ...] = (),
+    token_spans: tuple[tuple[int, int], ...] | None = None,
 ) -> CaptionUpdate:
-    clauses = (Clause(text, {EN: translation}),) if text else ()
+    if token_spans is None:
+        token_spans = tuple(
+            (match.start(), match.end())
+            for match in __import__("re").finditer(r"\S+", text)
+        )
+    tokens = tuple(
+        WordTime(span, float(n), float(n + 1)) for n, span in enumerate(token_spans)
+    )
+    clauses = (Clause(text, {EN: translation}, words=tokens),) if text else ()
     return CaptionUpdate(
         CaptionId(caption),
         SourceId("app"),
@@ -101,6 +113,60 @@ def test_delay_minutes_captions_and_the_main_source() -> None:
     assert (ended.delay_p50_ms, ended.delay_p95_ms) == (1100, 2000)
     assert (ended.dropped, ended.reconnects, ended.live_interval_seconds) == (0, 0, 1.5)
     assert ended.caption_mode == "live"
+
+
+def test_speaking_pace_separates_them_and_you_and_excludes_pauses() -> None:
+    summary = SessionSummary(live_interval=1.5, target=EN)
+    summary.speech_sent(finished("them", 0.0, 20.0, voiced_seconds=2.0), at=20.0)
+    summary.caption_updated(
+        update("them", CaptionKind.FINISHED, "one two three four"), at=21.0
+    )
+    summary.speech_sent(
+        finished("you", 100.0, 110.0, MIC, voiced_seconds=1.0), at=200.0
+    )
+    summary.caption_updated(
+        update("you", CaptionKind.FINISHED, "one two three"), at=201.0
+    )
+    ended = summary.ended(at=500.0)
+    assert (ended.pace_them_mean, ended.pace_them_peak) == (120, 120)
+    assert (ended.pace_you_mean, ended.pace_you_peak) == (180, 180)
+    assert ended.pace_them_seconds_61_120 == 2
+    assert ended.pace_you_seconds_121_180 == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "spans", "expected"),
+    [
+        ("hello brave world", ((0, 5), (6, 11), (12, 17)), 180),
+        ("你好世界", ((0, 2), (2, 4)), 120),
+        ("日本語です", ((0, 3), (3, 5)), 120),
+    ],
+)
+def test_speaking_pace_counts_segmenter_tokens(
+    text: str, spans: tuple[tuple[int, int], ...], expected: int
+) -> None:
+    summary = SessionSummary(live_interval=1.5, target=EN)
+    summary.speech_sent(finished("words", 0.0, 1.0, voiced_seconds=1.0), at=1.0)
+    summary.caption_updated(
+        update("words", CaptionKind.FINISHED, text, token_spans=spans), at=1.1
+    )
+    assert summary.pace(1.1)[0] == expected
+
+
+def test_a_content_free_pace_line_is_logged_each_minute(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    summary = SessionSummary(live_interval=1.5, target=EN, started=0.0)
+    summary.speech_sent(finished("first", 0.0, 1.0, voiced_seconds=1.0), at=1.0)
+    summary.caption_updated(update("first", CaptionKind.FINISHED, "one"), at=1.1)
+    summary.speech_sent(finished("next", 60.0, 61.0, voiced_seconds=1.0), at=61.0)
+    with caplog.at_level("INFO"):
+        summary.caption_updated(
+            update("next", CaptionKind.FINISHED, "two three"), at=61.1
+        )
+    assert "pace: them" in caplog.text
+    assert "drawn original" in caplog.text
+    assert "one" not in caplog.text and "two" not in caplog.text
 
 
 def test_the_caption_mode_is_steady_when_live_updates_are_off() -> None:
@@ -203,6 +269,7 @@ def test_a_session_with_nothing_captioned_is_summarised_too() -> None:
         "saves": 0,
         **NOTHING_DONE,
         **NOTHING_RECOVERED,
+        **NO_PACE,
     }  # no delays: optional in the tracking plan since S2b; no capture: not told
 
 
@@ -237,6 +304,21 @@ NOTHING_RECOVERED = {
 }
 """What the app recovered from by itself (566): always in the summary, 0 if nothing."""
 
+NO_PACE = {
+    "pace_them_mean": 0,
+    "pace_them_peak": 0,
+    "pace_you_mean": 0,
+    "pace_you_peak": 0,
+    **{
+        f"pace_them_seconds_{band}": 0
+        for band in ("1_60", "61_120", "121_180", "181_240", "241_plus")
+    },
+    **{
+        f"pace_you_seconds_{band}": 0
+        for band in ("1_60", "61_120", "121_180", "181_240", "241_plus")
+    },
+}
+
 
 def test_the_event_has_exactly_the_tracking_plans_properties() -> None:
     summary = ListeningSessionEnded(
@@ -261,7 +343,7 @@ def test_the_event_has_exactly_the_tracking_plans_properties() -> None:
     counts = {"lookups": 6, "saves": 2}
     assert (
         listening.session_ended(summary)
-        == expected["props"] | counts | NOTHING_DONE | NOTHING_RECOVERED
+        == expected["props"] | counts | NOTHING_DONE | NOTHING_RECOVERED | NO_PACE
     )
     off = ListeningSessionEnded(**{**summary.__dict__, "live_interval_seconds": None})
     assert "live_interval_seconds" not in listening.session_ended(off)  # optional

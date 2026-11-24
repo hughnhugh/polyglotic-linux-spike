@@ -377,7 +377,7 @@ def test_a_new_caption_in_the_mode_within_its_budget(qapp: QApplication) -> None
     caption - its meetings counted, its words coloured - still within
     NEW_CAPTION (8 ms), timed as the other budget tests are."""
     from tests.budget_judge import sampled, within
-    from tests.ui_next.made_up import finished_updates
+    from tests.ui_next.made_up import arriving, finished_updates
 
     from polyglotic_desktop.core.listening.sources import SourceLabel
     from polyglotic_desktop.perf import budgets
@@ -410,12 +410,12 @@ def test_a_new_caption_in_the_mode_within_its_budget(qapp: QApplication) -> None
     window.show()
     qapp.processEvents()
     window.canvas.repaint()
-    arriving = iter(finished_updates(40, start=150))  # 10, warmed up, twice
+    updates = arriving(10, start=150)
     staged = 0
 
     def arrive() -> None:
         nonlocal staged
-        update = next(arriving)
+        update = next(updates)
         said = " ".join(c.original for c in update.clauses)
         tools.vocabulary.caption_finished(
             update.caption_id, tools.words_in(said), by_you=False
