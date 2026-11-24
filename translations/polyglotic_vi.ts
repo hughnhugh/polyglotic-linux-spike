@@ -563,6 +563,16 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Them {now} · {average} avg</source>
+        <translation type="unfinished">Họ {now} · {average} t.bình</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>Speaking pace: words per minute while speaking, pauses left out</source>
+        <translation type="unfinished">WPM while speaking (pauses excluded)</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>re-spoken</source>
         <extracomment>on a caption the learner said again for the other person (567)</extracomment>
         <translation type="unfinished">nói thay</translation>
@@ -806,6 +816,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
         <source>Back to live</source>
         <translation type="unfinished">Về trực tiếp</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
+        <source>You {now} · {average} avg</source>
+        <translation type="unfinished">Bạn {now} · {average} t.bình</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/caption_window.py"/>
@@ -3943,6 +3958,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
+        <source>Last session</source>
+        <translation type="unfinished">Last session</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Set your level so we know which words to explain</source>
         <translation type="unfinished">Đặt trình độ để chúng tôi biết nên giải thích từ nào</translation>
     </message>
@@ -4120,6 +4140,16 @@
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>The report can include the app&apos;s log, which records what went wrong - never what you heard or said. You see it before it&apos;s sent.</source>
         <translation type="unfinished">Báo cáo có thể kèm nhật ký ứng dụng, ghi lại điều gì đã hỏng - không bao giờ có những gì bạn nghe hay nói. Bạn xem trước khi gửi.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
+        <source>Them {average} avg · {peak} peak</source>
+        <translation type="unfinished">Them {average} avg · {peak} peak</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
+        <source>You {average} avg · {peak} peak</source>
+        <translation type="unfinished">You {average} avg · {peak} peak</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>

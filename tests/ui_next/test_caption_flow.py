@@ -51,6 +51,7 @@ from polyglotic_desktop.ui_next.caption_layout import (
 )
 from polyglotic_desktop.ui_next.caption_marks import CaptionMarks, link_colour
 from polyglotic_desktop.ui_next.caption_window import (
+    PACE_INK_CLEARANCE_PX,
     RUN_ON_MOST,
     CaptionWindow,
     caption_style,
@@ -491,6 +492,7 @@ def test_captions_run_on_in_a_window_and_fill_its_lines(qapp: QApplication) -> N
     together = flow_window(qapp, LABS["run on"], captions=12)
     for window in (apart, together):
         window.resize(1400, 420)
+        window.set_pace(142, 135, 118, 110)
         window.canvas.repaint()
     _, full_apart = fullness(apart)
     _, full_together = fullness(together)
@@ -505,6 +507,27 @@ def test_captions_run_on_in_a_window_and_fill_its_lines(qapp: QApplication) -> N
     assert any(over)
     # and has no label of its own: the run's first says whose they are
     assert not any(laid.label for _, laid, _ in placed if laid.lead)
+    # The fixed label reserves only the part of its rows it actually uses:
+    # run-on text may pack beside it, but shaped row geometry stays clear.
+    pace = QRectF(together.pace.geometry()).adjusted(
+        -PACE_INK_CLEARANCE_PX,
+        -PACE_INK_CLEARANCE_PX,
+        PACE_INK_CLEARANCE_PX,
+        PACE_INK_CLEARANCE_PX,
+    )
+    beside = 0
+    for _, laid, rect in placed:
+        for row in laid.rows:
+            for n in range(row.layout.lineCount()):
+                ink = (
+                    row.layout.lineAt(n)
+                    .naturalTextRect()
+                    .translated(rect.left(), rect.top() + row.top)
+                )
+                if ink.top() < pace.bottom() and ink.bottom() > pace.top():
+                    beside += 1
+                    assert ink.right() <= pace.left(), (ink, pace)
+    assert beside, "the packing rule is exercised by a row beside pace"
 
 
 def test_text_already_shown_stays_where_it_is_when_a_caption_runs_on(
@@ -526,6 +549,34 @@ def test_text_already_shown_stays_where_it_is_when_a_caption_runs_on(
         if at in after
     }
     assert len(moved) == 1 and next(iter(moved))[0] == 0.0  # all rose together
+
+
+def test_run_on_lines_glide_with_the_caption_they_share(qapp: QApplication) -> None:
+    window = flow_window(qapp, LABS["run on"], captions=8)
+    window.set_look(replace(window.look, arrival=Arrival.STEP_AND_SLIDE))
+    window.resize(1100, 600)
+    now = 10.0
+    window.clock = lambda: now
+    window.canvas.repaint()
+    leads = {line.key for line, laid, _ in window.canvas.placed if laid.lead}
+    before = drawn(window)
+    # A long caption forces the shared lines above it to rise.
+    arrival = replace(
+        finished_updates(1, start=20)[0],
+        clauses=(
+            Clause("Another lantern is coming. " * 5, {EN: "A line of lights. " * 6}),
+        ),
+    )
+    window.receive(arrival)
+    window.canvas.repaint()
+    first = drawn(window)
+    held = [k for k in before.keys() & first.keys() if k[0] in leads]
+    assert held and window.arriving
+    assert all(first[k][1] == pytest.approx(before[k][1]) for k in held)
+    now += 0.15
+    window.canvas.repaint()
+    moving = drawn(window)
+    assert any(moving[k][1] < first[k][1] for k in held if k in moving)
 
 
 def test_a_word_is_found_under_the_mouse_where_two_captions_share_a_line(

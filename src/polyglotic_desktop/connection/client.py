@@ -198,12 +198,22 @@ class Connection:
             daemon=True,
         ).start()
 
+    def speaking_pace(self) -> None:
+        """Publish pace for the open listening session's shared UI timer."""
+        with self._lock:
+            session = self._listening
+        if session is not None:
+            session.speaking_pace()
+
     def _finish_listening(self, session: ListeningSession) -> None:
         try:
             session.stop()
             self._hand_on(session)
             summary = session.ended()
             if summary is not None:
+                session_ended = getattr(self._listener, "session_ended", None)
+                if session_ended is not None:
+                    session_ended(summary)
                 properties = listening.session_ended(summary, self._app.platform)
                 properties.update(session.preset_usage)  # optional (556)
                 self._exchange.usage(
@@ -481,8 +491,25 @@ class _ListeningListener:
             milestones.caption_shown()
         self._listener.caption_updated(update)
 
+    def respoken(self, caption_id: CaptionId) -> bool:
+        """Preserve the app-local learner identity through this proxy."""
+        is_respoken = getattr(self._listener, "respoken", None)
+        return bool(is_respoken is not None and is_respoken(caption_id))
+
     def pace_changed(self, live_interval_min: float | None) -> None:
         self._listener.pace_changed(live_interval_min)
+
+    def speaking_pace(
+        self,
+        pace: tuple[
+            dict[str, tuple[int, int]],
+            dict[str, tuple[int, int]],
+        ],
+    ) -> None:
+        """Carry the measured pace through the listening-session proxy."""
+        listener = getattr(self._listener, "speaking_pace", None)
+        if listener is not None:
+            listener(pace)
 
     def minutes_changed(self, used: float, left: float | None) -> None:
         self._listener.minutes_changed(used, left)

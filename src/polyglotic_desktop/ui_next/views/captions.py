@@ -50,6 +50,7 @@ from polyglotic_desktop.core.listening.display import (
 from polyglotic_desktop.core.listening.history import Caption, CaptionHistory
 from polyglotic_desktop.core.listening.sources import SourceId, SourceLabel
 from polyglotic_desktop.core.listening.timing import CaptionId
+from polyglotic_desktop.ports.word_breaks import WordBreaks
 from polyglotic_desktop.ports.word_classes import ClassEvidenceFor
 from polyglotic_desktop.ui_next.views.pour import matching_cuts
 from polyglotic_desktop.ui_next.views.scroll import Scroll
@@ -282,6 +283,7 @@ class CaptionLines:
         self._lines: tuple[Line, ...] = ()
         self._built: dict[int, tuple[Caption, Line]] = {}
         self._delays: dict[CaptionId, CaptionDelay] = {}
+        self.word_breaks: WordBreaks | None = None
         """How long each caption's latest update took to show - its own
         speech's only (`CaptionUpdate.times`); the newest `DELAYS_KEPT`."""
         self._history_version = self._history.version
@@ -519,7 +521,13 @@ class CaptionLines:
             ):
                 model = old  # the same caption: a label or an option changed
             else:
-                model = caption_model(contextual, display.target, display.second, old)
+                model = caption_model(
+                    contextual,
+                    display.target,
+                    display.second,
+                    old,
+                    self.word_breaks,
+                )
         label, color = display.labels.of(caption, self._delays.get(caption.caption_id))
         return Line(
             key=caption.key,

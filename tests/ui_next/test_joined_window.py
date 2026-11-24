@@ -23,7 +23,13 @@ from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.perf import budgets
 from polyglotic_desktop.ui.recorded_captions import APP, MIC, OKAY, finished
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.caption_window import CaptionWindow, _Drag, to_rect
+from polyglotic_desktop.ui_next.caption_window import (
+    CAPTION_TEXT_SIZES,
+    MIN_PANEL,
+    CaptionWindow,
+    _Drag,
+    to_rect,
+)
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
 from polyglotic_desktop.ui_next.joined_window import JoinedWindow
 from polyglotic_desktop.ui_next.settings_popover import COLUMN_ROWS, WINDOW_ROWS
@@ -160,6 +166,26 @@ def test_join_takes_the_commanding_windows_place_and_height_and_the_widths_toget
     assert window.width == 400 + 500 + 450
     assert window.centre[0] == pytest.approx(commanding.centre[0], abs=1)
     assert joined(windows).choices.preset is Preset.TOP_CENTRE
+
+
+def test_pace_and_largest_text_do_not_grow_a_joined_caption_surface(
+    windows: CaptionWindows, qapp: QApplication
+) -> None:
+    windows.join("b")
+    whole = joined(windows)
+    whole.resize(whole.width(), MIN_PANEL.height)
+    requested = whole.size()
+    column = whole.columns[1]
+    canvas = column.canvas.size()
+
+    column.set_text_size(CAPTION_TEXT_SIZES[-1])
+    column.set_translation_size(CAPTION_TEXT_SIZES[-1])
+    column.set_pace(142, 135, 118, 110)
+    qapp.processEvents()
+
+    assert whole.size() == requested
+    assert column.height() == requested.height()
+    assert column.canvas.size() == canvas
 
 
 def test_join_is_clamped_to_the_screen(windows: CaptionWindows) -> None:

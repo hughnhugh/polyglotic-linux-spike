@@ -60,6 +60,18 @@ Props = dict[str, protocol.UsageValue]
 Sent = tuple[str, Props]
 
 WAITING_FOR_THE_SERVER = {
+    "listening_session_ended.pace_them_mean isn't in the tracking plan": "server follow-up 828",
+    "listening_session_ended.pace_them_peak isn't in the tracking plan": "server follow-up 828",
+    **{
+        f"listening_session_ended.pace_them_seconds_{band} isn't in the tracking plan": "server follow-up 828"
+        for band in ("1_60", "61_120", "121_180", "181_240", "241_plus")
+    },
+    "listening_session_ended.pace_you_mean isn't in the tracking plan": "server follow-up 828",
+    "listening_session_ended.pace_you_peak isn't in the tracking plan": "server follow-up 828",
+    **{
+        f"listening_session_ended.pace_you_seconds_{band} isn't in the tracking plan": "server follow-up 828"
+        for band in ("1_60", "61_120", "121_180", "181_240", "241_plus")
+    },
     "listening_session_ended.capture_restarts isn't in the tracking plan": (
         "server #350"
     ),

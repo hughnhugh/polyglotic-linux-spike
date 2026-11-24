@@ -132,6 +132,7 @@ from polyglotic_desktop.core.listening.captions import (
 )
 from polyglotic_desktop.core.listening.display import ListeningMark
 from polyglotic_desktop.core.listening.hidden import HiddenWindows, Sight
+from polyglotic_desktop.core.listening.pace import PaceReading
 from polyglotic_desktop.core.listening.playout import (
     Ahead,
     Playout,
@@ -162,6 +163,7 @@ from polyglotic_desktop.core.shared.open_beta import UsageMeter
 from polyglotic_desktop.perf import spans, trace
 from polyglotic_desktop.ports.settings import SettingsStore
 from polyglotic_desktop.ports.system import OnTop
+from polyglotic_desktop.ports.word_breaks import WordBreaks
 from polyglotic_desktop.ports.word_classes import ClassEvidenceFor
 from polyglotic_desktop.ui_next.caption_window import (
     ACCENT,
@@ -391,6 +393,9 @@ class CaptionWindows(QObject):
         if self.pointer_watch is not None:
             self.pointer_watch.start()
         self._acting = False
+        self._shown_pace: (
+            tuple[dict[str, PaceReading], dict[str, PaceReading]] | None
+        ) = None
         self._read: dict[str, object] = store.load() if store else {}
         """The settings file as last read, for `save_now`."""
         read = stored_windows(self._read)
@@ -467,6 +472,7 @@ class CaptionWindows(QObject):
         """A run of Chinese as words, for the playout: `main` hands it the
         learner's dictionary's word split."""
         self.playout = Playout(split=lambda run: self.word_split(run))
+        self.word_breaks: WordBreaks | None = None
         """Steady's and Calm's words, shown at the pace they were said
         (`core.listening.playout`, decision 0245): every window's."""
         self.word_clock: Callable[[], float] = perf_counter
@@ -591,6 +597,7 @@ class CaptionWindows(QObject):
             card=self.card,
         )
         window.view.class_evidence = self.class_evidence
+        window.view.word_breaks = self.word_breaks
         if self._panel_cursor is not None:
             window.resize_hint = PanelResizeCursor(window, self._panel_cursor)
         window.two_zones = self.two_zones
@@ -608,6 +615,8 @@ class CaptionWindows(QObject):
         window.set_paused(self.paused)
         window.set_minutes_used(self.minutes_used)
         window.set_failing(self.failing)
+        if self._shown_pace is not None:
+            self._set_window_pace(window, self._shown_pace)
         window.set_unstable(self.unstable)
         window.set_connection(*self.connection)
         window.set_unlock_keys(self.unlock_keys)
@@ -1204,6 +1213,8 @@ class CaptionWindows(QObject):
         window = self.windows.get(key)
         if window is not None:
             window.set_show_mic(on)
+            if self._shown_pace is not None:
+                self._set_window_pace(window, self._shown_pace)
 
     def reset_places(self, text_size: bool = False) -> None:
         """Every window back at its default place - the joined window too,
@@ -1742,6 +1753,37 @@ class CaptionWindows(QObject):
             if window.source == source and window.isVisible():
                 return window
         return None
+
+    def set_pace(
+        self,
+        pace: tuple[dict[str, PaceReading], dict[str, PaceReading]],
+    ) -> None:
+        """Show each source's measured pace only in its caption window."""
+        if self._shown_pace == pace:
+            return
+        self._shown_pace = pace
+        for window in self.windows.values():
+            self._set_window_pace(window, pace)
+
+    def _set_window_pace(
+        self,
+        window: CaptionWindow,
+        pace: tuple[dict[str, PaceReading], dict[str, PaceReading]],
+    ) -> None:
+        them, you = pace
+        empty = PaceReading(0, 0, 0.0, 0.0, 0, 0.0)
+        their_reading = them.get(str(window.source), empty)
+        # Ordinary microphone speech is visible wherever this window's My
+        # speech choice is on. Re-speaking is addressed to its source window.
+        own_reading = you.get(str(window.source), empty)
+        if window.choices.show_mic and self.mic is not None:
+            own_reading = own_reading.combined(you.get(str(self.mic), empty))
+        window.set_pace(
+            their_reading.now,
+            their_reading.mean,
+            own_reading.now,
+            own_reading.mean,
+        )
 
     def offer_respeaking(self, update: CaptionUpdate) -> None:
         """A recognition miss, before the history groups or discards the answer."""

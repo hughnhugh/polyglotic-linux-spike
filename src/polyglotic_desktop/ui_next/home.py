@@ -92,6 +92,7 @@ from PySide6.QtWidgets import (
 from polyglotic_desktop.core.listening.hidden import Sight
 from polyglotic_desktop.core.listening.hotkeys import OWN_MODIFIERS
 from polyglotic_desktop.core.listening.maintenance import Maintenance
+from polyglotic_desktop.core.listening.summary import ListeningSessionEnded
 from polyglotic_desktop.core.listening.unreachable import Unreachable
 from polyglotic_desktop.core.shared.papers import STATUS_PAGE
 from polyglotic_desktop.perf import spans
@@ -1742,6 +1743,13 @@ class HomePage(Page):
         self.state.review_consent.clicked.connect(self.review_consent_wanted)
         self.content.addWidget(self.state)
 
+        self.last_session = Card(_tr("Last session"))
+        self.last_session.setObjectName("home.last_session")
+        self.last_session_pace = label("", "Dim", wrap=True)
+        self.last_session.add(self.last_session_pace)
+        self.last_session.hide()
+        self.content.addWidget(self.last_session)
+
         # the level, which the first run doesn't ask (polyglotic-hq 293):
         # one quiet line under the state until it's set or put off
         self.level_line = QWidget()
@@ -2065,6 +2073,21 @@ class HomePage(Page):
         send.clicked.connect(self.crash_report_wanted)
         no.clicked.connect(card.hide)
         self.content.insertWidget(2, card)  # under the state
+
+    def show_last_session(self, summary: ListeningSessionEnded) -> None:
+        """Show both speakers' average and peak from the completed session."""
+        rows = [
+            _tr("Them {average} avg · {peak} peak").format(
+                average=summary.pace_them_mean, peak=summary.pace_them_peak
+            )
+        ]
+        rows.append(
+            _tr("You {average} avg · {peak} peak").format(
+                average=summary.pace_you_mean, peak=summary.pace_you_peak
+            )
+        )
+        self.last_session_pace.setText("\n".join(rows))
+        self.last_session.show()
 
     def offer_start_with_windows(self) -> None:
         """After a good session, once: a quiet card under the state asking

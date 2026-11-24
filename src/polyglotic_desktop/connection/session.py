@@ -603,6 +603,19 @@ class ListeningSession:
             unreadable_dropped=exchange.take_unreadable() if exchange else 0,
         )
 
+    def speaking_pace(self) -> None:
+        """Publish the once-a-second pace, including its quiet zero."""
+
+        def publish() -> None:
+            pace_listener = getattr(self._listener, "speaking_pace", None)
+            if pace_listener is not None:
+                self._notify(
+                    pace_listener,
+                    self._summary.pace_by_source(time.perf_counter()),
+                )
+
+        self._call(publish)
+
     def timelines(self) -> dict[str, protocol.UsageValue] | None:
         """Where the session's caption time went, as the tracking plan's
         `caption_timeline_summarised` - once it has stopped (`ended`); None
@@ -1096,12 +1109,22 @@ class ListeningSession:
                 if message.kind != "live":
                     self.unanswered.answered(message.caption_id, message.replaces or ())
                 update = self._timed(listening.caption_update(message), message.trace)
+                is_respoken = getattr(self._listener, "respoken", None)
+                if is_respoken is not None and is_respoken(update.caption_id):
+                    update = replace(update, respoken=True)
                 if self._live_translation:
                     translations.original(
                         update, message.trace.seq if message.trace else None
                     )
                 self._summary.caption_updated(update, time.perf_counter())
                 self._notify(self._listener.caption_updated, update)
+                if update.kind is CaptionKind.FINISHED:
+                    pace_listener = getattr(self._listener, "speaking_pace", None)
+                    if pace_listener is not None:
+                        self._notify(
+                            pace_listener,
+                            self._summary.pace_by_source(time.perf_counter()),
+                        )
             elif isinstance(message, protocol.LiveTranslation):
                 if self._live_translation and self._settings.live_translation:
                     translated = translations.translated(message)

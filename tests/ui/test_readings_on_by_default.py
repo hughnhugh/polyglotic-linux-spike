@@ -72,6 +72,24 @@ def test_another_look_change_leaves_the_default_unchosen() -> None:
     assert "reading_lines" not in settings.value.changed
 
 
+def test_quiet_view_puts_following_the_default_back() -> None:
+    settings = Settings(
+        MemorySettingsStore({"interface_language": "en", "changed": []})
+    )
+    before = caption_look(settings.value)
+    quiet = replace(before, quiet=True, reading_lines=(*before.reading_lines, "en"))
+    settings.update(**look_changes(settings.value, quiet))
+    assert "reading_lines" in settings.value.changed
+
+    settings.update_following(
+        ("reading_lines",), **look_changes(settings.value, before)
+    )
+
+    assert settings.value.reading_lines == ()
+    assert "reading_lines" not in settings.value.changed
+    assert caption_look(settings.value).reading_lines == before.reading_lines
+
+
 # -- files from before the record (0.1.7) ---------------------------------------------
 
 

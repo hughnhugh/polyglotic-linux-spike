@@ -6,11 +6,23 @@ import logging
 import time
 from collections.abc import Iterator
 from dataclasses import replace
+from typing import Any
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt
+from PySide6.QtCore import (
+    QEvent,
+    QObject,
+    QPoint,
+    QPointF,
+    QRect,
+    QRectF,
+    QSize,
+    Qt,
+    Signal,
+)
 from PySide6.QtGui import (
     QAccessible,
+    QColor,
     QCursor,
     QEnterEvent,
     QKeyEvent,
@@ -18,6 +30,11 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QPushButton, QWidget
+from tests import fake_server
+from tests.fake_server import FakeServer, wait_until
+from tests.test_connection import App
+from tests.test_session import SETTINGS
+from tests.test_session import finished as finished_speech
 from tests.ui_next.made_up import (
     EN,
     SEPARATE,
@@ -34,8 +51,15 @@ from polyglotic_desktop.core.listening.captions import (
     Language,
 )
 from polyglotic_desktop.core.listening.display import RowKind
-from polyglotic_desktop.core.listening.sources import SourceId, SourceLabel
-from polyglotic_desktop.core.listening.timing import CaptionId, CaptionMode
+from polyglotic_desktop.core.listening.respeaking import Respeaking
+from polyglotic_desktop.core.listening.sources import Source, SourceId, SourceLabel
+from polyglotic_desktop.core.listening.timing import (
+    CaptionId,
+    CaptionMode,
+    SpeechKind,
+    TranscriptionRequest,
+)
+from polyglotic_desktop.ports.capture import SourceCategory
 from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next import caption_window as caption_window_module
 from polyglotic_desktop.ui_next import style
@@ -65,6 +89,7 @@ from polyglotic_desktop.ui_next.views.captions import (
     CAPTION_WINDOW_LINES,
 )
 from polyglotic_desktop.ui_next.views.placement import Edge, Preset, Rect
+from polyglotic_desktop.ui_next.views.tone import edge_colour
 
 AREA = Rect(0, 0, 1920, 1040)
 SECOND_APP = SourceId("app-2")
@@ -90,6 +115,11 @@ class Store:
         assert isinstance(values, dict)
         self.values = dict(values)
         self.saves += 1
+
+
+class PaceBridge(QObject):
+    caption = Signal(object)
+    changed = Signal(object)
 
 
 FADING = CaptionLook(fade_after=8.0)
@@ -173,6 +203,356 @@ def test_a_new_window_shows_two_real_sentences_whole(qapp: QApplication) -> None
     window.close()
 
 
+def test_speaking_pace_reserves_its_row_and_uses_caption_ink(
+    window: CaptionWindow, qapp: QApplication
+) -> None:
+    window.set_pace(142, 135, 118, 110)
+    window.canvas.grab()
+
+    sheet = window.pace.styleSheet()
+    assert window.pace.geometry().intersects(window.canvas.geometry())
+    assert "background:" in sheet
+    assert QColor(window.look.original).name() in sheet
+    assert edge_colour(QColor(window.look.original).name()) in sheet
+
+
+@pytest.mark.parametrize(
+    "mode", [CaptionMode.WHOLE, CaptionMode.INSTANT, CaptionMode.SCROLLING]
+)
+@pytest.mark.parametrize("learner_row", [False, True])
+def test_pace_keeps_real_caption_glyph_rows_whole_in_every_mode(
+    qapp: QApplication, mode: CaptionMode, learner_row: bool
+) -> None:
+    """The pinned label reserves layout space; clipping text is not enough."""
+    shown = window_of(qapp, captions=0)
+    shown.resize(420, MIN_PANEL.height)
+    requested = shown.size()
+    shown.set_text_size(CAPTION_TEXT_SIZES[-1])
+    shown.set_translation_size(CAPTION_TEXT_SIZES[-1])
+    shown.set_timing(mode)
+    shown.set_pace(142, 135, 118 if learner_row else 0, 110 if learner_row else 0)
+    assert shown.size() == requested
+    assert shown.minimumHeight() <= MIN_PANEL.height
+    original, translation = REAL_LENGTH[0]
+    shown.view.apply(
+        CaptionUpdate(
+            CaptionId("paced-real"),
+            APP,
+            CaptionKind.FINISHED,
+            (Clause(original, {EN: translation}),),
+            ZH,
+            (ZH,),
+        )
+    )
+    shown.apply_changed(new_caption=True)
+    # Inspect both the first requested paint and a settled, shown window.  The
+    # train failure was sensitive to geometry which had not finished settling.
+    shown.canvas.grab()
+    first = list(shown.canvas.placed)
+    qapp.processEvents()
+    assert shown.size() == requested
+    assert shown.canvas.size() == requested
+    shown.canvas.repaint()
+    shown.canvas.grab()
+
+    assert first, "the first paint keeps a caption"
+    assert shown.canvas.placed, "a narrow, largest-text caption remains visible"
+    assert shown.canvas.clear_top >= 0
+    visible = QRectF(
+        0,
+        shown.canvas.clear_top,
+        shown.canvas.width(),
+        shown.canvas.height() - shown.canvas.clear_top,
+    )
+    assert all(
+        not rect.intersected(visible).intersects(QRectF(shown.pace.geometry()))
+        for _, _, rect in shown.canvas.placed
+    )
+    glyphs = {
+        row.row.kind
+        for _, laid, rect in shown.canvas.placed
+        for row in laid.rows
+        for n in range(row.layout.lineCount())
+        if visible.contains(
+            row.layout.lineAt(n)
+            .naturalTextRect()
+            .translated(rect.left(), rect.top() + row.top)
+        )
+    }
+    # In this extreme geometry the source wins: never leave a translation
+    # readable after every source glyph has scrolled above the pace row.
+    assert glyphs == {RowKind.ORIGINAL}
+    shown.close()
+
+
+@pytest.mark.parametrize(
+    "mode", [CaptionMode.WHOLE, CaptionMode.INSTANT, CaptionMode.SCROLLING]
+)
+def test_pace_clears_real_glyph_ink_at_normal_size(
+    qapp: QApplication, mode: CaptionMode
+) -> None:
+    """The normal full-width layout starts below, rather than under, pace."""
+    shown = window_of(qapp, captions=0)
+    at_one_moment(shown)
+    shown.resize(760, 270)
+    shown.set_text_size(1.0)
+    shown.set_translation_size(1.0)
+    shown.set_timing(mode)
+    shown.set_pace(142, 135, 118, 110)
+    for n, (original, translation) in enumerate(REAL_LENGTH * 3):
+        shown.view.apply(
+            CaptionUpdate(
+                CaptionId(f"normal-paced-{n}"),
+                APP,
+                CaptionKind.FINISHED,
+                (Clause(original, {EN: translation}),),
+                ZH,
+                (ZH,),
+            )
+        )
+    shown.apply_changed(new_caption=True)
+
+    def assert_visible_ink_clears_pace() -> None:
+        shown.canvas.grab()
+        visible = QRectF(
+            0,
+            shown.canvas.clear_top,
+            shown.canvas.width(),
+            shown.canvas.height() - shown.canvas.clear_top,
+        )
+        pace = QRectF(shown.pace.geometry())
+        assert visible.top() >= pace.bottom()
+        kinds: set[RowKind] = set()
+        glyphs = 0
+        for _, laid, placed in shown.canvas.placed:
+            for row in laid.rows:
+                origin = QPointF(placed.left(), placed.top() + row.top)
+                for run in row.layout.glyphRuns():
+                    raw = run.rawFont()
+                    for glyph, position in zip(
+                        run.glyphIndexes(), run.positions(), strict=True
+                    ):
+                        path = raw.pathForGlyph(glyph)
+                        path.translate(origin + position)
+                        bounds = path.boundingRect()
+                        if bounds.isEmpty() or not visible.contains(bounds):
+                            continue
+                        glyphs += 1
+                        kinds.add(row.row.kind)
+                        assert not path.intersects(pace), (bounds, pace)
+        assert glyphs
+        assert kinds == {RowKind.ORIGINAL, RowKind.TRANSLATION}
+        assert shown.size() == shown.canvas.size() == QSize(760, 270)
+
+    assert_visible_ink_clears_pace()  # first paint at the requested geometry
+    qapp.processEvents()
+    shown.canvas.repaint()
+    assert_visible_ink_clears_pace()  # settled paint remains identical
+    shown.close()
+
+
+def test_finished_captions_route_from_the_session_to_their_real_windows_and_pace(
+    qapp: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_caption_for = fake_server.caption_for
+
+    def caption_with_tokens(header: Any) -> dict[str, Any]:
+        answer = original_caption_for(header)
+        clause = answer["clauses"][0]
+        text = clause["original"]
+        clause["words"] = [{"original": [0, len(text)], "start": 10.0, "end": 11.0}]
+        return answer
+
+    monkeypatch.setattr(fake_server, "caption_for", caption_with_tokens)
+    server = FakeServer()
+    app = App(server.url)
+    windows = CaptionWindows(Store(), MIC, areas)
+    windows.set_captioned([("video", APP), ("other", SECOND_APP)])
+    windows.set_show_mic("video", True)
+    windows.set_show_mic("other", False)
+    bridge = PaceBridge()
+    bridge.caption.connect(windows.apply, Qt.ConnectionType.QueuedConnection)
+    bridge.changed.connect(windows.set_pace, Qt.ConnectionType.QueuedConnection)
+    app.listener.caption_updated = bridge.caption.emit  # type: ignore[assignment]
+    app.listener.speaking_pace = bridge.changed.emit  # type: ignore[attr-defined]
+    respeaking = Respeaking(new_id=lambda: "app-respoken")
+    app.listener.respoken = respeaking.is_respoken  # type: ignore[attr-defined]
+    try:
+        app.connection.start_listening(SETTINGS, app.speech.take)
+        wait_until(app.listener.listening)
+        now = time.perf_counter()
+        app.speech.put(finished_speech("paced", now - 2.0), b"opus")
+        app.speech.put(
+            TranscriptionRequest(
+                CaptionId("other-paced"),
+                SpeechKind.FINISHED,
+                Source(SECOND_APP, SourceCategory.VIDEO),
+                now - 1.0,
+                now,
+            ),
+            b"opus",
+        )
+        assert app.connection.listening is not None
+        app.connection.listening.speech_ready()
+        video = windows.windows["video"]
+        other = windows.windows["other"]
+        for _ in range(100):
+            qapp.processEvents()
+            if video.view.lines and other.view.lines:
+                break
+            time.sleep(0.01)
+
+        assert [
+            caption.source_id for caption in video.view.captions_of(video.view.lines)
+        ] == [APP]
+        assert [
+            caption.source_id for caption in other.view.captions_of(other.view.lines)
+        ] == [SECOND_APP]
+
+        assert app.connection.listening._summary.pace(time.perf_counter())[0] > 0
+        app.connection.speaking_pace()
+        for _ in range(100):
+            qapp.processEvents()
+            if video.pace.text() != "Them 0 · 0 avg":
+                break
+            time.sleep(0.01)
+
+        assert video.pace.text() == "Them 30 · 30 avg"
+        assert other.pace.text() == "Them 60 · 60 avg"
+
+        own = TranscriptionRequest(
+            CaptionId("own-paced"),
+            SpeechKind.FINISHED,
+            Source(MIC, SourceCategory.MIC),
+            time.perf_counter() - 1.0,
+            time.perf_counter(),
+        )
+        app.speech.put(own, b"opus")
+        app.connection.listening.speech_ready()
+        wait_until(
+            lambda: (
+                app.connection.listening is not None
+                and app.connection.listening._summary.pace(time.perf_counter())[2] > 0
+            )
+        )
+        app.connection.speaking_pace()
+        for _ in range(100):
+            qapp.processEvents()
+            if "You " in video.pace.text():
+                break
+            time.sleep(0.01)
+
+        assert video.pace.text() == "Them 30 · 30 avg\nYou 60 · 60 avg"
+        assert other.pace.text() == "Them 60 · 60 avg"
+
+        # A fresh caption in the second window must not keep the first
+        # window's now value alive. Its lifetime average remains independent.
+        time.sleep(2.1)
+        app.speech.put(
+            TranscriptionRequest(
+                CaptionId("other-again"),
+                SpeechKind.FINISHED,
+                Source(SECOND_APP, SourceCategory.VIDEO),
+                time.perf_counter() - 0.5,
+                time.perf_counter(),
+            ),
+            b"opus",
+        )
+        app.connection.listening.speech_ready()
+        wait_until(
+            lambda: (
+                app.connection.listening is not None
+                and app.connection.listening._summary.pace_by_source(
+                    time.perf_counter()
+                )[0][str(SECOND_APP)].mean
+                > 60
+            )
+        )
+        app.connection.speaking_pace()
+        for _ in range(100):
+            qapp.processEvents()
+            if video.pace.text().startswith("Them 0"):
+                break
+            time.sleep(0.01)
+
+        assert video.pace.text() == "Them 0 · 30 avg\nYou 0 · 60 avg"
+        assert other.pace.text() == "Them 80 · 80 avg"
+
+        # Re-speaking keeps the app's source identity on the wire, but is the
+        # learner's speech for pace. It is combined with ordinary visible mic
+        # speech only in the addressed window.
+        respoken_at = time.perf_counter()
+        assert respeaking.press(respoken_at - 1.0, Source(APP, SourceCategory.VIDEO))
+        assert respeaking.release(respoken_at)
+        respoken = respeaking.cut(
+            respoken_at - 0.6, respoken_at, respoken_at, last=True
+        )
+        app.speech.put(respoken, b"opus")
+        app.connection.listening.speech_ready()
+        wait_until(
+            lambda: (
+                app.connection.listening is not None
+                and str(APP)
+                in app.connection.listening._summary.pace_by_source(
+                    time.perf_counter()
+                )[1]
+            )
+        )
+        app.connection.speaking_pace()
+        for _ in range(100):
+            qapp.processEvents()
+            if "You 100 · 75 avg" in video.pace.text():
+                break
+            time.sleep(0.01)
+
+        assert video.pace.text() == "Them 0 · 30 avg\nYou 100 · 75 avg"
+        assert other.pace.text() == "Them 80 · 80 avg"
+
+        # Once the addressed re-speech is idle, a new ordinary mic caption
+        # supplies Now; its lifetime average still includes both learner
+        # streams instead of permanently preferring the addressed entry.
+        time.sleep(2.1)
+        app.speech.put(
+            TranscriptionRequest(
+                CaptionId("own-again"),
+                SpeechKind.FINISHED,
+                Source(MIC, SourceCategory.MIC),
+                time.perf_counter() - 1.0,
+                time.perf_counter(),
+            ),
+            b"opus",
+        )
+        app.connection.listening.speech_ready()
+        wait_until(
+            lambda: (
+                app.connection.listening is not None
+                and app.connection.listening._summary.pace_by_source(
+                    time.perf_counter()
+                )[1][str(MIC)].mean
+                == 60
+            )
+        )
+        app.connection.speaking_pace()
+        for _ in range(100):
+            qapp.processEvents()
+            if "You 60 · 69 avg" in video.pace.text():
+                break
+            time.sleep(0.01)
+
+        assert video.pace.text() == "Them 0 · 30 avg\nYou 60 · 69 avg"
+        assert other.pace.text() == "Them 0 · 80 avg"
+        ended = app.connection.listening._summary.ended(time.perf_counter())
+        assert (ended.pace_them_mean, ended.pace_you_mean) == (51, 69)
+        assert ended.pace_them_seconds_1_60 == 4
+        assert ended.pace_you_seconds_1_60 == 1
+        assert ended.pace_you_seconds_61_120 == 2
+    finally:
+        app.connection.close()
+        server.stop()
+        windows.close()
+
+
 def test_the_hover_band_is_drawn_over_the_captions_which_dont_move(
     window: CaptionWindow, qapp: QApplication
 ) -> None:
@@ -243,7 +623,7 @@ def _on_words(window: CaptionWindow) -> QPointF:
     raise AssertionError(
         f"no caption's words drawn where the mouse can be, in {window.size()}"
         f" (clear_top {window.canvas.clear_top}, moving"
-        f" {window.motion.moving(window.clock())}): {refused[:8]}"
+        f" {window.glide.moving(window.clock())}): {refused[:8]}"
     )
 
 
@@ -299,7 +679,7 @@ def test_leaving_a_busy_instant_window_shows_the_next_missed_caption(
         window.receive(update)
     window.leaveEvent(None)
     window._hold_timer.timeout.emit()
-    assert window.motion.moving(window.clock())
+    assert window.glide.moving(window.clock())
     now[0] += 2.0
     visible = _shown(window)
     assert visible[-1][0] == before + 1
@@ -382,7 +762,7 @@ def test_a_busy_runners_pause_never_slides_a_tests_captions(
     paused[0] += 0.1  # the runner pauses
     window.receive(second)
     window.canvas.repaint()
-    assert not window.motion.moving(window.clock())
+    assert not window.glide.moving(window.clock())
     assert any(rect.bottom() <= window.height() for _, _, rect in window.placed())
     window.close()
 
@@ -395,6 +775,8 @@ def test_the_words_of_a_caption_still_sliding_in_hold_the_view(
     mouse on visible words holds the view as the next caption arrives."""
     now = [window.clock() + 10.0]  # well after the window opened
     window.clock = lambda: now[0]
+    window.resize(window.width(), 560)  # two arrivals fit, even with Linux fonts
+    window.canvas.repaint()
     first, second, third = finished_updates(3, start=40)
     panel = _off_words(window)
     QApplication.sendEvent(window, QEnterEvent(panel, panel, panel))
@@ -402,7 +784,7 @@ def test_the_words_of_a_caption_still_sliding_in_hold_the_view(
     now[0] += 0.1
     assert window.receive(second)
     window.canvas.repaint()
-    assert window.motion.moving(now[0])  # still sliding in
+    assert window.glide.moving(now[0])  # still sliding in
     _move(window, _on_words(window))
     assert window.receive(third)
     assert not window.view.scroll.following
