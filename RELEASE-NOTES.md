@@ -64,6 +64,8 @@ change is being confirmed.
 
 ### Better
 
+- The Chinese interface, Simplified and Traditional, now says plainly what each control does.
+
 ### Fixed
 
 ## 0.1.11 - 2026-11-24
