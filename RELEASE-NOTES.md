@@ -62,11 +62,36 @@ change is being confirmed.
 
 ### New
 
+- Japanese readings can now be shown as kana, romaji, both, or turned off.
+- Set the caption panel anywhere from fully transparent to solid in its cog.
+- Press Space in a caption or transcript window to go back to live. Change the key in Settings > Hotkeys.
+
 ### Better
 
+- Chinese captions now default to your system's plain font, with calligraphy still available in Look.
+- See speaking pace below the caption bar and beside each measured caption’s timestamp.
+  The live numbers fade during longer pauses. Use Show speaking pace in the cog to hide both.
+- Caption lines fill the window more steadily and continue overflowing text on a new line.
+- Japanese dictionary cards can now show approved Chinese meanings before their English fallback.
+  These machine-made meanings are clearly labelled.
+- Settings say what each one does in fewer words, and name each thing the same way everywhere.
 - The Chinese interface, Simplified and Traditional, now says plainly what each control does.
+- Reports and suggestions now show length limits and remove hidden control characters before sending.
+- Home, Settings and the other main window pages have fewer borders around their controls.
+- Caption text sizes stay with each language, even when the conversation switches languages.
+- Chinese calligraphy is easier to read, and caption blocks show the language and local time in grey.
+  The source name appears when the source changes.
+- On Windows, minimise captions and reopen them from the taskbar or Alt+Tab.
+- A caption window keeps its own text size and transparency when you switch presets.
 
 ### Fixed
+
+- Caption colour choices now set the panel too, while transparency stays readable.
+- Turning "One key for both" off restores your Type what they said key, even
+  after a restart.
+- Switch a recommended look off to put your earlier caption appearance back.
+- Japanese dictionary lookups and furigana now work after its dictionary downloads.
+- Captions no longer jump when one finishes, splits or grows a line: the window glides instead.
 
 ## 0.1.11 - 2026-11-24
 

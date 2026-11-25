@@ -79,6 +79,31 @@ character drawn as a box, in every language CI runs (project 176).
   can't draft stays empty: the app shows its English - and the tests fail
   for an offered language until it's drafted.
 
+When merging a branch that rewrites existing English, preserve its translations
+before refreshing the catalogs:
+
+```
+git merge <branch>
+uv run python -m tools.i18n carry --from-diff <base-before-merge>
+uv run python -m tools.i18n update
+uv run python -m tools.i18n check
+```
+
+`carry` matches changed source strings by context and location. When several
+strings change in the same hunk, it pairs them in source order if the counts
+and placeholders agree. It moves each language's old translation to the new
+English as an unfinished draft and keeps existing finished translations.
+The per-language total counts each changed catalog entry as carried, kept,
+dropped, or ambiguous. Dropped entries include missing translations and drafts
+whose `{names}`, `%n` count, or markup no longer fit. The English catalog
+only holds plural forms. Ambiguities are listed with their source locations
+and give exit status 1, so review them before running `update`.
+
+Use `--dry-run` to report without writing. Stage new or renamed source files
+so Git sees them. To supply deliberate matches, pass `--map MAP.json` with
+this shape:
+`{"Context": {"Old English": "New English"}}`.
+
 ## Drafting a language (polyglotic-hq 294, decision 0087)
 
 ```

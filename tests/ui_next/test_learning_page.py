@@ -13,7 +13,11 @@ from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QWidget
 
 from polyglotic_desktop.core.learning.highlights import WordIntroductions
 from polyglotic_desktop.core.learning.languages import LearningLanguages, Tier
-from polyglotic_desktop.core.learning.levels import KnownLine
+from polyglotic_desktop.core.learning.levels import (
+    KnownLine,
+    LanguageChoices,
+    LinkChoice,
+)
 from polyglotic_desktop.ui_next.learning_page import (
     LearningPage,
     introductions_line,
@@ -44,6 +48,70 @@ def made() -> LearningPage:
     page = LearningPage()
     MADE.append(page)
     return page
+
+
+def test_learning_controls_say_what_they_change(qapp: QApplication) -> None:
+    """The page uses learner-facing outcomes, not its internal window model."""
+    page = made()
+    languages = LearningLanguages("zh")
+    page.show_learning(
+        languages, cards(languages, ("zh",), levels), WordIntroductions.A_FEW, "zh"
+    )
+
+    text = {item.text() for item in page.findChildren(QLabel)}
+    buttons = {item.text() for item in page.findChildren(QPushButton)}
+    assert any("which new words captions highlight" in item for item in text)
+    assert "Add language" in buttons
+    assert "Learn it" not in buttons
+    assert "A few" in buttons
+    assert "A few per caption" not in buttons
+
+
+def test_word_link_threshold_names_frequency_ranks_and_the_learners_level(
+    qapp: QApplication,
+) -> None:
+    """A number is a frequency rank; the other choice follows the known line."""
+    from polyglotic_desktop.core.learning.first_known import QuickMarks
+
+    def word_level(code: str) -> KnownLine | None:
+        return KnownLine.words(2000) if code == "ja" else levels(code)
+
+    page = made()
+    languages = LearningLanguages("zh", ("ja", "ru"))
+    shown = cards(
+        languages,
+        ("zh", "ja"),
+        word_level,
+        ("ja", "ru"),
+        choices_of=lambda _: LanguageChoices(links=LinkChoice.PAST_KNOWN),
+        quick_of=lambda _: (QuickMarks(), 0),
+    )
+    page.show_learning(languages, shown, WordIntroductions.A_FEW, "zh")
+
+    japanese = page.card("ja")
+    russian = page.card("ru")
+    assert japanese is not None and japanese.links_from is not None
+    assert russian is not None and russian.links_from is not None
+    assert japanese.links_from.itemText(0) == "Your level"
+    assert japanese.links_from.itemText(1) == "Frequency rank 500"
+    assert russian.links_from.itemText(0) == "Frequency rank 500"
+    assert japanese.links_from.accessibleName() == "Link words after"
+    labels = {item.text() for item in japanese.findChildren(QLabel)}
+    assert any("beyond a frequency rank or your level" in item for item in labels)
+
+
+def test_learning_routes_to_the_words_section_by_its_name(
+    qapp: QApplication,
+) -> None:
+    page = made()
+
+    labels = {item.text() for item in page.findChildren(QLabel)}
+    assert "Words" in labels
+    assert page.open_words.text() == "Open Words"
+    assert "Words and Anki" not in labels
+    repeated_words_references = [item for item in labels if "Repeated words" in item]
+    assert len(repeated_words_references) == 2
+    assert all("words you keep hearing" not in item for item in labels)
 
 
 def levels(code: str) -> KnownLine | None:
