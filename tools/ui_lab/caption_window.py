@@ -27,16 +27,23 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from functools import partial
 
-from PySide6.QtCore import QByteArray, QLocale, QPoint, QPointF, QTimeZone
-from PySide6.QtGui import QPainter, QPaintEvent, QRegion
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import QByteArray, QLocale, QPoint, QPointF, Qt, QTimeZone
+from PySide6.QtGui import QPainter, QPaintEvent, QRegion, QWheelEvent
+from PySide6.QtWidgets import QApplication, QWidget
+from tests.ui.fakes import chinese_tools
 
+from polyglotic_desktop.core.lexicon.readings import Reading
 from polyglotic_desktop.core.listening.captions import (
     CaptionKind,
     CaptionUpdate,
     Language,
 )
-from polyglotic_desktop.core.listening.display import RowKind, WordLinks
+from polyglotic_desktop.core.listening.display import (
+    LongLines,
+    ReadingSize,
+    RowKind,
+    WordLinks,
+)
 from polyglotic_desktop.core.listening.maintenance import Maintenance
 from polyglotic_desktop.core.listening.selection import Place, Selection
 from polyglotic_desktop.core.listening.sources import (
@@ -57,8 +64,10 @@ from polyglotic_desktop.ui_next.caption_window import (
     notice_text,
 )
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.toast import current_toast
 from polyglotic_desktop.ui_next.views.app_choices import AppChoice, AppState
 from polyglotic_desktop.ui_next.views.caption_window import (
+    CAPTION_TEXT_SIZES,
     CaptionLook,
     JoinedChoices,
     Notice,
@@ -282,6 +291,112 @@ def arriving(lab: Lab) -> QWidget:
     return shown
 
 
+def grouped_row_entering(lab: Lab) -> QWidget:
+    """Hold the live wrap halfway across its gap over a bilingual caption."""
+    shown = window(
+        lab,
+        captions=0,
+        look=CaptionLook(
+            show_source=False,
+            show_language=False,
+            reading_lines=("zh",),
+            reading_size=ReadingSize.MEDIUM,
+        ),
+    )
+    shown.resize(360, 230)
+    shown.set_language("zh")
+    lab.pump()
+    clock = _Clock()
+    shown.clock = clock
+    shown.always_shown = False
+    said = "Suppose today is Wednesday."
+    translation = "假设今天是星期三。"
+    pinyin = [
+        Reading(i, i + 1, sound)
+        for i, sound in enumerate(
+            ["jiǎ", "shè", "jīn", "tiān", "shì", "xīng", "qī", "sān"]
+        )
+    ]
+    shown.canvas.engine.readings = lambda text, lang: (
+        pinyin if text.startswith(translation) else None
+    )
+    update = CaptionUpdate(
+        CaptionId("grouped-wrap"),
+        APP,
+        CaptionKind.LIVE,
+        (clause(said, translation, into=Language("zh")),),
+        Language("en"),
+    )
+    shown.receive(update)
+    clock.now += 3
+    shown.canvas.repaint()
+    shown.receive(
+        replace(
+            update,
+            clauses=(clause(said + " Yeah. Okay.", translation, into=Language("zh")),),
+        )
+    )
+    for _ in range(90):
+        clock.now += 1 / 60
+        shown.canvas.repaint()
+        if any(
+            0.7 < row.arrival_opacity < 0.94
+            for _, laid, _ in shown.canvas.placed
+            for row in laid.rows
+        ):
+            return shown
+    raise AssertionError("The continuation never crossed the open gap")
+
+
+def caption_hovered(lab: Lab) -> QWidget:
+    """Pointer hovering a caption block (polyglotic-hq 950): soft theme-matched
+    tint over that caption alone and floating Save/Copy icon buttons on its
+    margin, without shifting caption layout."""
+    shown = CaptionWindow(
+        "lab",
+        APP,
+        WindowChoices(),
+        LABELS[APP],
+        None,
+        mic=MIC,
+        areas=_areas,
+        learner=chinese_tools(),
+    )
+    shown.set_labels(LABELS, "You")
+    shown.always_shown = True
+    for update in finished(CAPTIONS, APP):
+        shown.view.apply(update)
+    shown.apply_changed(new_caption=True)
+    shown.show()
+    lab.pump()
+    shown.canvas.repaint()
+    target = shown.canvas.placed[-1][2].center()
+    shown._hover(target)
+    lab.pump()
+    shown.canvas.repaint()
+    assert shown.hovered_line is not None and shown.line_actions.isVisible()
+    lab.closing.append(shown.close)
+    return shown
+
+
+def copied_toast(lab: Lab) -> QWidget:
+    """The themed "Copied to clipboard" toast over a caption window after
+    copying a caption (polyglotic-hq 950)."""
+    shown = window(lab)
+    shown.canvas.repaint()
+    target = shown.canvas.placed[-1][2].center()
+    shown._hover(target)
+    assert shown.copy_hovered_line()
+    toast = current_toast()
+    assert toast is not None and toast.isVisible()
+    toast._hold.stop()
+    toast._fade.stop()
+    lab.pump()
+    lab.closing.append(toast.dismiss)
+    lab.closing.append(shown.close)
+    return _Together([shown, toast])
+
+
 def hovered_state(lab: Lab) -> QWidget:
     shown = window(lab)
     band_toggles(lab, shown)
@@ -299,6 +414,41 @@ def narrow(lab: Lab) -> QWidget:
     resize_steps(lab, shown)
     shown.resize(least_size(MIN_PANEL).width, 180)
     lab.pump()
+    return shown
+
+
+def speaking_pace(
+    lab: Lab,
+    *,
+    width: int = 960,
+    short: bool = False,
+    hidden: bool = False,
+    opacity: float = 0.88,
+    caption_pace: int | None = None,
+) -> QWidget:
+    shown = window(lab, captions=0 if caption_pace is not None else 2)
+    if caption_pace is not None:
+        for update in finished(2, APP):
+            shown.view.apply(replace(update, pace_wpm=caption_pace))
+        shown.apply_changed(new_caption=True)
+    shown.resize(width, MIN_PANEL.height if short else 200)
+    if short:
+        shown.set_text_size(CAPTION_TEXT_SIZES[-1])
+    shown.set_look(replace(shown.look, opacity=opacity))
+    shown.set_pace(165, 187, 120, 98)
+    shown.set_show_pace(not hidden)
+    hovered(lab, shown)
+    return shown
+
+
+def caption_info_off(lab: Lab) -> QWidget:
+    """Captions with Show caption info off: header line hidden, rows reclaim its height."""
+    shown = window(lab, captions=0)
+    for update in finished(3, APP):
+        shown.view.apply(replace(update, pace_wpm=165))
+    shown.apply_changed(new_caption=True)
+    shown.set_show_caption_info(False)
+    hovered(lab, shown)
     return shown
 
 
@@ -349,6 +499,94 @@ def original_only(lab: Lab) -> QWidget:
     return shown
 
 
+def _long_translation(lab: Lab, text_size: float) -> QWidget:
+    """Preview 8's shape: a short made-up Japanese original and a much
+    longer English translation in a roughly 450 px caption window."""
+    shown = window(lab, captions=0, text_size=text_size)
+    shown.resize(450, 360)
+    # The label shows local time, including in the screenshot.
+    arrived = datetime(2026, 11, 25, 9, 30).astimezone()
+    shown.view._history._clock = lambda: arrived
+    shown.view.apply(
+        CaptionUpdate(
+            CaptionId(f"long-translation-{text_size:g}"),
+            APP,
+            CaptionKind.FINISHED,
+            clauses=(
+                clause(
+                    "この字幕は一行に収まります。",
+                    "This made-up translation continues onto another row "
+                    "instead of wrapping inside the first row.",
+                ),
+            ),
+            language=Language("ja"),
+        )
+    )
+    shown.apply_changed(new_caption=True)
+    lab.pump()
+    return shown
+
+
+def long_translation_100(lab: Lab) -> QWidget:
+    """The long-translation regression at 100% caption text size."""
+    return _long_translation(lab, 1.0)
+
+
+def long_translation_200(lab: Lab) -> QWidget:
+    """The long-translation regression at 200% caption text size."""
+    return _long_translation(lab, 2.0)
+
+
+def overflow_lines(
+    lab: Lab, size: float, choice: LongLines, video: bool = False
+) -> QWidget:
+    """A Japanese walking route and its English translation, each wider than the window."""
+    shown = window(lab, captions=0, text_size=size, translation_size=size)
+    clock = _Clock()
+    shown.clock = clock
+    shown.set_look(replace(shown.look, show_source=False, show_language=False))
+    shown.set_video(video)
+    shown.set_presets(
+        replace(shown.preset_menu, video_lines_shown=6, long_lines=choice)
+    )
+    shown.resize(600, round(310 * size))
+    shown.receive(
+        CaptionUpdate(
+            CaptionId("mountain-path"),
+            APP,
+            CaptionKind.FINISHED,
+            (
+                clause(
+                    "川沿いの小さな道を歩いていくと、赤い橋の向こうに古い山の駅が見えてきます。",
+                    "Follow the narrow path along the river and cross the red bridge "
+                    "to reach the old station at the foot of the mountain.",
+                    pairs=(
+                        (
+                            "川沿いの小さな道を歩いていくと、",
+                            "Follow the narrow path along the river",
+                            True,
+                        ),
+                        ("赤い橋の向こうに", "and cross the red bridge", True),
+                        (
+                            "古い山の駅が見えてきます。",
+                            "to reach the old station at the foot of the mountain.",
+                            True,
+                        ),
+                    )
+                    if choice is LongLines.DISPLAY_NEW_LINES
+                    else (),
+                ),
+            ),
+            Language("ja"),
+        )
+    )
+    for _ in range(40):
+        clock.now += 0.5
+        shown.grab()
+    lab.pump()
+    return shown
+
+
 def locked(lab: Lab) -> QWidget:
     """Just locked: it says how to unlock (F10, 249)."""
     shown = window(lab)
@@ -377,6 +615,31 @@ def scrolled_back(lab: Lab) -> QWidget:
         repeat=10,
         budget=budgets.FRAME,
     )
+    return shown
+
+
+def scrollbar(lab: Lab) -> QWidget:
+    """Overlay scroll bar revealed by scrolling (951): scrolled back with
+    the thin theme-coloured bar shown at full opacity on the right edge."""
+    shown = window(lab)
+    pos = QPointF(shown.width() / 2, shown.height() / 2)
+    wheel = QWheelEvent(
+        pos,
+        pos,
+        QPoint(0, 0),
+        QPoint(0, 360),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+    QApplication.sendEvent(shown, wheel)
+    shown._bar_idle_timer.stop()
+    shown._bar_idle_until = None
+    shown._bar_fade_start = None
+    shown.scroll_bar.set_opacity(1.0)
+    lab.pump()
+    assert shown.scroll_bar.isVisible() and shown.scroll_bar.maximum() > 0
     return shown
 
 
@@ -887,6 +1150,8 @@ class _Together(QWidget):
 def _first_window(lab: Lab) -> tuple[CaptionWindows, CaptionWindow]:
     """A new PC's first caption window: it asks its languages (465)."""
     windows = CaptionWindows(None, MIC, _areas, offer_set_up=True)
+    # A golden is a fresh learner even when an earlier state named languages.
+    windows.stored.recent_spoken = ()
     windows.set_labels(LABELS, "You")
     windows.set_captioned([("Discord.exe", APP)])
     shown = windows.windows["Discord.exe"]
@@ -994,14 +1259,28 @@ STATES = [
     for name, run, scene in (
         ("idle", idle, True),
         ("arriving", arriving, True),
+        ("grouped_row_entering", grouped_row_entering, True),
         ("hovered", hovered_state, True),
+        ("caption_hovered", caption_hovered, True),
+        ("copied_toast", copied_toast, True),
         ("narrow", narrow, True),
+        ("pace_minimum", partial(speaking_pace, width=320), True),
+        ("pace_normal", speaking_pace, True),
+        ("pace_short", partial(speaking_pace, width=320, short=True), True),
+        ("pace_hidden", partial(speaking_pace, hidden=True), True),
+        ("pace_transparent", partial(speaking_pace, opacity=0), True),
+        ("pace_30", partial(speaking_pace, opacity=0.30, caption_pace=165), True),
+        ("pace_82", partial(speaking_pace, opacity=0.82, caption_pace=165), True),
+        ("caption_info_off", caption_info_off, True),
         ("settings_popover", settings_popover, False),
         ("pick_app", pick_app, False),
         ("original_only", original_only, True),
+        ("long_translation_100", long_translation_100, True),
+        ("long_translation_200", long_translation_200, True),
         ("locked", locked, True),
         ("locked_later", locked_later, True),
         ("scrolled_back", scrolled_back, True),
+        ("scrollbar", scrollbar, True),
         ("paused", paused, True),
         ("notice", notice, True),
         ("notices", notices, True),
@@ -1036,4 +1315,14 @@ STATES = [
         ("languages_chip", languages_chip, False),
         ("lyrics", lyrics, False),
     )
+] + [
+    State(
+        f"ui_next.w1_overflow_{'carry' if choice is LongLines.GROUPED else choice.value}{'_video' if video else ''}_{percent}",
+        partial(overflow_lines, size=percent / 100, choice=choice, video=video),
+        gated=True,
+        scene=True,
+    )
+    for choice in (LongLines.DISPLAY_NEW_LINES, LongLines.GROUPED)
+    for video in (False, True)
+    for percent in (100, 200)
 ]
