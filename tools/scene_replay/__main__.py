@@ -38,16 +38,25 @@ BELOW_NORMAL = 0x00004000
 """Windows' below-normal priority class, for the workers (RULES #49)."""
 
 
-def matrix() -> list[str]:
+def matrix(ink: bool = False) -> list[str]:
     """Every run, as `stream@setup`: each stream into each surface, with
     readings off and on, at the stream's width and narrow, and in both
-    Long lines arrangements (which the transcript does not have)."""
+    Long lines arrangements (which the transcript does not have).
+
+    `ink`: the ink matrix instead, whose frames are photographed and their
+    ink read (`inks`): each stream into each surface, at its width and
+    narrow, with word links as the app starts them (`Setup.links`)."""
     from tools.scene_replay import streams
     from tools.scene_replay.drive import SURFACES, Setup
 
     runs = []
     for stream in streams.names():
         for surface in SURFACES:
+            if ink:
+                for narrow in (False, True):
+                    setup = Setup(surface, narrow=narrow, links=True)
+                    runs.append(f"{stream}@{setup.name}")
+                continue
             for readings, narrow, paired in itertools.product((False, True), repeat=3):
                 if paired and surface == "transcript":
                     continue
@@ -55,8 +64,8 @@ def matrix() -> list[str]:
     return runs
 
 
-def _chosen(only: Sequence[str]) -> list[str]:
-    runs = matrix()
+def _chosen(only: Sequence[str], ink: bool = False) -> list[str]:
+    runs = matrix(ink)
     if not only:
         return runs
     return [run for run in runs if any(fnmatch.fnmatch(run, each) for each in only)]
@@ -91,19 +100,22 @@ def _play(
     run: str, plant: str | None, properties: bool, full: Path | None
 ) -> dict[str, Any]:
     from tools.scene_replay import drive, frames, plants, streams
-    from tools.scene_replay.properties import PROPERTIES
+    from tools.scene_replay.properties import INK_PROPERTIES, PROPERTIES
 
     stream_name, _, setup_name = run.partition("@")
+    setup = drive.Setup.named(setup_name)
     paths: set[str] = set()
     with plants.planted(plant):
         played = list(
-            drive.play(
-                streams.load(stream_name), drive.Setup.named(setup_name), paths=paths
-            )
+            drive.play(streams.load(stream_name), setup, paths=paths, ink=setup.links)
         )
     summary = frames.summarise(run, played, sorted(paths)).to_plain()
     if properties:
-        found = {rule: check(played) for rule, check in PROPERTIES.items()}
+        # a run with links on is the ink matrix's: its frames carry ink, and
+        # the ink family judges them; the others, every other family
+        judging = INK_PROPERTIES if setup.links else PROPERTIES
+        found = {rule: check(played) for rule, check in judging.items()}
+        summary["judged"] = sorted(judging)
         summary["broken"] = {
             rule: [str(b) for b in broken[:3]]
             for rule, broken in found.items()
@@ -127,7 +139,7 @@ def record(args: argparse.Namespace) -> int:
     if args.shard is None and args.jobs > 1:
         return _record_in_workers(args)
     src = _use_src(args.src)
-    runs = _chosen(args.only)
+    runs = _chosen(args.only, args.ink)
     if args.shard is not None:
         k, n = (int(x) for x in args.shard.split("/"))
         runs = runs[k::n]
@@ -157,6 +169,7 @@ def _worker(args: argparse.Namespace, shard: str, out: Path) -> subprocess.Popen
     command += ["--src", args.src] if args.src else []
     command += ["--plant", args.plant] if args.plant else []
     command += ["--properties"] if args.properties else []
+    command += ["--ink"] if args.ink else []
     command += ["--full", args.full] if args.full else []
     for each in args.only:
         command += ["--only", each]
@@ -174,7 +187,7 @@ def _record_in_workers(args: argparse.Namespace) -> int:
             print(f"a recording worker failed: exit codes {codes}", file=sys.stderr)
             return 1
         parts = [json.loads(out.read_text("utf-8")) for out in outs]
-    order = {run: n for n, run in enumerate(_chosen(args.only))}
+    order = {run: n for n, run in enumerate(_chosen(args.only, args.ink))}
     runs = sorted(
         (run for part in parts for run in part["runs"]), key=lambda r: order[r["run"]]
     )
@@ -341,22 +354,29 @@ def judge(args: argparse.Namespace) -> int:
     do fail (a fixed one is taken off the list, not left to rot)."""
     from tools.scene_replay import rulebook as book
     from tools.scene_replay.drive import Setup
+    from tools.scene_replay.properties import PROPERTIES
 
+    recorded: dict[str, Any] = {"runs": []}
     if args.recording:
-        recorded = json.loads(Path(args.recording).read_text("utf-8"))
+        for each in args.recording:
+            recorded["runs"] += json.loads(Path(each).read_text("utf-8"))["runs"]
     else:
         with tempfile.TemporaryDirectory(prefix="scene-replay-") as temp:
-            out = Path(temp) / "judged.json"
-            command = [sys.executable, "-m", "tools.scene_replay", "record"]
-            command += ["--properties", "--out", str(out), "--jobs", str(args.jobs)]
-            subprocess.run(command, cwd=ROOT, check=True)
-            recorded = json.loads(out.read_text("utf-8"))
+            for ink in (False, True):  # the matrix, then the ink matrix
+                out = Path(temp) / f"judged-{ink}.json"
+                command = [sys.executable, "-m", "tools.scene_replay", "record"]
+                command += ["--properties", "--out", str(out), "--jobs", str(args.jobs)]
+                command += ["--ink"] if ink else []
+                subprocess.run(command, cwd=ROOT, check=True)
+                recorded["runs"] += json.loads(out.read_text("utf-8"))["runs"]
     wrong = []
     for rule in book.load():
         held = failed = 0
         for run in recorded["runs"]:
             if Setup.named(run["run"].partition("@")[2]).surface not in rule.applies:
                 continue
+            if rule.id not in run.get("judged", PROPERTIES):
+                continue  # the other matrix's: its frames do not show this rule
             broke = rule.id in run.get("broken", {})
             known = any(fnmatch.fnmatch(run["run"], each) for each in rule.fails_today)
             held += not broke
@@ -371,6 +391,7 @@ def judge(args: argparse.Namespace) -> int:
                 for run in recorded["runs"]
                 if fnmatch.fnmatch(run["run"], each)
                 and Setup.named(run["run"].partition("@")[2]).surface in rule.applies
+                and rule.id in run.get("judged", PROPERTIES)
             ]
             if hits and not any(rule.id in run.get("broken", {}) for run in hits):
                 wrong.append(f"{rule.id}: {each} is listed as failing today, and holds")
@@ -440,6 +461,9 @@ def main() -> int:
     one.add_argument(
         "--properties", action="store_true", help="judge each run by the rules"
     )
+    one.add_argument(
+        "--ink", action="store_true", help="the ink matrix: its frames' ink read"
+    )
     one.set_defaults(run=record)
 
     two = commands.add_parser("diff", help="compare two trees' replays to 1/64 px")
@@ -462,7 +486,11 @@ def main() -> int:
     four.set_defaults(run=paths)
 
     seven = commands.add_parser("judge", help="every rule over the whole matrix")
-    seven.add_argument("--recording", help="a `record --properties --out` file")
+    seven.add_argument(
+        "--recording",
+        action="append",
+        help="a `record --properties [--ink] --out` file (once for each matrix)",
+    )
     seven.add_argument("--jobs", type=int, default=JOBS)
     seven.set_defaults(run=judge)
 

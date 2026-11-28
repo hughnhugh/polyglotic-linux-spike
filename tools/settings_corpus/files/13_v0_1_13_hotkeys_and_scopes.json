@@ -1,0 +1,44 @@
+{
+  "built_ins": 7,
+  "caption_mode_chosen": "steady",
+  "changed": [
+    "dictation_key",
+    "hotkeys",
+    "last_respeak_key",
+    "opacity",
+    "respeak_key"
+  ],
+  "dictation_key": "semicolon",
+  "future_experiment": {
+    "revision": 3
+  },
+  "hotkey_scopes": {
+    "bigger": "everywhere",
+    "hide": "app",
+    "pause": "app"
+  },
+  "hotkeys": {
+    "bar": "ctrl+alt+comma",
+    "bigger": "a",
+    "copy": "ctrl+alt+c",
+    "hide": "space",
+    "live": "space",
+    "lock": "ctrl+alt+l",
+    "pause": "f9",
+    "preset": "media_play",
+    "smaller": ""
+  },
+  "japanese_reading": "romaji",
+  "last_respeak_key": "ctrl+alt+comma",
+  "learning": "zh",
+  "opacity": 0.8,
+  "preset": "everyday",
+  "respeak_key": "media_play",
+  "theme": "glaze",
+  "transcript_ask_at_quit": true,
+  "type_theirs": true,
+  "type_what": "translation",
+  "video_layout": 2,
+  "video_lines_shown": 1,
+  "window_theme": "light"
+}

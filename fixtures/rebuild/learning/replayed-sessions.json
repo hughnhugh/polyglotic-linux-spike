@@ -1,0 +1,263 @@
+{
+  "before-learning-day": {
+    "coverage": [
+      {
+        "day": "2026-11-24",
+        "deck": 0,
+        "known": 0,
+        "new": 1
+      }
+    ],
+    "daily_exposures": {
+      "2026-11-24": {
+        "fixture:zh:cha": 1
+      }
+    },
+    "events": [
+      {
+        "at": "2026-11-24T08:15:00Z",
+        "caption_id": "video-1",
+        "replaces": [],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          },
+          {
+            "end": 3,
+            "entry_id": "fixture:zh:cha",
+            "start": 2,
+            "text": "茶"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T08:15:02Z",
+        "caption_id": "mic-1",
+        "replaces": [],
+        "source": "mic",
+        "what": "finished",
+        "words": [
+          {
+            "end": 3,
+            "entry_id": "fixture:zh:cha",
+            "start": 2,
+            "text": "茶"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T08:15:03Z",
+        "caption_id": "video-2",
+        "replaces": [],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T08:15:05Z",
+        "caption_id": "video-2",
+        "replaces": [],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          },
+          {
+            "end": 5,
+            "entry_id": "fixture:zh:cha",
+            "start": 4,
+            "text": "茶"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T08:15:06Z",
+        "caption_id": "mic-2",
+        "replaces": [],
+        "source": "mic",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T08:15:08Z",
+        "caption_id": "video-1",
+        "replaces": [],
+        "source": "video",
+        "what": "withdrawn",
+        "words": []
+      },
+      {
+        "at": "2026-11-24T08:15:09Z",
+        "caption_id": "video-3",
+        "replaces": [
+          "video-2"
+        ],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:cha",
+            "start": 0,
+            "text": "茶"
+          }
+        ]
+      }
+    ],
+    "exposures": [
+      [
+        "fixture:zh:cha",
+        1,
+        1,
+        0,
+        "2026-11-24",
+        1,
+        "2026-11-24"
+      ],
+      [
+        "fixture:zh:ni",
+        0,
+        1,
+        0,
+        null,
+        0,
+        null
+      ]
+    ]
+  },
+  "learning-day-1330-utc": {
+    "coverage": [
+      {
+        "day": "2026-11-24",
+        "deck": 0,
+        "known": 0,
+        "new": 3
+      }
+    ],
+    "daily_exposures": {
+      "2026-11-24": {
+        "fixture:zh:cha": 1,
+        "fixture:zh:ni": 2
+      }
+    },
+    "events": [
+      {
+        "at": "2026-11-24T13:30:00Z",
+        "caption_id": "video-4",
+        "replaces": [],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          },
+          {
+            "end": 3,
+            "entry_id": "fixture:zh:cha",
+            "start": 2,
+            "text": "茶"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T13:30:01Z",
+        "caption_id": "mic-3",
+        "replaces": [],
+        "source": "mic",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:cha",
+            "start": 0,
+            "text": "茶"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T13:30:02Z",
+        "caption_id": "mic-3",
+        "replaces": [],
+        "source": "mic",
+        "what": "withdrawn",
+        "words": []
+      },
+      {
+        "at": "2026-11-24T13:30:04Z",
+        "caption_id": "video-5",
+        "replaces": [],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          }
+        ]
+      },
+      {
+        "at": "2026-11-24T13:30:05Z",
+        "caption_id": "video-4",
+        "replaces": [],
+        "source": "video",
+        "what": "finished",
+        "words": [
+          {
+            "end": 1,
+            "entry_id": "fixture:zh:ni",
+            "start": 0,
+            "text": "你"
+          }
+        ]
+      }
+    ],
+    "exposures": [
+      [
+        "fixture:zh:cha",
+        1,
+        1,
+        0,
+        "2026-11-24",
+        2,
+        "2026-11-25"
+      ],
+      [
+        "fixture:zh:ni",
+        2,
+        1,
+        0,
+        "2026-11-24",
+        1,
+        "2026-11-25"
+      ]
+    ]
+  }
+}

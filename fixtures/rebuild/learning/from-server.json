@@ -1,0 +1,236 @@
+{
+  "exchanges": [
+    {
+      "after": [],
+      "changed": 0,
+      "events": [],
+      "name": "nothing"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:en:hello",
+          "saved": null,
+          "status": {
+            "at": "2026-11-25T13:30:00Z",
+            "source": "learner",
+            "status": "ignored"
+          }
+        }
+      ],
+      "changed": 1,
+      "events": [
+        {
+          "at": "2026-11-25T13:30:00Z",
+          "entry_id": "fixture:en:hello",
+          "kind": "WordStatusChanged",
+          "status": "ignored"
+        }
+      ],
+      "name": "status-newer-than-the-learners"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:en:tea",
+          "saved": {
+            "category_id": "interesting",
+            "entry_id": "fixture:en:tea",
+            "headword": "tea",
+            "meaning": "a drink",
+            "reading": "tee",
+            "saved_at": "2026-11-24T13:30:00Z",
+            "source_sentence": "I found tea in the fixture.",
+            "source_translation": "Synthetic translation.",
+            "traditional": ""
+          },
+          "status": {
+            "at": "2026-11-24T13:30:00Z",
+            "source": "learner",
+            "status": "learning"
+          }
+        }
+      ],
+      "changed": 0,
+      "events": [
+        {
+          "at": "2026-11-23T13:30:00Z",
+          "entry_id": "fixture:en:tea",
+          "kind": "WordStatusChanged",
+          "status": "known"
+        }
+      ],
+      "name": "status-older-than-the-learners"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:zh:ni",
+          "saved": null,
+          "status": {
+            "at": "2026-11-24T13:30:00Z",
+            "source": "learner",
+            "status": "known"
+          }
+        }
+      ],
+      "changed": 0,
+      "events": [
+        {
+          "at": "2026-11-24T13:30:00Z",
+          "entry_id": "fixture:zh:ni",
+          "kind": "WordStatusChanged",
+          "status": "new"
+        }
+      ],
+      "name": "status-as-old-as-the-learners"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:zh:hao",
+          "saved": null,
+          "status": {
+            "at": "2026-11-23T13:30:00Z",
+            "source": "learner",
+            "status": "learning"
+          }
+        }
+      ],
+      "changed": 1,
+      "events": [
+        {
+          "at": "2026-11-23T13:30:00Z",
+          "entry_id": "fixture:zh:hao",
+          "kind": "WordStatusChanged",
+          "status": "learning"
+        }
+      ],
+      "name": "status-of-a-word-not-set-here"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:zh:ni",
+          "saved": {
+            "category_id": "interesting",
+            "entry_id": "fixture:zh:ni",
+            "headword": "你",
+            "meaning": "you",
+            "reading": "nǐ",
+            "saved_at": "2026-11-25T13:30:00Z",
+            "source_sentence": "",
+            "source_translation": "",
+            "traditional": ""
+          },
+          "status": {
+            "at": "2026-11-24T13:30:00Z",
+            "source": "learner",
+            "status": "known"
+          }
+        }
+      ],
+      "changed": 1,
+      "events": [
+        {
+          "at": "2026-11-25T13:30:00Z",
+          "entry_id": "fixture:zh:ni",
+          "kind": "WordSaved"
+        }
+      ],
+      "name": "saved-elsewhere"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:zh:missing",
+          "saved": null,
+          "status": {
+            "at": null,
+            "source": "estimated",
+            "status": "new"
+          }
+        }
+      ],
+      "changed": 0,
+      "events": [
+        {
+          "at": "2026-11-24T13:30:00Z",
+          "entry_id": "fixture:zh:missing",
+          "kind": "WordSaved"
+        }
+      ],
+      "name": "saved-elsewhere-not-in-this-dictionary"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:zh:cha",
+          "saved": {
+            "category_id": "interesting",
+            "entry_id": "fixture:zh:cha",
+            "headword": "茶",
+            "meaning": "tea",
+            "reading": "chá",
+            "saved_at": "2026-11-24T13:30:00Z",
+            "source_sentence": "I found 茶 in the fixture.",
+            "source_translation": "Synthetic translation.",
+            "traditional": ""
+          },
+          "status": {
+            "at": "2026-11-24T13:30:00Z",
+            "source": "learner",
+            "status": "learning"
+          }
+        }
+      ],
+      "changed": 0,
+      "events": [
+        {
+          "at": "2026-11-23T13:30:00Z",
+          "entry_id": "fixture:zh:cha",
+          "kind": "WordUnsaved"
+        }
+      ],
+      "name": "unsaved-before-it-was-saved-here"
+    },
+    {
+      "after": [
+        {
+          "entry_id": "fixture:vi:tra",
+          "saved": null,
+          "status": {
+            "at": "2026-11-24T13:30:00Z",
+            "source": "learner",
+            "status": "learning"
+          }
+        }
+      ],
+      "changed": 1,
+      "events": [
+        {
+          "at": "2026-11-25T13:30:00Z",
+          "entry_id": "fixture:vi:tra",
+          "kind": "WordUnsaved"
+        }
+      ],
+      "name": "unsaved-after-it-was-saved-here"
+    }
+  ],
+  "status_history": [
+    {
+      "after": "ignored",
+      "at": "2026-11-25T13:30:00Z",
+      "before": "known",
+      "entry_id": "fixture:en:hello",
+      "source": "server"
+    },
+    {
+      "after": "learning",
+      "at": "2026-11-23T13:30:00Z",
+      "before": "new",
+      "entry_id": "fixture:zh:hao",
+      "source": "server"
+    }
+  ]
+}

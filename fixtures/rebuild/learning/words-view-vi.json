@@ -1,0 +1,84 @@
+[
+  {
+    "entry": {
+      "entry_id": "fixture:vi:xinchao",
+      "frequency_rank": 1,
+      "headword": "xin chào",
+      "levels": [
+        [
+          "fixture",
+          1
+        ]
+      ],
+      "meanings": [
+        "hello"
+      ],
+      "reading": "sin chow",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:vi:xinchao",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    "saved": null,
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:vi:xinchao",
+      "source": "learner",
+      "status": "known"
+    }
+  },
+  {
+    "entry": {
+      "entry_id": "fixture:vi:tra",
+      "frequency_rank": 2,
+      "headword": "trà",
+      "levels": [
+        [
+          "fixture",
+          2
+        ]
+      ],
+      "meanings": [
+        "tea"
+      ],
+      "reading": "cha",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:vi:tra",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    "saved": {
+      "category_id": "interesting",
+      "entry_id": "fixture:vi:tra",
+      "headword": "trà",
+      "meaning": "tea",
+      "reading": "cha",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found trà in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:vi:tra",
+      "source": "learner",
+      "status": "learning"
+    }
+  }
+]

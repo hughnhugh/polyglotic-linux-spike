@@ -62,7 +62,7 @@ top (an import inside one test is that test's own: `NEEDS_QT_BY_NAME`)."""
 NEEDS_QT_BY_NAME = (
     "test_layout.py::test_module_imports_and_has_a_docstring[polyglotic_desktop.ui",
     "test_layout.py::test_module_imports_and_has_a_docstring[polyglotic_desktop.main]",
-    "test_start_imports.py::test_importing_main_leaves_the_connection_and_speech_libraries_for_later",
+    "test_start_imports.py::",
     "test_msix.py::test_the_logos_are_pngs_of_their_size",
     "test_package_build.py::test_the_icon_is_one_ico_at_windows_six_sizes",
     "test_package_build.py::test_the_installer_gives_the_app_and_its_shortcuts_one_taskbar_id",

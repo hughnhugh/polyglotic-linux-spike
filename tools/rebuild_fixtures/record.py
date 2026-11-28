@@ -18,6 +18,7 @@ from polyglotic_desktop.connection import listening, protocol
 from polyglotic_desktop.core.listening.caption_model import CaptionModel, caption_model
 from polyglotic_desktop.core.listening.captions import Language
 from polyglotic_desktop.core.listening.history import CaptionHistory
+from tools.rebuild_fixtures import learning
 
 ROOT = Path(__file__).parents[2]
 FIXTURES = ROOT / "fixtures" / "rebuild"
@@ -420,12 +421,14 @@ def record(spec: Spec) -> dict[str, Any]:
     }
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    """Every rebuild fixture: the caption model's here, and the learning
+    corpus with the store's ladder (`learning.py`, `ladder.py`)."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--check", action="store_true", help="fail instead of rewriting stale fixtures"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     FIXTURES.mkdir(parents=True, exist_ok=True)
     stale = []
     for spec in specs():
@@ -436,6 +439,10 @@ def main() -> None:
                 stale.append(path.name)
         else:
             path.write_text(text, encoding="utf-8")
+    if args.check:
+        stale += [f"learning/{name}" for name in learning.check()]
+    else:
+        learning.record()
     if stale:
         raise SystemExit("stale rebuild fixtures: " + ", ".join(stale))
 

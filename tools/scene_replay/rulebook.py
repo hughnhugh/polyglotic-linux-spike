@@ -285,8 +285,8 @@ def render(rules: list[Rule]) -> str:
         ),
         "",
         (
-            f"**So far:** {len(rules)} rules, the ones you have already ruled on,"
-            " written out as the pattern. The nine families follow, one at a time:"
+            f"**So far:** {len(rules)} rules, {sum(bool(r.mark) for r in rules)}"
+            " of them marked by you. The nine families follow, one at a time:"
         ),
         "",
         "| Family | Rules written |",

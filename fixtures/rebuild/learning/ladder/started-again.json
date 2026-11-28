@@ -1,0 +1,251 @@
+{
+  "file": {
+    "tables": {
+      "anki_csv_exports": {
+        "columns": [
+          "entry_id",
+          "exported_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE anki_csv_exports (\n            entry_id TEXT PRIMARY KEY,\n            exported_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "anki_exports": {
+        "columns": [
+          "entry_id",
+          "exported_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE anki_exports (\n            entry_id TEXT PRIMARY KEY,\n            exported_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "categories": {
+        "columns": [
+          "id",
+          "name",
+          "color",
+          "position"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE categories (\n            id TEXT PRIMARY KEY,\n            name TEXT NOT NULL,\n            color TEXT NOT NULL,\n            position INTEGER NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "curriculum_words": {
+        "columns": [
+          "entry_id",
+          "standing",
+          "came",
+          "entered_at",
+          "days_met",
+          "last_day",
+          "sittings",
+          "retired_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE curriculum_words (\n            entry_id TEXT PRIMARY KEY,\n            standing TEXT NOT NULL,\n            came TEXT NOT NULL,\n            entered_at TEXT NOT NULL,\n            days_met INTEGER NOT NULL,\n            last_day TEXT,\n            sittings INTEGER NOT NULL,\n            retired_at TEXT\n        ) WITHOUT ROWID"
+      },
+      "daily_coverage": {
+        "columns": [
+          "day",
+          "known",
+          "deck",
+          "new"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE daily_coverage (\n            day TEXT PRIMARY KEY,\n            known INTEGER NOT NULL,\n            deck INTEGER NOT NULL,\n            new INTEGER NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "daily_exposures": {
+        "columns": [
+          "day",
+          "entry_id",
+          "count"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE daily_exposures (\n            day TEXT NOT NULL,\n            entry_id TEXT NOT NULL,\n            count INTEGER NOT NULL,\n            PRIMARY KEY (day, entry_id)\n        ) WITHOUT ROWID"
+      },
+      "daily_listening": {
+        "columns": [
+          "day",
+          "category",
+          "seconds"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE daily_listening (\n            day TEXT NOT NULL,\n            category TEXT NOT NULL,\n            seconds REAL NOT NULL,\n            PRIMARY KEY (day, category)\n        ) WITHOUT ROWID"
+      },
+      "deck_words": {
+        "columns": [
+          "entry_id",
+          "headword",
+          "traditional",
+          "reading",
+          "meaning",
+          "sentence",
+          "translation",
+          "learned_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE deck_words (\n            entry_id TEXT PRIMARY KEY,\n            headword TEXT NOT NULL,\n            traditional TEXT NOT NULL,\n            reading TEXT NOT NULL,\n            meaning TEXT NOT NULL,\n            sentence TEXT NOT NULL,\n            translation TEXT NOT NULL,\n            learned_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "exposures": {
+        "columns": [
+          "entry_id",
+          "heard",
+          "heard_by_you",
+          "heard_in_deck",
+          "first_heard",
+          "days_heard",
+          "last_heard"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE exposures (\n            entry_id TEXT PRIMARY KEY,\n            heard INTEGER NOT NULL,\n            heard_by_you INTEGER NOT NULL,\n            heard_in_deck INTEGER NOT NULL\n        , first_heard TEXT, days_heard INTEGER NOT NULL DEFAULT 0, last_heard TEXT) WITHOUT ROWID"
+      },
+      "handed_over_days": {
+        "columns": [
+          "day"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE handed_over_days (\n            day TEXT PRIMARY KEY\n        ) WITHOUT ROWID"
+      },
+      "level": {
+        "columns": [
+          "id",
+          "scheme",
+          "midpoint"
+        ],
+        "rows": [
+          [
+            1,
+            "hsk-2025",
+            2.5
+          ]
+        ],
+        "sql": "CREATE TABLE level (\n            id INTEGER PRIMARY KEY CHECK (id = 1),\n            scheme TEXT NOT NULL,\n            midpoint REAL NOT NULL\n        )"
+      },
+      "line_history": {
+        "columns": [
+          "id",
+          "scheme",
+          "midpoint",
+          "source",
+          "at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE line_history (\n            id INTEGER PRIMARY KEY,\n            scheme TEXT,\n            midpoint REAL,\n            source TEXT NOT NULL,\n            at TEXT NOT NULL\n        )"
+      },
+      "load_words": {
+        "columns": [
+          "entry_id",
+          "standing",
+          "stage",
+          "meetings",
+          "by_hand",
+          "place",
+          "entered_at",
+          "last_met",
+          "graduated_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE load_words (\n            entry_id TEXT PRIMARY KEY,\n            standing TEXT NOT NULL,\n            stage INTEGER NOT NULL,\n            meetings INTEGER NOT NULL,\n            by_hand INTEGER NOT NULL,\n            place INTEGER,\n            entered_at TEXT NOT NULL,\n            last_met TEXT,\n            graduated_at TEXT\n        ) WITHOUT ROWID"
+      },
+      "lookups": {
+        "columns": [
+          "entry_id",
+          "pinned",
+          "hovered",
+          "last_at",
+          "pinned_since_known"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE lookups (\n            entry_id TEXT PRIMARY KEY,\n            pinned INTEGER NOT NULL,\n            hovered INTEGER NOT NULL,\n            last_at TEXT NOT NULL,\n            pinned_since_known INTEGER NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "saved_sentences": {
+        "columns": [
+          "id",
+          "original",
+          "translation",
+          "parts",
+          "translation_language",
+          "category_id",
+          "saved_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE saved_sentences (\n            id TEXT PRIMARY KEY,\n            original TEXT NOT NULL,\n            translation TEXT NOT NULL,\n            parts TEXT NOT NULL,\n            translation_language TEXT NOT NULL,\n            category_id TEXT NOT NULL REFERENCES categories (id) ON DELETE CASCADE,\n            saved_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "saved_words": {
+        "columns": [
+          "entry_id",
+          "headword",
+          "traditional",
+          "reading",
+          "meaning",
+          "category_id",
+          "source_sentence",
+          "source_translation",
+          "saved_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE saved_words (\n            entry_id TEXT PRIMARY KEY,\n            headword TEXT NOT NULL,\n            traditional TEXT NOT NULL,\n            reading TEXT NOT NULL,\n            meaning TEXT NOT NULL,\n            category_id TEXT NOT NULL REFERENCES categories (id) ON DELETE CASCADE,\n            source_sentence TEXT NOT NULL,\n            source_translation TEXT NOT NULL,\n            saved_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "set_words": {
+        "columns": [
+          "name",
+          "entry_id",
+          "sources",
+          "added_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE set_words (\n            name TEXT NOT NULL,\n            entry_id TEXT NOT NULL,\n            sources TEXT NOT NULL,\n            added_at TEXT NOT NULL,\n            PRIMARY KEY (name, entry_id)\n        ) WITHOUT ROWID"
+      },
+      "status_history": {
+        "columns": [
+          "id",
+          "entry_id",
+          "before",
+          "after",
+          "source",
+          "at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE status_history (\n            id INTEGER PRIMARY KEY,\n            entry_id TEXT NOT NULL,\n            before TEXT NOT NULL,\n            after TEXT NOT NULL,\n            source TEXT NOT NULL,\n            at TEXT NOT NULL\n        )"
+      },
+      "statuses": {
+        "columns": [
+          "entry_id",
+          "status",
+          "source",
+          "at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE statuses (\n            entry_id TEXT PRIMARY KEY,\n            status TEXT NOT NULL,\n            source TEXT NOT NULL,\n            at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      }
+    },
+    "user_version": 11
+  },
+  "level_copy": {
+    "midpoint": 2.5,
+    "scheme": "hsk-2025"
+  },
+  "reads": {
+    "daily_exposures": {},
+    "days_to_hand_over": [],
+    "exposure_days": [],
+    "line_changes": [],
+    "load": {
+      "anki_exports": [],
+      "categories": [],
+      "coverage": [],
+      "curriculum_words": [],
+      "deck_words": [],
+      "exposures": [],
+      "level": {
+        "midpoint": 2.5,
+        "scheme": "hsk-2025"
+      },
+      "listening": [],
+      "load_words": [],
+      "lookups": [],
+      "saved_words": [],
+      "set_words": [],
+      "statuses": []
+    },
+    "saved_sentences": [],
+    "status_changes": []
+  }
+}

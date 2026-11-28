@@ -1,0 +1,130 @@
+[
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:zh:cha",
+    "guid": "polyglotic:fixture:zh:cha",
+    "language": "zh",
+    "meaning": "tea",
+    "reading": "chá",
+    "sentence": "Fixture line with <b>茶</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "茶"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:zh:ni",
+    "guid": "polyglotic:fixture:zh:ni",
+    "language": "zh",
+    "meaning": "you",
+    "reading": "nǐ",
+    "sentence": "Fixture line with <b>你</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "你"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:en:hello",
+    "guid": "polyglotic:fixture:en:hello",
+    "language": "en",
+    "meaning": "a greeting",
+    "reading": "hə-LOH",
+    "sentence": "Fixture line with <b>hello</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "hello"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:en:tea",
+    "guid": "polyglotic:fixture:en:tea",
+    "language": "en",
+    "meaning": "a drink",
+    "reading": "tee",
+    "sentence": "Fixture line with <b>tea</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "tea"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:ja:cha",
+    "guid": "polyglotic:fixture:ja:cha",
+    "language": "ja",
+    "meaning": "tea",
+    "reading": "cha",
+    "sentence": "Fixture line with <b>茶</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "茶"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:ja:konnichiwa",
+    "guid": "polyglotic:fixture:ja:konnichiwa",
+    "language": "ja",
+    "meaning": "hello",
+    "reading": "konnichiwa",
+    "sentence": "Fixture line with <b>こんにちは</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "こんにちは"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:vi:tra",
+    "guid": "polyglotic:fixture:vi:tra",
+    "language": "vi",
+    "meaning": "tea",
+    "reading": "cha",
+    "sentence": "Fixture line with <b>trà</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "trà"
+  },
+  {
+    "changed": "2026-11-24T13:30:00Z",
+    "entry_id": "fixture:vi:xinchao",
+    "guid": "polyglotic:fixture:vi:xinchao",
+    "language": "vi",
+    "meaning": "hello",
+    "reading": "sin chow",
+    "sentence": "Fixture line with <b>xin chào</b>.",
+    "tags": [
+      "polyglotic",
+      "polyglotic::Interesting"
+    ],
+    "traditional": "",
+    "translation": "Synthetic translation.",
+    "word": "xin chào"
+  }
+]

@@ -1,0 +1,154 @@
+{
+  "en": {
+    "in_deck": [
+      {
+        "end": 12,
+        "entry_id": "fixture:en:tea",
+        "start": 9,
+        "text": "tea"
+      },
+      {
+        "end": 17,
+        "entry_id": "fixture:en:tea",
+        "start": 14,
+        "text": "Tea"
+      }
+    ],
+    "line": "😀 Hello, tea? Tea!",
+    "saved": [
+      {
+        "end": 12,
+        "entry_id": "fixture:en:tea",
+        "start": 9,
+        "text": "tea"
+      },
+      {
+        "end": 17,
+        "entry_id": "fixture:en:tea",
+        "start": 14,
+        "text": "Tea"
+      }
+    ],
+    "unfamiliar": [],
+    "words": [
+      {
+        "end": 7,
+        "entry_id": "fixture:en:hello",
+        "start": 2,
+        "text": "Hello"
+      },
+      {
+        "end": 12,
+        "entry_id": "fixture:en:tea",
+        "start": 9,
+        "text": "tea"
+      },
+      {
+        "end": 17,
+        "entry_id": "fixture:en:tea",
+        "start": 14,
+        "text": "Tea"
+      }
+    ]
+  },
+  "ja": {
+    "in_deck": [],
+    "line": "😀 こんにちは 茶",
+    "saved": [],
+    "unfamiliar": [],
+    "words": [
+      {
+        "end": 7,
+        "entry_id": "fixture:ja:konnichiwa",
+        "start": 2,
+        "text": "こんにちは"
+      }
+    ]
+  },
+  "vi": {
+    "in_deck": [
+      {
+        "end": 15,
+        "entry_id": "fixture:vi:tra",
+        "start": 12,
+        "text": "trà"
+      }
+    ],
+    "line": "😀 Xin chào, trà?",
+    "saved": [
+      {
+        "end": 15,
+        "entry_id": "fixture:vi:tra",
+        "start": 12,
+        "text": "trà"
+      }
+    ],
+    "unfamiliar": [],
+    "words": [
+      {
+        "end": 10,
+        "entry_id": "fixture:vi:xinchao",
+        "start": 2,
+        "text": "Xin chào"
+      },
+      {
+        "end": 15,
+        "entry_id": "fixture:vi:tra",
+        "start": 12,
+        "text": "trà"
+      }
+    ]
+  },
+  "zh": {
+    "in_deck": [
+      {
+        "end": 4,
+        "entry_id": "fixture:zh:cha",
+        "start": 3,
+        "text": "茶"
+      },
+      {
+        "end": 7,
+        "entry_id": "fixture:zh:cha",
+        "start": 6,
+        "text": "茶"
+      }
+    ],
+    "line": "𠀀你喝茶吗？茶！",
+    "saved": [
+      {
+        "end": 4,
+        "entry_id": "fixture:zh:cha",
+        "start": 3,
+        "text": "茶"
+      },
+      {
+        "end": 7,
+        "entry_id": "fixture:zh:cha",
+        "start": 6,
+        "text": "茶"
+      }
+    ],
+    "unfamiliar": [],
+    "words": [
+      {
+        "end": 2,
+        "entry_id": "fixture:zh:ni",
+        "start": 1,
+        "text": "你"
+      },
+      {
+        "end": 4,
+        "entry_id": "fixture:zh:cha",
+        "start": 3,
+        "text": "茶"
+      },
+      {
+        "end": 7,
+        "entry_id": "fixture:zh:cha",
+        "start": 6,
+        "text": "茶"
+      }
+    ]
+  }
+}

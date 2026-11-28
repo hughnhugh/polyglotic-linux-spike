@@ -1,0 +1,36 @@
+{
+  "app_text_size": "largest",
+  "apps": ["Sample Player"],
+  "language_choices": {
+    "ja": {
+      "links": "past_known",
+      "links_from": 1500,
+      "window": "unlimited"
+    },
+    "zh": {
+      "links": "past_known",
+      "window": 2000
+    }
+  },
+  "language_links_chosen": false,
+  "learning": "zh",
+  "learning_load": {
+    "zh": {
+      "counting": "captions",
+      "limit": 4,
+      "size": 12,
+      "step": 3
+    }
+  },
+  "maintenance": {
+    "ends_at": "2026-12-01T04:00:00+00:00",
+    "pc_ahead": 1.5,
+    "starts_at": "2026-12-01T03:00:00+00:00"
+  },
+  "pause_hidden_after": null,
+  "show_hidden_on_speech": false,
+  "text_settles_after": 3.0,
+  "transcript_ask_at_quit": false,
+  "transcript_length": "three_hours",
+  "whole_system": false
+}

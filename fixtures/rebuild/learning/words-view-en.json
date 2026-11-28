@@ -1,0 +1,84 @@
+[
+  {
+    "entry": {
+      "entry_id": "fixture:en:hello",
+      "frequency_rank": 1,
+      "headword": "hello",
+      "levels": [
+        [
+          "fixture",
+          1
+        ]
+      ],
+      "meanings": [
+        "a greeting"
+      ],
+      "reading": "hə-LOH",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:en:hello",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    "saved": null,
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:en:hello",
+      "source": "learner",
+      "status": "known"
+    }
+  },
+  {
+    "entry": {
+      "entry_id": "fixture:en:tea",
+      "frequency_rank": 2,
+      "headword": "tea",
+      "levels": [
+        [
+          "fixture",
+          2
+        ]
+      ],
+      "meanings": [
+        "a drink"
+      ],
+      "reading": "tee",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:en:tea",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    "saved": {
+      "category_id": "interesting",
+      "entry_id": "fixture:en:tea",
+      "headword": "tea",
+      "meaning": "a drink",
+      "reading": "tee",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found tea in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:en:tea",
+      "source": "learner",
+      "status": "learning"
+    }
+  }
+]

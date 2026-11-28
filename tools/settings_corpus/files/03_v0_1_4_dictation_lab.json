@@ -1,0 +1,70 @@
+{
+  "also_learning": ["ja", "ko"],
+  "app_capture_fell_back": {
+    "app": "0.1.4",
+    "why": "no answer",
+    "windows": "19045"
+  },
+  "app_text_size": "larger",
+  "apps": ["Sample Player"],
+  "caption_arrival": "step",
+  "caption_lab": {
+    "load": true,
+    "older": 0.6,
+    "own_tint": true
+  },
+  "caption_timing": "live",
+  "caption_windows": {
+    "windows": {
+      "Sample Player": {
+        "geometry": [80, 140, 680, 180],
+        "mode": "strip",
+        "opacity": 0.75,
+        "position": "custom",
+        "show_mic": true,
+        "spoken_language": "zh",
+        "text_size": 1.2,
+        "translate_into": "en",
+        "translation_size": 0.85
+      }
+    },
+    "joined": {
+      "geometry": [60, 120, 900, 320],
+      "on": false,
+      "position": "bottom_centre",
+      "shares": [0.45, 0.55]
+    },
+    "last": {
+      "text_size": 1.2,
+      "translate_into": "en"
+    }
+  },
+  "cohort": "alpha",
+  "dictation": false,
+  "dictation_australian": true,
+  "dictation_key": "f9",
+  "dictation_language": "en",
+  "fade_after": 15.0,
+  "learning": "zh",
+  "level_line_dismissed": true,
+  "link_gap": "far",
+  "link_line": "thick",
+  "marks_off": true,
+  "max_wait_for_text": 3.0,
+  "not_now_learning": ["fr"],
+  "save_folder": "/tmp/polyglotic-exports",
+  "start_with_windows_asked": true,
+  "transcripts": {
+    "Sample Player": {
+      "rail_open": true,
+      "size": [780, 520],
+      "text_size": 1.25
+    }
+  },
+  "tray_note_shown": true,
+  "whole_system": false,
+  "words_open": {
+    "en": false,
+    "zh": true
+  }
+}

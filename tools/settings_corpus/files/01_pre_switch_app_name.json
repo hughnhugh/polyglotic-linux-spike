@@ -1,0 +1,30 @@
+{
+  "app_name": "Sample Player",
+  "caption_mic": true,
+  "common_words_only": false,
+  "fade_after": null,
+  "link_detail": "key",
+  "live_update_interval": null,
+  "locked": true,
+  "opacity": 0.65,
+  "overlay_geometry": {
+    "en": [120, 220, 720, 240]
+  },
+  "second_languages": {
+    "ja": "en"
+  },
+  "show_delay": true,
+  "show_language": false,
+  "show_original": false,
+  "show_source": false,
+  "source_colors": {
+    "Sample Player": "#ff6e9c"
+  },
+  "source_names": {
+    "Sample Player": "Films"
+  },
+  "spelling_hints": ["Aoi", "Ren"],
+  "targets": ["ja", "en"],
+  "text_scale": 1.35,
+  "translate_live": false
+}

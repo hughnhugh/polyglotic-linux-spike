@@ -4,13 +4,13 @@
 
 Every rule the caption display applies, one entry each: what you see, when, where, a picture, what it conflicts with, what was said about it before, and a recommendation. Each rule is held by a named test that fails when the rule is broken on purpose. Mark each one keep, change or drop; a change is recorded in your words.
 
-**So far:** 5 rules, the ones you have already ruled on, written out as the pattern. The nine families follow, one at a time:
+**So far:** 11 rules, 11 of them marked by you. The nine families follow, one at a time:
 
 | Family | Rules written |
 |---|---:|
 | Wrapping and line breaks | 1 |
 | Movement: what moves, falls, slides, glides or fades, and what waits | 4 |
-| Ink: colours, word links, known words, highlights | 0 |
+| Ink: colours, word links, known words, highlights | 6 |
 | Readings and underlines | 0 |
 | The card stack and zones | 0 |
 | What triggers a repaint, and pacing | 0 |
@@ -20,10 +20,226 @@ Every rule the caption display applies, one entry each: what you see, when, wher
 
 Order: rules that conflict with another come first, then rules that differ from one kind of window to another, then the rest.
 
-## 1. A new row waits, then fades in where it stays
+## 1. A word link is one colour at both ends
 
-**What you see.** A new row never appears on top of other text. It waits until the text in its
-place has moved away, then fades in at the place where it will stay.
+**What you see.** With word links on, a linked word and its counterpart in the other row are
+drawn in the same colour, each underlined in it.
+
+![A word link is one colour at both ends](pictures/ink.a-link-is-one-colour.png)
+
+*A finished caption with four links: each linked word and its translation in one colour, underlined in it.*
+
+**When.** Word links are on (Colours or Arrows), and a finished clause has links.
+
+**Where.** In caption windows (Everyday, Conversation, Learning), Steady's transcript and live zone, Steady's card stack, the joined window, Video, Instant, Video, Scrolling. Not in the transcript window: no word links are drawn there: the transcript has no word-link setting.
+
+**Conflicts with.**
+
+- *Text still being spoken is fainter*: On a caption still being spoken, the underlines of its finished clauses are drawn as faint as text still being spoken. In Steady's card stack the words themselves are in full ink, so a linked word and its underline differ. In Video, a link under what was said can have no underline of its colour under the translation until the caption is finished. **Which wins:** Neither rule holds there. Seen in 2 of 54 card-stack runs and 3 of 108 Video runs, all on the long made-up stream; why Video's counterpart is missing is not yet found.
+
+  ![both firing](pictures/ink.a-link-is-one-colour.cards.png)
+
+  *The card stack; the card at the foot is still being spoken. Under it the check finds an underline in the purple at the faintness of text still being spoken (#9b77dd) under a word that is not drawn that faint.*
+- *What was said in its colour, the translation in its own*: A linked word is drawn in its link's colour, not its row's. **Which wins:** The link's colour wins on the linked words. The picture is under What was said in its colour.
+- *unwritten: the transcript draws no word links (the transcript family)*: The transcript shows the same captions with no links. **Which wins:** Each window keeps its own way today. The picture is under What was said in its colour.
+
+**What was said before.**
+
+- The founder, 2026-11-16 ~23:55: "Ideally if you have a toggle option to colour pinyin, caption, translation as same colour as word link colour."
+- The founder, 2026-11-17 08:18: "default this setting to be on, a first time user selecting the word linkage nav bar icon should see all coloured linked words / pinyin etc."
+- The founder, 2026-11-25 ~22:12, on the transcript: "the same style as the real time captions. colors, word links".
+
+**Recommendation.** Keep. Seven of the replay's 27 streams carry word links. It holds in every run of
+them in the caption windows, the zones and the joined window, at both
+widths, and in all but five runs in the card stack and Video (the conflict
+below: a caption still being spoken, on the long made-up stream). A caption's links
+take the colours in turn, numbered across the whole caption, so links side
+by side differ; past eight links (the Classic look keeps eight of the ten
+colours) they come round again. The transcript draws
+no word links at all; you asked for them there, and that is planned. The
+replay draws links as Colours: Arrows adds curves between the rows, which
+it does not read.
+
+**Your mark.** keep, 2026-11-28 - "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `ink.a-link-is-one-colour`
+- Decided in `ui_next/caption_marks.py::CaptionMarks._marks` (outside the paint) - a link's colour by its number, both rows alike
+- Decided in `core/listening/display.py::numbered_links` (outside the paint) - links numbered in reading order across the whole caption
+- Decided in `ui_next/caption_layout.py::_coloured_words` (outside the paint) - the linked words in their link's colour
+- Decided in `ui_next/caption_layout.py::_underlines` (outside the paint) - the underline, below the descenders
+- Shaped by: 151 and F14: underlines below the descenders; 340 (decision 0132): numbered across the whole caption, so no two links of a caption share a colour; 395 and 431: the linked words themselves in their link's colour, what was said and the translation each switched on its own
+- Test: `tests/ui_next/rules/test_ink.py::test_a_link_is_one_colour_at_both_ends`
+- Test: `tests/ui_next/rules/test_ink.py::test_a_link_is_one_colour_in_the_card_stack_while_spoken`
+- Test: `tests/ui_next/rules/test_ink.py::test_the_transcript_draws_no_word_links`
+- Planted break: `tests/ui_next/rules/test_ink.py::test_a_translation_linked_in_another_colour_is_seen`
+
+</details>
+
+## 2. Text still being spoken is fainter
+
+**What you see.** A caption still being spoken is drawn fainter than a finished one. The
+moment it is finished it is drawn in full ink.
+
+![Text still being spoken is fainter](pictures/ink.fainter-while-spoken.png)
+
+*The third caption is still being spoken (top): it is fainter than the two above it, and has no word links yet. Finished (bottom), it is in full ink and linked.*
+
+**When.** A caption is still being spoken (a live caption), and then finishes.
+
+**Where.** In caption windows (Everyday, Conversation, Learning), Steady's transcript and live zone, the joined window, Video, Instant, Video, Scrolling. Not in Steady's card stack: a caption still being spoken is drawn in full ink in the card stack.
+
+**Conflicts with.**
+
+- *unwritten: Steady's card stack draws a caption still being spoken in full ink (the card stack family)*: In the card stack, a caption still being spoken is in full ink, as a finished one is. **Which wins:** The card stack's way wins there, in 36 of its 54 runs in the ink replay.
+
+  ![both firing](pictures/ink.fainter-while-spoken.cards.png)
+
+  *Steady's card stack: the caption at the foot is still being spoken, and is drawn in full ink.*
+
+**What was said before.**
+
+- The founder, 2026-11-20 ~19:45 (554's brief), on Steady's words ahead: "Default faint ahead, acquisition is preferable for me but probably default to both".
+
+**Recommendation.** Keep. It holds on every caption window, the zones, the joined window and Video:
+text still being spoken is drawn at 85 % of the way to its colour, and full
+once finished. Steady's card stack is the exception: there a caption still
+being spoken is drawn in full ink in 36 of its 54 runs. Why the stack
+differs is for its own family to find; I would keep this rule for the other windows, and
+rule on the stack when that family is written.
+
+**Your mark.** keep, 2026-11-28 - "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `ink.fainter-while-spoken`
+- Decided in `ui_next/caption_window.py::unfinished_ink` (outside the paint) - how faint, by the Lab's choice for text still being spoken (85 % by default)
+- Decided in `ui_next/caption_layout.py::_line_alpha` (outside the paint) - a live line at the live share, Quick preview's at its own
+- Decided in `ui_next/caption_layout.py::CaptionLayout.paint` (inside the paint) - the words already settled keep their final ink
+- Decided in `ui_next/caption_window.py::Canvas._paint_panel` (inside the paint) - Steady's words ahead drawn at half ink
+- Shaped by: 284: the Lab's choice of how text still being spoken looks; 494 (decision 0228): words already settled keep their final ink; 554 (desktop #969): Steady's words ahead faint by default
+- Test: `tests/ui_next/rules/test_ink.py::test_text_still_being_spoken_is_fainter`
+- Planted break: `tests/ui_next/rules/test_ink.py::test_a_live_caption_in_full_ink_is_seen`
+
+</details>
+
+## 3. The newest caption brightest, older ones a step back
+
+**What you see.** The newest caption is drawn in full ink. Each caption before it keeps a
+little less of its contrast, a step at a time, down to 85 % of it five
+captions back. A caption stays in full ink for its first 3 seconds.
+
+![The newest caption brightest, older ones a step back](pictures/ink.older-captions-step-back.png)
+
+*Three finished captions: the newest (bottom) in white; the one above it #fcfcfc, the first #f8f8f9.*
+
+**When.** A new caption arrives, and the ones before it move back a place.
+
+**Where.** In caption windows (Everyday, Conversation, Learning), Steady's card stack, the joined window. Not in Steady's transcript and live zone: every caption in Steady's live zone keeps full ink. Not in Video, Instant: every subtitle keeps full ink. Not in Video, Scrolling: every subtitle keeps full ink. Not in the transcript window: every line is in the interface's colours; none is the newest.
+
+**Conflicts with.**
+
+- *unwritten: Steady's live zone and Video keep every caption in full ink (the card stack and Video families)*: In Steady's live zone and in Video no caption steps back. **Which wins:** Each keeps its own way; the step back is only in the caption windows, the card stack and the joined window.
+
+**What was said before.**
+
+- The founder, 2026-11-08 ~20:20 (242's FEEDBACK-2026-11-08.md, F21): "I feel like new lines show fade in slightly or old lines fade out slowly. Not actually fade in and fade out but visibly obvious from a subtle contrast different. this way you can see what a new line is and what an old line is"
+- The founder, 2026-11-13 (305): "Lab option for gradual text colour change".
+
+**Recommendation.** Change. It holds in every run of a caption window, the card stack and the joined
+window, but the step is too small to see on the Classic look: the caption
+before the newest is #fcfcfc against the newest's #ffffff, and the one
+before that #f8f8f9 (the picture). You asked for a difference that is
+subtle but visibly obvious. I would make the first step the visible one:
+the caption before the newest at once at the contrast it reaches five
+captions back today, the older ones staying there. Steady's live zone and
+Video keep every caption in full ink, and the transcript has no newest.
+
+Marked change on 2026-11-28 by Claude under the founder's hand-off
+(2026-11-28 15:48): the step must be visible on every theme (your
+"visibly obvious", 2026-11-08) and must stay light (805: older captions
+stay readable, a light fade, not a dark one). The look change itself is a
+later display unit, and you see it in a preview before it ships.
+
+**Your mark.** change, 2026-11-28 - "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `ink.older-captions-step-back`
+- Decided in `ui_next/caption_window.py::Canvas._paint_panel` (inside the paint) - works out each caption's step back as it draws it
+- Decided in `ui_next/views/arrivals.py::older_alphas` (outside the paint) - how much contrast older captions keep: 85 %; none taken with Windows' high contrast or while you have scrolled back
+- Decided in `ui_next/views/lab.py::by_place` (outside the paint) - a step for each place back, over five captions (three in Steady)
+- Decided in `ui_next/views/lab.py::newness` (outside the paint) - new for 3 seconds
+- Shaped by: 249 and 253 (F21): the newest line brighter, older lines a step back; 305: step by step rather than all at once; 584: the contrast kept, not the paint's opacity
+- Test: `tests/ui_next/rules/test_ink.py::test_a_caption_is_new_for_the_time_the_rulebook_allows`
+- Test: `tests/ui_next/rules/test_ink.py::test_older_captions_step_back`
+- Planted break: `tests/ui_next/rules/test_ink.py::test_older_captions_as_bright_as_the_newest_are_seen`
+
+</details>
+
+## 4. What was said in its colour, the translation in its own
+
+**What you see.** What was said is drawn in the look's text colour and its translation in the
+look's translation colour: white and gold on the Classic look. Every row
+keeps its kind's colour, whatever the window.
+
+![What was said in its colour, the translation in its own](pictures/ink.own-colours.png)
+
+*A finished caption in the default window: what was said in white, its translation in gold.*
+
+**When.** Always: every caption, still being spoken or finished.
+
+**Where.** In caption windows (Everyday, Conversation, Learning), Steady's transcript and live zone, Steady's card stack, the joined window, Video, Instant, Video, Scrolling. Not in the transcript window: what was said is the interface's text colour and the translation the interface's grey, not the gold.
+
+**Conflicts with.**
+
+- *A word link is one colour at both ends*: With word links on, a linked word is drawn in its link's colour, not its row's. **Which wins:** The link's colour wins on the linked words (Colour linked words is on for both rows by default); the rest of the row keeps its own.
+
+  ![both firing](pictures/ink.own-colours.links.png)
+
+  *Word links on: each linked word in its link's colour at both ends; the other words in white and gold.*
+- *unwritten: the transcript draws in the interface's colours (the transcript family)*: The same captions in the transcript window: what was said in the interface's text colour, the translation in its grey, and no word links. **Which wins:** Each window keeps its own colours today; they do not meet on one screen.
+
+  ![both firing](pictures/ink.own-colours.transcript.png)
+
+  *The transcript with the same three captions: no gold, and no word links.*
+
+**What was said before.**
+
+- The founder, 2026-11-25 ~22:12: "can the transcript have the same style as the real time captions. colors, word links, try to achieve relative feature parity with transcript too."
+
+**Recommendation.** Keep. It holds on every caption window, the card stack, the zones, the joined
+window and Video (all 324 of their runs in the ink replay). The transcript is
+the one place it does not: its translation is the interface's grey. You asked
+for the transcript to take the live captions' colours, and that is already
+planned (the transcript family); I would keep this rule and let the
+transcript join it then.
+
+**Your mark.** keep, 2026-11-28 - "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `ink.own-colours`
+- Decided in `ui_next/caption_window.py::look_ink` (outside the paint) - the window's ink from the look: its two colours, at the look's contrast and vibrance
+- Decided in `ui_next/caption_window.py::toned` (outside the paint) - the colours moved to the contrast and vibrance sliders
+- Decided in `ui_next/caption_layout.py::CaptionLayout.paint` (inside the paint) - picks each row's colour by its kind as it draws it
+- Decided in `ui_next/transcript_window.py::TranscriptList._paint` (inside the paint) - the transcript's own ink: the interface's text and grey
+- Shaped by: the proof of concept's overlay: "white is what was said, yellow is always a translation" (`caption_layout.Ink`); 481: the contrast and vibrance sliders
+- Test: `tests/ui_next/rules/test_ink.py::test_the_replays_colours_are_the_looks_own`
+- Test: `tests/ui_next/rules/test_ink.py::test_each_row_is_in_its_own_colour`
+- Test: `tests/ui_next/rules/test_ink.py::test_the_transcript_is_where_rows_take_the_interfaces_colours`
+- Planted break: `tests/ui_next/rules/test_ink.py::test_swapped_colours_are_seen`
+
+</details>
+
+## 5. A new row waits, then fades in where it stays
+
+**What you see.** Every new row, whatever brings it, never appears on top of other text: a
+caption carrying on to another line, or a caption's next part. If its place
+is still taken, it waits until the text there has moved away, then fades in
+where it will stay; if its place is free, it shows at once. A translation
+never shows before its own text.
 
 ![A new row waits, then fades in where it stays](pictures/movement.a-new-row-waits-then-fades-in.png)
 
@@ -54,7 +270,7 @@ wide window, where the second part used to be drawn over the first for about
 a fifth of a second. A new row whose place is already free still shows at
 once. What is left is on a made-up stream of rapid revisions (below).
 
-**Your mark.** [ ] keep [ ] change [ ] drop
+**Your mark.** change, 2026-11-27 - "Yes sounds good with display rules"
 
 <details><summary>For engineers</summary>
 
@@ -70,7 +286,7 @@ once. What is left is on a made-up stream of rapid revisions (below).
 
 </details>
 
-## 2. No sideways slide
+## 6. No sideways slide
 
 **What you see.** Text never slides in from the side. A new row appears in its own place, and
 rows already on screen do not travel left or right.
@@ -94,7 +310,7 @@ rows already on screen do not travel left or right.
 **Recommendation.** Keep. You tried the alternative and rejected it. The rule holds in all 1,188
 replays outside Video Scrolling.
 
-**Your mark.** [ ] keep [ ] change [ ] drop
+**Your mark.** keep, 2026-11-27 - "Yes sounds good with display rules"
 
 <details><summary>For engineers</summary>
 
@@ -107,7 +323,7 @@ replays outside Video Scrolling.
 
 </details>
 
-## 3. The approved glide
+## 7. The approved glide
 
 **What you see.** When captions move up to make room, they glide. They never move faster than
 300 px a second, and never jump (more than 6 px in a single frame). A change
@@ -137,7 +353,7 @@ conflict with Words never fall). Steady's zones and cards, Video and the
 transcript each move in their own way today (see Where); whether they should
 share this glide is yours to rule on when those families are written.
 
-**Your mark.** [ ] keep [ ] change [ ] drop
+**Your mark.** keep, 2026-11-27 - "Yes sounds good with display rules"
 
 <details><summary>For engineers</summary>
 
@@ -154,7 +370,7 @@ share this glide is yours to rule on when those families are written.
 
 </details>
 
-## 4. Words never fall
+## 8. Words never fall
 
 **What you see.** Text that is on screen never moves down. When unsure text is revised to
 something shorter, or taken away, the space it held stays as a gap. New text
@@ -199,7 +415,7 @@ mostly with Long lines set to Display new lines (first conflict). And it does no
 yet hold in Video (second conflict). I would keep the rule, and settle the
 first conflict by not moving a word that is already shown to another line.
 
-**Your mark.** [ ] keep [ ] change [ ] drop
+**Your mark.** keep, 2026-11-27 - "Yes sounds good with display rules"
 
 <details><summary>For engineers</summary>
 
@@ -215,7 +431,7 @@ first conflict by not moving a word that is already shown to another line.
 
 </details>
 
-## 5. Every row is a single line
+## 9. Every row is a single line
 
 **What you see.** Each row of a caption is one line of text. A caption too long for the window
 carries on in a new row of its own, under the first. A row is never wrapped
@@ -246,7 +462,7 @@ inside itself.
 is the one place that still wraps a long row inside itself; moving it to the
 live style is already planned, and that would make this one rule everywhere.
 
-**Your mark.** [ ] keep [ ] change [ ] drop
+**Your mark.** keep, 2026-11-27 - "Yes sounds good with display rules"
 
 <details><summary>For engineers</summary>
 
@@ -260,5 +476,80 @@ live style is already planned, and that would make this one rule everywhere.
 - Test: `tests/ui_next/rules/test_wrapping.py::test_a_long_caption_carries_on_in_rows_of_its_own`
 - Test: `tests/ui_next/rules/test_wrapping.py::test_the_transcript_is_where_a_row_does_wrap`
 - Planted break: `tests/ui_next/rules/test_wrapping.py::test_a_row_left_wrapped_is_seen`
+
+</details>
+
+## 10. A link's colour never looks like the text's
+
+**What you see.** No word link is drawn in a colour that looks like its rows' own text. A link
+colour too near the text colour or the translation colour is skipped, and
+the next takes its turn: on the Classic look the orange is skipped, beside
+the gold translation.
+
+![A link's colour never looks like the text's](pictures/ink.links-clear-of-the-text.png)
+
+*The Classic look: the first link is purple, not the orange that would read like the gold translation.*
+
+**When.** Word links are on; the look's colours decide which link colours are kept.
+
+**Where.** In caption windows (Everyday, Conversation, Learning), Steady's transcript and live zone, Steady's card stack, the joined window, Video, Instant, Video, Scrolling.
+
+**Conflicts with.** None found among the rules written so far.
+
+**What was said before.**
+
+- The founder, 2026-11-17 (446's brief): "orange colour linkage is not that distinguishable from the brown one especially the word colouring."
+- The founder, 2026-11-20 ~19:45 (554's brief): "issue with word linkage matching font colours at times, need to make the font colours slightly more dynamic to not take same or similar colours to font colour".
+
+**Recommendation.** Keep. You asked for it, and it holds in every run of the seven streams that carry
+word links. It is checked on the Classic look only: the replay does not yet
+try the other looks.
+
+**Your mark.** keep, 2026-11-28 - "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `ink.links-clear-of-the-text`
+- Decided in `ui_next/caption_marks.py::_link_colours` (outside the paint) - drops each colour less than 22 apart (CIEDE2000) from either row's colour
+- Shaped by: 446: three colours changed so every two read apart; 554 (desktop #983): link colours at least 22 CIEDE2000 from the text
+- Test: `tests/ui_next/rules/test_ink.py::test_the_distance_kept_from_the_text_is_the_one_the_rulebook_states`
+- Test: `tests/ui_next/rules/test_ink.py::test_no_link_reads_like_its_rows_text`
+- Planted break: `tests/ui_next/rules/test_ink.py::test_the_orange_beside_the_gold_is_seen`
+
+</details>
+
+## 11. No word links on words still being spoken
+
+**What you see.** The clause still being spoken has no word links. Its links come when it is
+finished, or when the next clause begins; clauses of the same caption that
+are already finished keep theirs.
+
+![No word links on words still being spoken](pictures/ink.no-links-while-spoken.png)
+
+*The card at the foot is still being spoken: its finished clause is linked, the clause still being spoken (the last row pair) is not.*
+
+**When.** Word links are on and a caption is still being spoken.
+
+**Where.** In caption windows (Everyday, Conversation, Learning), Steady's transcript and live zone, Steady's card stack, the joined window, Video, Instant, Video, Scrolling.
+
+**Conflicts with.** None found among the rules written so far.
+
+**What was said before.**
+
+- The proof of concept's design, kept in `core/listening/display.py`: "Word links are drawn only on settled clauses, never on a live caption's last (its words are still changing)."
+
+**Recommendation.** Keep. It holds in every run of the seven streams that carry word links. Links
+that came and went as the words changed would flicker; the finished clauses of a caption still being
+spoken keep theirs, so a long caption is not bare while it lasts.
+
+**Your mark.** keep, 2026-11-28 - "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `ink.no-links-while-spoken`
+- Decided in `core/listening/display.py::caption_rows` (outside the paint) - links only on settled clauses: never the last clause of a live caption
+- Shaped by: the proof of concept's word links (docs/word-links.md): "never on a live caption's last (its words are still changing)"
+- Test: `tests/ui_next/rules/test_ink.py::test_a_caption_still_being_spoken_has_no_links`
+- Planted break: `tests/ui_next/rules/test_ink.py::test_a_live_caption_linked_is_seen`
 
 </details>

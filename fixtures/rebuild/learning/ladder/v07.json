@@ -1,0 +1,742 @@
+{
+  "file": {
+    "tables": {
+      "anki_csv_exports": {
+        "columns": [
+          "entry_id",
+          "exported_at"
+        ],
+        "rows": [
+          [
+            "fixture:bad:csv",
+            "some day"
+          ],
+          [
+            "fixture:zh:ni",
+            "2026-10-07T10:00:00+00:00"
+          ]
+        ],
+        "sql": "CREATE TABLE anki_csv_exports (\n            entry_id TEXT PRIMARY KEY,\n            exported_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "anki_exports": {
+        "columns": [
+          "entry_id",
+          "exported_at"
+        ],
+        "rows": [
+          [
+            "fixture:bad:anki",
+            "never"
+          ],
+          [
+            "fixture:zh:cha",
+            "2026-10-06T10:00:00+00:00"
+          ],
+          [
+            "fixture:zh:ni",
+            "2026-10-05T10:00:00+00:00"
+          ]
+        ],
+        "sql": "CREATE TABLE anki_exports (\n            entry_id TEXT PRIMARY KEY,\n            exported_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "categories": {
+        "columns": [
+          "id",
+          "name",
+          "color",
+          "position"
+        ],
+        "rows": [
+          [
+            "food",
+            "Food and drink",
+            "#c0563b",
+            1
+          ],
+          [
+            "garbled",
+            "Garbled",
+            "#000000",
+            "first"
+          ],
+          [
+            "interesting",
+            "Interesting",
+            "#2f9e8f",
+            0
+          ]
+        ],
+        "sql": "CREATE TABLE categories (\n            id TEXT PRIMARY KEY,\n            name TEXT NOT NULL,\n            color TEXT NOT NULL,\n            position INTEGER NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "curriculum_words": {
+        "columns": [
+          "entry_id",
+          "standing",
+          "came",
+          "entered_at",
+          "days_met",
+          "last_day",
+          "sittings",
+          "retired_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE curriculum_words (\n            entry_id TEXT PRIMARY KEY,\n            standing TEXT NOT NULL,\n            came TEXT NOT NULL,\n            entered_at TEXT NOT NULL,\n            days_met INTEGER NOT NULL,\n            last_day TEXT,\n            sittings INTEGER NOT NULL,\n            retired_at TEXT\n        ) WITHOUT ROWID"
+      },
+      "daily_coverage": {
+        "columns": [
+          "day",
+          "known",
+          "deck",
+          "new"
+        ],
+        "rows": [
+          [
+            "2026-10-01",
+            5,
+            2,
+            3
+          ],
+          [
+            "2026-10-20",
+            1,
+            0,
+            4
+          ],
+          [
+            "2026-10-21",
+            "many",
+            0,
+            0
+          ]
+        ],
+        "sql": "CREATE TABLE daily_coverage (\n            day TEXT PRIMARY KEY,\n            known INTEGER NOT NULL,\n            deck INTEGER NOT NULL,\n            new INTEGER NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "daily_exposures": {
+        "columns": [
+          "day",
+          "entry_id",
+          "count"
+        ],
+        "rows": [
+          [
+            "2026-10-01",
+            "fixture:zh:ni",
+            4
+          ],
+          [
+            "2026-10-02",
+            "fixture:bad:daily",
+            "two"
+          ],
+          [
+            "2026-10-09",
+            "fixture:zh:ni",
+            2
+          ],
+          [
+            "2026-10-20",
+            "fixture:zh:ni",
+            3
+          ],
+          [
+            "2026-10-21",
+            "fixture:zh:ni",
+            0
+          ]
+        ],
+        "sql": "CREATE TABLE daily_exposures (\n            day TEXT NOT NULL,\n            entry_id TEXT NOT NULL,\n            count INTEGER NOT NULL,\n            PRIMARY KEY (day, entry_id)\n        ) WITHOUT ROWID"
+      },
+      "daily_listening": {
+        "columns": [
+          "day",
+          "category",
+          "seconds"
+        ],
+        "rows": [
+          [
+            "2026-10-01",
+            "call",
+            42.25
+          ],
+          [
+            "2026-10-01",
+            "video",
+            300.0
+          ],
+          [
+            "2026-10-02",
+            "game",
+            "a long time"
+          ]
+        ],
+        "sql": "CREATE TABLE daily_listening (\n            day TEXT NOT NULL,\n            category TEXT NOT NULL,\n            seconds REAL NOT NULL,\n            PRIMARY KEY (day, category)\n        ) WITHOUT ROWID"
+      },
+      "deck_words": {
+        "columns": [
+          "entry_id",
+          "headword",
+          "traditional",
+          "reading",
+          "meaning",
+          "sentence",
+          "translation",
+          "learned_at"
+        ],
+        "rows": [
+          [
+            "fixture:bad:deck",
+            "水",
+            "水",
+            "shuǐ",
+            "water",
+            "Fixture line: 水。",
+            "Fixture line: water.",
+            {
+              "blob": "00ff"
+            }
+          ],
+          [
+            "fixture:zh:cha",
+            "茶",
+            "茶",
+            "chá",
+            "tea",
+            "Fixture line: 一杯茶。",
+            "Fixture line: a cup of tea.",
+            "2026-10-20T18:45:30.250000+00:00"
+          ],
+          [
+            "fixture:zh:ni",
+            "你",
+            "你",
+            "nǐ",
+            "you",
+            "Fixture line: 你好。",
+            "Fixture line: hello.",
+            "2026-10-01T09:00:00+00:00"
+          ]
+        ],
+        "sql": "CREATE TABLE deck_words (\n            entry_id TEXT PRIMARY KEY,\n            headword TEXT NOT NULL,\n            traditional TEXT NOT NULL,\n            reading TEXT NOT NULL,\n            meaning TEXT NOT NULL,\n            sentence TEXT NOT NULL,\n            translation TEXT NOT NULL,\n            learned_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "exposures": {
+        "columns": [
+          "entry_id",
+          "heard",
+          "heard_by_you",
+          "heard_in_deck",
+          "first_heard",
+          "days_heard",
+          "last_heard"
+        ],
+        "rows": [
+          [
+            "fixture:bad:exposures",
+            "lots",
+            0,
+            0,
+            null,
+            1,
+            null
+          ],
+          [
+            "fixture:en:hello",
+            0,
+            2,
+            0,
+            null,
+            0,
+            null
+          ],
+          [
+            "fixture:zh:cha",
+            4,
+            0,
+            2,
+            null,
+            1,
+            null
+          ],
+          [
+            "fixture:zh:ni",
+            9,
+            1,
+            0,
+            "2026-10-01",
+            3,
+            "2026-10-20"
+          ]
+        ],
+        "sql": "CREATE TABLE exposures (\n            entry_id TEXT PRIMARY KEY,\n            heard INTEGER NOT NULL,\n            heard_by_you INTEGER NOT NULL,\n            heard_in_deck INTEGER NOT NULL\n        , first_heard TEXT, days_heard INTEGER NOT NULL DEFAULT 0, last_heard TEXT) WITHOUT ROWID"
+      },
+      "handed_over_days": {
+        "columns": [
+          "day"
+        ],
+        "rows": [
+          [
+            "2026-10-01"
+          ],
+          [
+            "2026-10-09"
+          ]
+        ],
+        "sql": "CREATE TABLE handed_over_days (\n            day TEXT PRIMARY KEY\n        ) WITHOUT ROWID"
+      },
+      "level": {
+        "columns": [
+          "id",
+          "scheme",
+          "midpoint"
+        ],
+        "rows": [
+          [
+            1,
+            "hsk-2025",
+            2.5
+          ]
+        ],
+        "sql": "CREATE TABLE level (\n            id INTEGER PRIMARY KEY CHECK (id = 1),\n            scheme TEXT NOT NULL,\n            midpoint REAL NOT NULL\n        )"
+      },
+      "line_history": {
+        "columns": [
+          "id",
+          "scheme",
+          "midpoint",
+          "source",
+          "at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE line_history (\n            id INTEGER PRIMARY KEY,\n            scheme TEXT,\n            midpoint REAL,\n            source TEXT NOT NULL,\n            at TEXT NOT NULL\n        )"
+      },
+      "load_words": {
+        "columns": [
+          "entry_id",
+          "standing",
+          "stage",
+          "meetings",
+          "by_hand",
+          "place",
+          "entered_at",
+          "last_met",
+          "graduated_at"
+        ],
+        "rows": [
+          [
+            "fixture:bad:load",
+            "in",
+            2.5,
+            1,
+            0,
+            null,
+            "2026-10-01T09:00:00+00:00",
+            null,
+            null
+          ],
+          [
+            "fixture:zh:cha",
+            "graduated",
+            4,
+            12,
+            1,
+            null,
+            "2026-10-01T09:00:00+00:00",
+            null,
+            "2026-10-20T18:45:30.250000+00:00"
+          ],
+          [
+            "fixture:zh:ni",
+            "in",
+            2,
+            5,
+            0,
+            1,
+            "2026-10-01T09:00:00+00:00",
+            "2026-10-20T18:45:30.250000+00:00",
+            null
+          ]
+        ],
+        "sql": "CREATE TABLE load_words (\n            entry_id TEXT PRIMARY KEY,\n            standing TEXT NOT NULL,\n            stage INTEGER NOT NULL,\n            meetings INTEGER NOT NULL,\n            by_hand INTEGER NOT NULL,\n            place INTEGER,\n            entered_at TEXT NOT NULL,\n            last_met TEXT,\n            graduated_at TEXT\n        ) WITHOUT ROWID"
+      },
+      "lookups": {
+        "columns": [
+          "entry_id",
+          "pinned",
+          "hovered",
+          "last_at",
+          "pinned_since_known"
+        ],
+        "rows": [
+          [
+            "fixture:zh:shui",
+            1,
+            0,
+            "2026-10-03T07:15:00+00:00",
+            0
+          ]
+        ],
+        "sql": "CREATE TABLE lookups (\n            entry_id TEXT PRIMARY KEY,\n            pinned INTEGER NOT NULL,\n            hovered INTEGER NOT NULL,\n            last_at TEXT NOT NULL,\n            pinned_since_known INTEGER NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "saved_sentences": {
+        "columns": [
+          "id",
+          "original",
+          "translation",
+          "parts",
+          "translation_language",
+          "category_id",
+          "saved_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE saved_sentences (\n            id TEXT PRIMARY KEY,\n            original TEXT NOT NULL,\n            translation TEXT NOT NULL,\n            parts TEXT NOT NULL,\n            translation_language TEXT NOT NULL,\n            category_id TEXT NOT NULL REFERENCES categories (id) ON DELETE CASCADE,\n            saved_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "saved_words": {
+        "columns": [
+          "entry_id",
+          "headword",
+          "traditional",
+          "reading",
+          "meaning",
+          "category_id",
+          "source_sentence",
+          "source_translation",
+          "saved_at"
+        ],
+        "rows": [
+          [
+            "fixture:bad:saved",
+            "水",
+            "水",
+            "shuǐ",
+            "water",
+            "food",
+            "Fixture line: 水。",
+            "Fixture line: water.",
+            "last Tuesday"
+          ],
+          [
+            "fixture:zh:cha",
+            "茶",
+            "茶",
+            "chá",
+            "tea",
+            "food",
+            "Fixture line: 我喝茶。",
+            "Fixture line: I drink tea.",
+            "2026-10-20T18:45:30.250000+00:00"
+          ],
+          [
+            "fixture:zh:ni",
+            "你",
+            "你",
+            "nǐ",
+            "you",
+            "interesting",
+            "Fixture line: 你好吗？",
+            "Fixture line: how are you?",
+            "2026-10-01T09:00:00+00:00"
+          ]
+        ],
+        "sql": "CREATE TABLE saved_words (\n            entry_id TEXT PRIMARY KEY,\n            headword TEXT NOT NULL,\n            traditional TEXT NOT NULL,\n            reading TEXT NOT NULL,\n            meaning TEXT NOT NULL,\n            category_id TEXT NOT NULL REFERENCES categories (id) ON DELETE CASCADE,\n            source_sentence TEXT NOT NULL,\n            source_translation TEXT NOT NULL,\n            saved_at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      },
+      "set_words": {
+        "columns": [
+          "name",
+          "entry_id",
+          "sources",
+          "added_at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE set_words (\n            name TEXT NOT NULL,\n            entry_id TEXT NOT NULL,\n            sources TEXT NOT NULL,\n            added_at TEXT NOT NULL,\n            PRIMARY KEY (name, entry_id)\n        ) WITHOUT ROWID"
+      },
+      "status_history": {
+        "columns": [
+          "id",
+          "entry_id",
+          "before",
+          "after",
+          "source",
+          "at"
+        ],
+        "rows": [],
+        "sql": "CREATE TABLE status_history (\n            id INTEGER PRIMARY KEY,\n            entry_id TEXT NOT NULL,\n            before TEXT NOT NULL,\n            after TEXT NOT NULL,\n            source TEXT NOT NULL,\n            at TEXT NOT NULL\n        )"
+      },
+      "statuses": {
+        "columns": [
+          "entry_id",
+          "status",
+          "source",
+          "at"
+        ],
+        "rows": [
+          [
+            "fixture:bad:status",
+            "maybe",
+            "learner",
+            "2026-10-01T09:00:00+00:00"
+          ],
+          [
+            "fixture:en:hello",
+            "ignored",
+            "imported",
+            "2026-10-04T12:00:00+00:00"
+          ],
+          [
+            "fixture:zh:cha",
+            "learning",
+            "learner",
+            "2026-10-20T18:45:30.250000+00:00"
+          ],
+          [
+            "fixture:zh:ni",
+            "known",
+            "learner",
+            "2026-10-01T09:00:00+00:00"
+          ],
+          [
+            "fixture:zh:shui",
+            "new",
+            "estimated",
+            "2026-10-03T07:15:00+00:00"
+          ]
+        ],
+        "sql": "CREATE TABLE statuses (\n            entry_id TEXT PRIMARY KEY,\n            status TEXT NOT NULL,\n            source TEXT NOT NULL,\n            at TEXT NOT NULL\n        ) WITHOUT ROWID"
+      }
+    },
+    "user_version": 11
+  },
+  "from_version": 7,
+  "level_copy": {
+    "midpoint": 2.5,
+    "scheme": "hsk-2025"
+  },
+  "reads": {
+    "daily_exposures": {
+      "2026-10-01": {
+        "fixture:zh:ni": 4
+      },
+      "2026-10-02": {},
+      "2026-10-09": {
+        "fixture:zh:ni": 2
+      },
+      "2026-10-20": {
+        "fixture:zh:ni": 3
+      },
+      "2026-10-21": {}
+    },
+    "days_to_hand_over": [
+      "2026-10-02",
+      "2026-10-20",
+      "2026-10-21"
+    ],
+    "exposure_days": [
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-09",
+      "2026-10-20",
+      "2026-10-21"
+    ],
+    "line_changes": [],
+    "load": {
+      "anki_exports": [
+        {
+          "entry_id": "fixture:zh:cha",
+          "exported_at": "2026-10-06T10:00:00Z",
+          "kind": "deck"
+        },
+        {
+          "entry_id": "fixture:zh:ni",
+          "exported_at": "2026-10-05T10:00:00Z",
+          "kind": "deck"
+        },
+        {
+          "entry_id": "fixture:zh:ni",
+          "exported_at": "2026-10-07T10:00:00Z",
+          "kind": "csv"
+        }
+      ],
+      "categories": [
+        {
+          "color": "#2f9e8f",
+          "id": "interesting",
+          "name": "Interesting",
+          "position": 0
+        },
+        {
+          "color": "#c0563b",
+          "id": "food",
+          "name": "Food and drink",
+          "position": 1
+        }
+      ],
+      "coverage": [
+        {
+          "day": "2026-10-01",
+          "deck": 2,
+          "known": 5,
+          "new": 3
+        },
+        {
+          "day": "2026-10-20",
+          "deck": 0,
+          "known": 1,
+          "new": 4
+        }
+      ],
+      "curriculum_words": [],
+      "deck_words": [
+        {
+          "entry_id": "fixture:zh:cha",
+          "headword": "茶",
+          "learned_at": "2026-10-20T18:45:30.250000Z",
+          "meaning": "tea",
+          "reading": "chá",
+          "sentence": "Fixture line: 一杯茶。",
+          "traditional": "茶",
+          "translation": "Fixture line: a cup of tea."
+        },
+        {
+          "entry_id": "fixture:zh:ni",
+          "headword": "你",
+          "learned_at": "2026-10-01T09:00:00Z",
+          "meaning": "you",
+          "reading": "nǐ",
+          "sentence": "Fixture line: 你好。",
+          "traditional": "你",
+          "translation": "Fixture line: hello."
+        }
+      ],
+      "exposures": [
+        [
+          "fixture:en:hello",
+          0,
+          2,
+          0,
+          null,
+          0,
+          null
+        ],
+        [
+          "fixture:zh:cha",
+          4,
+          0,
+          2,
+          null,
+          1,
+          null
+        ],
+        [
+          "fixture:zh:ni",
+          9,
+          1,
+          0,
+          "2026-10-01",
+          3,
+          "2026-10-20"
+        ]
+      ],
+      "level": {
+        "midpoint": 2.5,
+        "scheme": "hsk-2025"
+      },
+      "listening": [
+        {
+          "category": "call",
+          "day": "2026-10-01",
+          "seconds": 42.25
+        },
+        {
+          "category": "video",
+          "day": "2026-10-01",
+          "seconds": 300.0
+        }
+      ],
+      "load_words": [
+        [
+          "fixture:zh:cha",
+          "graduated",
+          4,
+          12,
+          true,
+          null,
+          "2026-10-01T09:00:00Z",
+          null,
+          "2026-10-20T18:45:30.250000Z"
+        ],
+        [
+          "fixture:zh:ni",
+          "in",
+          2,
+          5,
+          false,
+          1,
+          "2026-10-01T09:00:00Z",
+          "2026-10-20T18:45:30.250000Z",
+          null
+        ]
+      ],
+      "lookups": [
+        {
+          "entry_id": "fixture:zh:shui",
+          "hovered": 0,
+          "last_at": "2026-10-03T07:15:00Z",
+          "pinned": 1,
+          "pinned_since_known": 0
+        }
+      ],
+      "saved_words": [
+        {
+          "category_id": "food",
+          "entry_id": "fixture:zh:cha",
+          "headword": "茶",
+          "meaning": "tea",
+          "reading": "chá",
+          "saved_at": "2026-10-20T18:45:30.250000Z",
+          "source_sentence": "Fixture line: 我喝茶。",
+          "source_translation": "Fixture line: I drink tea.",
+          "traditional": "茶"
+        },
+        {
+          "category_id": "interesting",
+          "entry_id": "fixture:zh:ni",
+          "headword": "你",
+          "meaning": "you",
+          "reading": "nǐ",
+          "saved_at": "2026-10-01T09:00:00Z",
+          "source_sentence": "Fixture line: 你好吗？",
+          "source_translation": "Fixture line: how are you?",
+          "traditional": "你"
+        }
+      ],
+      "set_words": [],
+      "statuses": [
+        {
+          "at": "2026-10-04T12:00:00Z",
+          "entry_id": "fixture:en:hello",
+          "source": "imported",
+          "status": "ignored"
+        },
+        {
+          "at": "2026-10-20T18:45:30.250000Z",
+          "entry_id": "fixture:zh:cha",
+          "source": "learner",
+          "status": "learning"
+        },
+        {
+          "at": "2026-10-01T09:00:00Z",
+          "entry_id": "fixture:zh:ni",
+          "source": "learner",
+          "status": "known"
+        },
+        {
+          "at": "2026-10-03T07:15:00Z",
+          "entry_id": "fixture:zh:shui",
+          "source": "estimated",
+          "status": "new"
+        }
+      ]
+    },
+    "saved_sentences": [],
+    "status_changes": []
+  },
+  "to_version": 11
+}

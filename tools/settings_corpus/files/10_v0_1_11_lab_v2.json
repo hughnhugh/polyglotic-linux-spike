@@ -1,0 +1,32 @@
+{
+  "built_ins": 5,
+  "caption_lab": {
+    "older": 0.72
+  },
+  "caption_lab_version": 2,
+  "caption_mode_chosen": "live",
+  "changed": [
+    "caption_lab",
+    "respeak_key",
+    "whole_system"
+  ],
+  "colour_links_by_word_class": true,
+  "preset": "video",
+  "preset_values": {
+    "everyday": {
+      "caption_lab": {
+        "older": 0.8
+      }
+    },
+    "video": {
+      "caption_lab": {
+        "older": 0.85
+      },
+      "caption_mode_chosen": "steady",
+      "subtitle_size": 0.08
+    }
+  },
+  "respeak_key": "",
+  "subtitles": true,
+  "whole_system": false
+}

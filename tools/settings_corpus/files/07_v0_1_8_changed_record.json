@@ -1,0 +1,15 @@
+{
+  "changed": [
+    "dictation",
+    "reading_lines",
+    "respeaking",
+    "word_links"
+  ],
+  "dictation": false,
+  "max_wait_for_text": 4.5,
+  "reading_lines": ["zh"],
+  "respeak_key": "",
+  "respeaking": false,
+  "text_settles_after": 1.5,
+  "word_links": "hover"
+}

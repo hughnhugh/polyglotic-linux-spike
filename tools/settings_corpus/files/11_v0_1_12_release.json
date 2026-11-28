@@ -1,0 +1,99 @@
+{
+  "apps": ["Sample Player", "Study Call"],
+  "built_ins": 7,
+  "call_notices_shown": ["Study Call"],
+  "caption_lab": {
+    "arrival_gap": 0.2,
+    "older": 0.88
+  },
+  "caption_lab_version": 2,
+  "caption_mode_chosen": "steady",
+  "caption_timing": "steady",
+  "caption_windows": {
+    "windows": {
+      "Sample Player": {
+        "geometry": [100, 180, 740, 260],
+        "language_sizes": {
+          "ja": 1.15,
+          "zh": 1.3
+        },
+        "opacity": 0.82,
+        "position": "custom",
+        "show_caption_info": false,
+        "show_mic": false,
+        "show_pace": false,
+        "spoken_language": "detect",
+        "text_size": 1.1,
+        "translate_into": "en",
+        "translation_size": 1.0,
+        "translation_text_size": 1.1
+      }
+    },
+    "joined": {
+      "chosen": true,
+      "geometry": [40, 80, 1020, 340],
+      "on": true,
+      "position": "bottom_centre",
+      "shares": [0.5, 0.5]
+    },
+    "last": {
+      "opacity": 0.82,
+      "show_caption_info": false,
+      "show_pace": false,
+      "text_size": 1.1,
+      "translate_into": "en",
+      "translation_text_size": 1.1
+    }
+  },
+  "changed": [
+    "japanese_reading",
+    "live_update_interval",
+    "max_wait_for_text",
+    "opacity",
+    "reading_colour",
+    "reading_lines",
+    "text_settles_after",
+    "whole_system"
+  ],
+  "future_flag_0_2": {
+    "enabled": true,
+    "note": "synthetic future payload"
+  },
+  "hotkeys": {
+    "copy": "ctrl+alt+c",
+    "live": "space",
+    "lock": "ctrl+alt+l",
+    "pause": "f9"
+  },
+  "japanese_reading": "both",
+  "last_respeak_key": "f7",
+  "live_update_interval": 1.25,
+  "long_lines": "display_new_lines",
+  "max_wait_for_text": 3.5,
+  "opacity": 0.82,
+  "preset": "learning",
+  "reading_colour": "same",
+  "reading_lines": ["ja", "zh", "ko"],
+  "recommended_look_before": {
+    "background_color": "#10141c",
+    "caption_edge": "shadow",
+    "opacity": 0.82
+  },
+  "respeak_key": "f7",
+  "save_folder": "/tmp/polyglotic-0112",
+  "text_settles_after": 1.5,
+  "theme": "signal",
+  "transcripts": {
+    "Sample Player": {
+      "rail_open": false,
+      "size": [820, 540],
+      "text_size": 1.15
+    }
+  },
+  "video_layout": 2,
+  "whole_system": false,
+  "words_open": {
+    "ja": true,
+    "zh": false
+  }
+}

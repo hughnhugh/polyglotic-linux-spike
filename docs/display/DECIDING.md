@@ -6,7 +6,7 @@ Every function in the display's files that makes a choice about a caption's look
 
 | File | Lines | Functions | That choose | Set aside | Deciding | In the paint | Choices in them |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `ui_next/caption_window.py` | 10153 | 532 | 408 | 129 | 279 | 64 | 1537 |
+| `ui_next/caption_window.py` | 10183 | 535 | 410 | 129 | 281 | 64 | 1540 |
 | `ui_next/caption_layout.py` | 3401 | 113 | 98 | 0 | 98 | 0 | 589 |
 | `ui_next/video.py` | 1824 | 54 | 48 | 0 | 48 | 0 | 410 |
 | `ui_next/transcript_window.py` | 2116 | 125 | 88 | 40 | 48 | 10 | 171 |
@@ -35,7 +35,7 @@ Every function in the display's files that makes a choice about a caption's look
 | `ui_next/caption_selection.py` | 311 | 17 | 13 | 0 | 13 | 0 | 44 |
 | `ui_next/joined_window.py` | 751 | 60 | 41 | 16 | 25 | 0 | 51 |
 | `ui_next/views/row_positions.py` | 51 | 2 | 2 | 0 | 2 | 0 | 11 |
-| **All** | **28761** | **1321** | **1002** | **185** | **817** | **76** | **4312** |
+| **All** | **28791** | **1324** | **1004** | **185** | **819** | **76** | **4315** |
 
 | Set aside because | Functions |
 |---|---:|
@@ -49,7 +49,7 @@ Every function in the display's files that makes a choice about a caption's look
 
 ## The functions
 
-### `ui_next/caption_window.py` (279)
+### `ui_next/caption_window.py` (281)
 
 - `paint_loading`: 4 choice(s); what, where, ink, when; in the paint
 - `paint_bar`: 2 choice(s); where, ink, when; in the paint
@@ -225,7 +225,7 @@ Every function in the display's files that makes a choice about a caption's look
 - `CaptionWindow._note_arrivals`: 47 choice(s); what, where, ink, when
 - `CaptionWindow._settle_burst`: 1 choice(s); what, when
 - `CaptionWindow.arriving`: 5 choice(s); what, when
-- `CaptionWindow.restyle`: 1 choice(s); where, ink, when
+- `CaptionWindow.restyle`: 1 choice(s); what, where, ink, when
 - `CaptionWindow._engine`: 1 choice(s); what
 - `CaptionWindow.reads`: 2 choice(s); what
 - `CaptionWindow.dictionary_ready`: 4 choice(s); what, ink, when
@@ -282,6 +282,8 @@ Every function in the display's files that makes a choice about a caption's look
 - `CaptionWindow.offers_lyrics`: 1 choice(s); unsorted
 - `CaptionWindow.showEvent`: 1 choice(s); what, when
 - `CaptionWindow.hideEvent`: 2 choice(s); what, when
+- `CaptionWindow._wide_enough`: 1 choice(s); where
+- `CaptionWindow._keep_wide_enough`: 2 choice(s); what, where
 - `CaptionWindow._refresh`: 10 choice(s); what, where, when
 - `CaptionWindow._place_overlays`: 11 choice(s); what, where, when
 - `CaptionWindow._notice_line`: 3 choice(s); unsorted

@@ -1,0 +1,13 @@
+{
+  "app_text_size": "smaller",
+  "known_reset": {
+    "en": {},
+    "zh": {
+      "known": 2000,
+      "scale": "words"
+    }
+  },
+  "learning": "zh",
+  "live_update_interval": 2.5,
+  "whats_new_seen": "0.1.6"
+}
