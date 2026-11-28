@@ -1,6 +1,8 @@
 """The playout (`core.listening.playout`): a caption's words shown one by
 one, each a constant delay after it was said (polyglotic-hq 526)."""
 
+from dataclasses import replace
+
 import pytest
 
 from polyglotic_desktop.core.listening.captions import (
@@ -62,6 +64,12 @@ def said(shown: CaptionUpdate) -> str:
     return "".join(c.original for c in shown.clauses)
 
 
+def bare(shown: CaptionUpdate) -> CaptionUpdate:
+    """`shown` without how long its new words light (`lighting`): what the
+    server sent, for an update the playout gives as it came."""
+    return replace(shown, lighting=0.0)
+
+
 def played(playout: Playout, until: float) -> list[tuple[float, CaptionUpdate]]:
     """Every update the playout gives up to `until`, each with its time."""
     out = []
@@ -107,7 +115,7 @@ def test_a_finished_captions_last_word_brings_the_servers_own_update() -> None:
     playout = Playout(RULES)
     whole = finished("one two", 10.0, 11.0)
     playout.heard(whole, 11.1)
-    assert played(playout, 20.0)[-1][1] is whole
+    assert bare(played(playout, 20.0)[-1][1]) == whole
 
 
 def test_a_live_updates_newest_word_waits_for_the_next_update() -> None:
@@ -154,12 +162,25 @@ def test_a_word_that_comes_after_its_moment_is_shown_at_once_never_in_a_clump() 
     ]
 
 
-def test_a_late_timer_releases_one_word_and_keeps_the_speech_rhythm() -> None:
+def test_a_late_timer_releases_one_word_then_catches_up() -> None:
     playout = Playout(RULES)
     playout.heard(finished("cat dog bird fish", 10.0, 12.0), 12.1)
     assert [said(u) for u in playout.release(15.0)] == ["cat"]
     assert playout.release(15.0) == ()
-    assert playout.due() == pytest.approx(15.5)
+    # past the delay after the caption was finished: the rest one after
+    # another at once, not at the speaker's pace ever further behind (1070)
+    rest = [at for at, _ in played(playout, 20.0)]
+    assert rest == pytest.approx([15.0 + MIN_GAP_SEC * n for n in (1, 2, 3)])
+
+
+def test_a_late_answer_keeps_the_speech_rhythm_while_it_can() -> None:
+    playout = Playout(RULES)
+    playout.heard(finished("cat dog bird fish", 10.0, 12.0), 12.1)
+    assert [said(u) for u in playout.release(12.9)] == ["cat"]
+    shown = [at for at, _ in played(playout, 20.0)]
+    # the speaker's half seconds, drawn in so the last is out by the delay
+    # after the caption was finished
+    assert shown == pytest.approx([13.3, 13.7, 12.1 + D])
 
 
 def test_translation_added_to_an_already_shown_clause_is_delivered_at_once() -> None:
@@ -219,7 +240,7 @@ def test_a_clauses_translation_and_links_come_with_its_last_word() -> None:
         (True, True),  # the finished caption itself
     ]
     assert shown[1].clauses[0] is first
-    assert shown[-1] is whole
+    assert bare(shown[-1]) == whole
 
 
 def test_translation_with_a_fully_confirmed_live_clause_arrives_on_its_last_word() -> (
@@ -334,11 +355,11 @@ def test_words_ahead_of_a_later_caption_wait_for_the_current_one() -> None:
     playout.heard(first, 12)
     early = playout.heard(later, 12.1)
     assert all(u.caption_id != TWO for u in early)
-    shown = [u for _, u in played(playout, 20)]
+    shown = [bare(u) for _, u in played(playout, 20)]
     assert shown.index(first) < next(
         i for i, u in enumerate(shown) if u.caption_id == TWO
     )
-    assert shown[-1] is later
+    assert shown[-1] == later
 
 
 def test_each_source_has_its_own_pace() -> None:
@@ -369,7 +390,67 @@ def test_a_joined_caption_keeps_what_its_captions_showed() -> None:
     assert [(said(u), u.replaces) for u in now] == [("one two", (ONE,))]
     later = [u for _, u in played(playout, 30.0)]
     assert said(later[-1]) == "one two three four"
-    assert all(u.replaces == () for u in later)  # said once
+    # named once more at the finish: a caption history retires replaced
+    # captions only then; the drafts between name none
+    assert [u.replaces for u in later] == [(), (ONE,)]
+
+
+def test_a_join_under_the_earlier_captions_id_retires_the_live_caption() -> None:
+    # the timing finishes a fragment's next stretch as the fragment's own
+    # caption (already shown), replacing that stretch's live caption
+    playout = Playout(RULES)
+    playout.heard(finished("one two", 10.0, 11.0), 11.1)
+    played(playout, 14.0)
+    playout.heard(update("three four five", 11.5, 13.5, caption=TWO), 13.6)
+    shown = played(playout, 16.0)
+    assert shown and all(u.caption_id == TWO for _, u in shown)
+    joined = finished("one two three four five six", 10.0, 14.0, replaces=(TWO,))
+    given = [*playout.heard(joined, 16.0), *(u for _, u in played(playout, 30.0))]
+    assert [u.replaces for u in given if u.replaces] == [(TWO,), (TWO,)]
+    assert given[0].replaces == (TWO,)  # the first draft: the deck's
+    assert given[-1].kind is CaptionKind.FINISHED and given[-1].replaces == (TWO,)
+    # and an update for the replaced caption that comes after is too late
+    assert playout.heard(update("three four five", 11.5, 14.0, caption=TWO), 31.0) == ()
+    assert playout.due() is None
+
+
+def test_an_update_for_a_withdrawn_caption_is_too_late() -> None:
+    playout = Playout(RULES)
+    playout.heard(update("one two three", 10.0, 11.0), 11.1)
+    played(playout, 20.0)
+    gone = CaptionUpdate(
+        ONE, APP, CaptionKind.WITHDRAWN, reason=WithdrawalReason.FILLER_WORDS
+    )
+    assert playout.heard(gone, 20.0) == (gone,)
+    assert playout.heard(finished("one two three", 10.0, 11.5), 20.5) == ()
+    assert playout.due() is None
+
+
+def test_a_caption_finished_late_is_shown_by_the_delay_after() -> None:
+    # Calm releases only established words while a caption is live: the
+    # rest wait for the finish, said long before it came
+    playout = Playout(PlayoutRules(delay=D, established_only=True))
+    words = "one two three four five six seven eight"
+    playout.heard(update(words, 10.0, 14.0), 14.1)
+    assert played(playout, 17.0) == []
+    playout.heard(finished(words, 10.0, 14.0), 17.0)
+    shown = played(playout, 30.0)
+    assert len(shown) == 8
+    assert shown[-1][0] <= 17.0 + D + 1e-9  # at the speaker's pace: 20.5
+
+
+def test_the_next_caption_settles_the_one_before() -> None:
+    # a live caption's words, behind (its answer came late), are all out by
+    # the delay after the next caption is first answered: its words are
+    # all heard by then, though its finish has yet to come
+    playout = Playout(RULES)
+    words = "one two three four five six seven eight"
+    playout.heard(update(words, 10.0, 14.0), 18.0)
+    first = playout.heard(update("nine ten", 14.0, 15.0, caption=TWO), 18.5)
+    shown = [(18.5, u) for u in first] + played(playout, 30.0)
+    times = [at for at, u in shown if u.caption_id == ONE]
+    assert len(times) == 7  # all but the newest, held for its finish
+    assert times[-1] <= 18.5 + D + 1e-9  # at the speaker's pace: 21.5
 
 
 def test_a_withdrawn_caption_is_taken_back_only_if_it_was_shown() -> None:
@@ -459,7 +540,7 @@ def test_acquisition_holds_a_clauses_translation_back_after_its_last_word() -> N
     # every word is shown before the last translation, and the caption is
     # finished (not rewritten) while it waits
     last = shown[-1][1]
-    assert last is whole  # the server's own update, in the end
+    assert bare(last) == whole  # the server's own update, in the end
     waiting = [u for at, u in shown if at >= all_said and u is not whole]
     assert waiting and all(u.kind is CaptionKind.FINISHED for u in waiting)
     assert all(said(u) == "One two, three four." for u in waiting)
@@ -489,7 +570,7 @@ def test_without_it_nothing_is_held() -> None:
     playout = Playout(RULES)
     whole = finished((clause,), 10.0, 11.0)
     playout.heard(whole, 11.1)
-    assert played(playout, 30.0)[-1][1] is whole
+    assert bare(played(playout, 30.0)[-1][1]) == whole
     assert playout.due() is None
 
 
@@ -506,3 +587,57 @@ def test_subtitle_word_beats_keep_spoken_pauses_and_attach_punctuation() -> None
     assert ends == (3, 8, 15)
     assert offsets == pytest.approx((0.0, 0.3, 1.8))
     assert word_beats("你好，世界。", lambda run: [(0, len(run))]) == ((3, 6), ())
+
+
+# -- the wave: how long a shown word lights (1070) --------------------------------------
+
+
+def timed(words: str, start: float, step: float, said: float) -> Clause:
+    """`words` as one clause, each word said for `said` s, one each `step` s."""
+    times, at = [], 0
+    for n, word in enumerate(words.split()):
+        times.append(
+            WordTime((at, at + len(word)), start + n * step, start + n * step + said)
+        )
+        at += len(word) + 1
+    return Clause(words, words=tuple(times))
+
+
+def test_a_shown_word_lights_as_long_as_it_took_to_say() -> None:
+    playout = Playout(RULES)
+    playout.heard(finished((timed("one two three", 10.0, 0.5, 0.3),), 10.0, 11.5), 11.6)
+    lights = [u.lighting for _, u in played(playout, 20.0)]
+    assert lights == pytest.approx([0.3, 0.3, 0.3])  # each word's own time
+
+
+def test_without_word_times_a_word_lights_until_the_next_was_said() -> None:
+    playout = Playout(RULES)
+    playout.heard(finished("cat dog bird fish", 10.0, 12.0), 12.1)
+    lights = [u.lighting for _, u in played(playout, 20.0)]
+    assert lights[:3] == pytest.approx([0.5, 0.5, 0.5])  # the speaker's half seconds
+
+
+def test_a_word_shown_late_lights_by_the_time_the_next_is_due() -> None:
+    playout = Playout(RULES)
+    playout.heard(finished("cat dog bird fish", 10.0, 12.0), 12.1)
+    [shown] = playout.release(13.9)  # "cat", due at 12.2: late
+    due = playout.due()
+    assert due is not None
+    assert shown.lighting == pytest.approx(due - 13.9)
+    assert shown.lighting < 0.5
+
+
+def test_a_word_never_lights_for_longer_than_the_delay() -> None:
+    playout = Playout(RULES)
+    slow = timed("one two", 10.0, 4.0, 3.5)  # a word drawn out over 3.5 s
+    playout.heard(finished((slow,), 10.0, 17.5), 17.6)
+    assert all(u.lighting <= D for _, u in played(playout, 30.0))
+
+
+def test_the_finished_caption_its_last_word_brings_lights_that_word() -> None:
+    playout = Playout(RULES)
+    whole = finished((timed("one two", 10.0, 0.5, 0.25),), 10.0, 11.0)
+    playout.heard(whole, 11.1)
+    last = played(playout, 20.0)[-1][1]
+    assert last.kind is CaptionKind.FINISHED and last.clauses == whole.clauses
+    assert last.lighting == pytest.approx(0.25)

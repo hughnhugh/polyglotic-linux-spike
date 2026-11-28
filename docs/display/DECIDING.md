@@ -6,8 +6,8 @@ Every function in the display's files that makes a choice about a caption's look
 
 | File | Lines | Functions | That choose | Set aside | Deciding | In the paint | Choices in them |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `ui_next/caption_window.py` | 10153 | 532 | 408 | 129 | 279 | 64 | 1537 |
-| `ui_next/caption_layout.py` | 3401 | 113 | 98 | 0 | 98 | 0 | 589 |
+| `ui_next/caption_window.py` | 10231 | 538 | 413 | 129 | 284 | 65 | 1547 |
+| `ui_next/caption_layout.py` | 3437 | 114 | 98 | 0 | 98 | 0 | 600 |
 | `ui_next/video.py` | 1824 | 54 | 48 | 0 | 48 | 0 | 410 |
 | `ui_next/transcript_window.py` | 2116 | 125 | 88 | 40 | 48 | 10 | 171 |
 | `ui_next/reading_lines.py` | 740 | 35 | 24 | 0 | 24 | 0 | 105 |
@@ -17,7 +17,7 @@ Every function in the display's files that makes a choice about a caption's look
 | `ui_next/views/caption_window.py` | 945 | 36 | 32 | 0 | 32 | 0 | 135 |
 | `ui_next/views/captions.py` | 642 | 30 | 15 | 0 | 15 | 0 | 113 |
 | `ui_next/views/card_window_defaults.py` | 260 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `ui_next/views/cards.py` | 1336 | 64 | 49 | 0 | 49 | 0 | 269 |
+| `ui_next/views/cards.py` | 1282 | 61 | 46 | 0 | 46 | 0 | 258 |
 | `ui_next/views/dwell.py` | 179 | 4 | 4 | 0 | 4 | 0 | 15 |
 | `ui_next/views/flow.py` | 1690 | 63 | 49 | 0 | 49 | 0 | 322 |
 | `ui_next/views/known_colours.py` | 114 | 6 | 4 | 0 | 4 | 0 | 5 |
@@ -30,12 +30,13 @@ Every function in the display's files that makes a choice about a caption's look
 | `ui_next/views/scroll.py` | 168 | 9 | 5 | 0 | 5 | 0 | 22 |
 | `ui_next/views/sentences.py` | 319 | 9 | 9 | 0 | 9 | 0 | 50 |
 | `ui_next/views/tone.py` | 354 | 19 | 13 | 0 | 13 | 0 | 34 |
+| `ui_next/views/wave.py` | 149 | 9 | 6 | 0 | 6 | 0 | 20 |
 | `ui_next/views/zones.py` | 97 | 8 | 3 | 0 | 3 | 0 | 7 |
 | `ui_next/caption_surface.py` | 120 | 12 | 4 | 0 | 4 | 2 | 4 |
 | `ui_next/caption_selection.py` | 311 | 17 | 13 | 0 | 13 | 0 | 44 |
 | `ui_next/joined_window.py` | 751 | 60 | 41 | 16 | 25 | 0 | 51 |
 | `ui_next/views/row_positions.py` | 51 | 2 | 2 | 0 | 2 | 0 | 11 |
-| **All** | **28761** | **1321** | **1002** | **185** | **817** | **76** | **4312** |
+| **All** | **28970** | **1334** | **1010** | **185** | **825** | **77** | **4342** |
 
 | Set aside because | Functions |
 |---|---:|
@@ -49,7 +50,7 @@ Every function in the display's files that makes a choice about a caption's look
 
 ## The functions
 
-### `ui_next/caption_window.py` (279)
+### `ui_next/caption_window.py` (284)
 
 - `paint_loading`: 4 choice(s); what, where, ink, when; in the paint
 - `paint_bar`: 2 choice(s); where, ink, when; in the paint
@@ -79,7 +80,6 @@ Every function in the display's files that makes a choice about a caption's look
 - `Canvas._width`: 2 choice(s); what, where, when; in the paint
 - `Canvas._captions_beside_pace`: 2 choice(s); what, where, when; in the paint
 - `Canvas._seen_height`: 5 choice(s); what, where; in the paint
-- `Canvas._rolled`: 2 choice(s); what, where; in the paint
 - `Canvas._height`: 2 choice(s); where; in the paint
 - `Canvas._tall`: 7 choice(s); what, where; in the paint
 - `Canvas._entry`: 10 choice(s); what, where, when; in the paint
@@ -97,10 +97,13 @@ Every function in the display's files that makes a choice about a caption's look
 - `Canvas._panel`: 11 choice(s); what, where, ink; in the paint
 - `Canvas._sides`: 2 choice(s); where; in the paint
 - `Canvas._list_positions`: 11 choice(s); what, where, when; in the paint
-- `Canvas._paint_panel`: 120 choice(s); what, where, ink, when; in the paint
+- `Canvas._paint_panel`: 117 choice(s); what, where, ink, when; in the paint
 - `Canvas._pace_overlaps_rows`: 3 choice(s); what, where, ink, when; in the paint
 - `Canvas._paint_video`: 22 choice(s); what, where, ink, when; in the paint
 - `Canvas._cover`: 12 choice(s); when; in the paint
+- `Canvas._lit`: 6 choice(s); what, ink, when; in the paint
+- `Canvas._lit.lit`: 1 choice(s); what, ink, when; in the paint
+- `Canvas.waving`: 1 choice(s); what, where, when
 - `Canvas._run_on`: 7 choice(s); what, where; in the paint
 - `Canvas._moved`: 2 choice(s); what, where; in the paint
 - `Canvas._shift_rows`: 9 choice(s); what, where, ink; in the paint
@@ -141,7 +144,7 @@ Every function in the display's files that makes a choice about a caption's look
 - `ZoneCanvas.rolled_out`: 7 choice(s); what, where
 - `ZoneCanvas.gap_after`: 1 choice(s); what, where
 - `ZoneCanvas.line_height`: 14 choice(s); what, where
-- `ZoneCanvas._paint_frame`: 5 choice(s); what, where, ink, when
+- `ZoneCanvas._paint_frame`: 7 choice(s); what, where, ink, when
 - `linked_with`: 6 choice(s); what, ink, when; in the paint
 - `draw_panel`: 2 choice(s); where, ink; in the paint
 - `copies_exactly`: 6 choice(s); unsorted; in the paint
@@ -170,6 +173,7 @@ Every function in the display's files that makes a choice about a caption's look
 - `CaptionWindow.hear`: 2 choice(s); what, when
 - `CaptionWindow.set_video`: 5 choice(s); what, where, when
 - `CaptionWindow.reading_hold`: 3 choice(s); what, when
+- `CaptionWindow._note_lighting`: 2 choice(s); what, when
 - `CaptionWindow._remember_dealt`: 2 choice(s); what, when
 - `CaptionWindow._measure`: 1 choice(s); what, where
 - `CaptionWindow._deal_again`: 5 choice(s); what, where, ink, when
@@ -225,7 +229,7 @@ Every function in the display's files that makes a choice about a caption's look
 - `CaptionWindow._note_arrivals`: 47 choice(s); what, where, ink, when
 - `CaptionWindow._settle_burst`: 1 choice(s); what, when
 - `CaptionWindow.arriving`: 5 choice(s); what, when
-- `CaptionWindow.restyle`: 1 choice(s); where, ink, when
+- `CaptionWindow.restyle`: 1 choice(s); what, where, ink, when
 - `CaptionWindow._engine`: 1 choice(s); what
 - `CaptionWindow.reads`: 2 choice(s); what
 - `CaptionWindow.dictionary_ready`: 4 choice(s); what, ink, when
@@ -282,6 +286,8 @@ Every function in the display's files that makes a choice about a caption's look
 - `CaptionWindow.offers_lyrics`: 1 choice(s); unsorted
 - `CaptionWindow.showEvent`: 1 choice(s); what, when
 - `CaptionWindow.hideEvent`: 2 choice(s); what, when
+- `CaptionWindow._wide_enough`: 1 choice(s); where
+- `CaptionWindow._keep_wide_enough`: 2 choice(s); what, where
 - `CaptionWindow._refresh`: 10 choice(s); what, where, when
 - `CaptionWindow._place_overlays`: 11 choice(s); what, where, when
 - `CaptionWindow._notice_line`: 3 choice(s); unsorted
@@ -352,7 +358,7 @@ Every function in the display's files that makes a choice about a caption's look
 - `CaptionLayout.paired_ranges`: 1 choice(s); what, where, when
 - `CaptionLayout._keeping`: 4 choice(s); what, ink
 - `CaptionLayout._composed`: 5 choice(s); what, where
-- `CaptionLayout.paint`: 64 choice(s); what, where, ink, when
+- `CaptionLayout.paint`: 75 choice(s); what, where, ink, when
 - `CaptionLayout._lay_out`: 26 choice(s); what, where, ink
 - `CaptionLayout._subtitle_tracks`: 5 choice(s); what, where, ink
 - `CaptionLayout._flow`: 4 choice(s); what, where
@@ -664,7 +670,7 @@ Every function in the display's files that makes a choice about a caption's look
 - `_same`: 1 choice(s); where
 - `_clamped`: 2 choice(s); unsorted
 
-### `ui_next/views/cards.py` (49)
+### `ui_next/views/cards.py` (46)
 
 - `unspaced`: 1 choice(s); unsorted
 - `pieces`: 6 choice(s); what
@@ -704,8 +710,6 @@ Every function in the display's files that makes a choice about a caption's look
 - `Deck._as_caption`: 36 choice(s); what, where, ink, when
 - `Glide.push`: 7 choice(s); when
 - `Glide.to`: 8 choice(s); when
-- `drum`: 8 choice(s); where, ink
-- `drum.turned`: 2 choice(s); where
 - `ease`: 2 choice(s); where
 - `Depth.shift`: 4 choice(s); when
 - `Depth.behind`: 2 choice(s); when
@@ -714,7 +718,6 @@ Every function in the display's files that makes a choice about a caption's look
 - `depth_ink`: 1 choice(s); ink
 - `depth_alpha`: 4 choice(s); what, ink
 - `_between`: 2 choice(s); unsorted
-- `drum_room`: 1 choice(s); unsorted
 
 ### `ui_next/views/dwell.py` (4)
 
@@ -887,6 +890,15 @@ Every function in the display's files that makes a choice about a caption's look
 - `offered`: 5 choice(s); unsorted
 - `reading_weight`: 2 choice(s); what
 - `edge_colour`: 1 choice(s); what, ink
+
+### `ui_next/views/wave.py` (6)
+
+- `ease`: 2 choice(s); where
+- `Lit.within`: 5 choice(s); ink, when
+- `Wave.to`: 7 choice(s); what, when
+- `Wave.lit`: 4 choice(s); ink, when
+- `Wave.moving`: 1 choice(s); when
+- `Waves.moving`: 1 choice(s); what, when
 
 ### `ui_next/views/zones.py` (3)
 

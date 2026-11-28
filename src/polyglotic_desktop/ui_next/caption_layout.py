@@ -117,6 +117,7 @@ from polyglotic_desktop.ui_next.views.tone import (
     strength,
     vibrant,
 )
+from polyglotic_desktop.ui_next.views.wave import Lit
 from polyglotic_desktop.ui_next.word_classes import class_backing
 
 LATIN_FAMILIES = fonts.own("latin")
@@ -961,8 +962,12 @@ class CaptionLayout:
         marks: Marks | None = None,
         *,
         pair_opacity: dict[int, float] | None = None,
+        lit: Callable[[LaidRow], Lit | None] | None = None,
     ) -> None:
-        """Draws `laid` (the layout of `line`) with its top left at `at`."""
+        """Draws `laid` (the layout of `line`) with its top left at `at`.
+        `lit`: how far each row's letters are lit (Steady's wave,
+        `views.wave`) - the established ones lighting letter by letter, on
+        a live line or one just finished; None: as established says."""
         today = _line_alpha(line, ink)
         alpha = strength(today, ink.contrast)  # dots, lines, arrows: as faint
         own = self.style if line.by_you else None
@@ -1008,24 +1013,45 @@ class CaptionLayout:
                 painter.setOpacity(base_opacity * pair * row.opacity)
             original = row.row.kind is RowKind.ORIGINAL
             base = ink.original if original else ink.translation
-            unfinished = line.live or line.provisional
+            waved = lit(row) if lit is not None else None
+            unfinished = line.live or line.provisional or waved is not None
             colour = (
                 ink.unfinished if unfinished and ink.unfinished is not None else base
             )
-            row_today = today if original else min(1.0, today * ink.translation_alpha)
+            waiting = today
+            finished = not (line.live or line.provisional or ink.quiet)
+            if waved is not None and finished:
+                waiting = ink.alpha * ink.live_alpha  # just finished: still lighting
+            row_today = (
+                waiting if original else min(1.0, waiting * ink.translation_alpha)
+            )
             color = drawn_ink(colour, row_today, ink)
             established = row.row.established if unfinished else None
-            if established:
+            if waved is not None:
+                established = waved.full
+            front: list[QTextLayout.FormatRange] = []
+            if established or (waved is not None and waved.front):
                 # Settled characters in a live row keep their final ink (0228).
                 done = ink.alpha * (QUIET_ALPHA if ink.quiet else 1.0)
                 done = done if original else min(1.0, done * ink.translation_alpha)
                 final = drawn_ink(base, done, ink)
-                if established >= len(row.row.text.removesuffix(LIVE_TRAIL)):
+                length = len(row.row.text.removesuffix(LIVE_TRAIL))
+                if waved is not None:  # the wave's front: letters part way
+                    front = [
+                        _coloured_range(
+                            waved.full + n,
+                            waved.full + n + 1,
+                            mixed(color, final, part),
+                        )
+                        for n, part in enumerate(waved.front)
+                    ]
+                if (established or 0) >= length:
                     color, established = final, None
             if ink.edge is not TextEdge.NONE:
                 _edge(painter, row, top_left, color, ink.edge)
             painter.setPen(color)
             selections, dotted, links = split_marks(_row_marks(line, row, marks))
+            selections[:0] = front
             if established:
                 selections.insert(0, _coloured_range(0, established, final))
             coloured = (
@@ -1954,7 +1980,7 @@ def _edge(
 
 def _whole_pixels(painter: QPainter) -> tuple[float, float]:
     """How many of the screen's pixels one of the painter's is, across and
-    down (the screen's scale, and a card's squash on the drum)."""
+    down (the screen's scale)."""
     to_device = painter.deviceTransform()
     return abs(to_device.m11()) or 1.0, abs(to_device.m22()) or 1.0
 
@@ -2000,6 +2026,16 @@ def _coloured_words(
     if cache is not None:
         cache.words[index] = tone, links, found
     return found
+
+
+def mixed(a: QColor, b: QColor, share: float) -> QColor:
+    """`a` turned `share` of the way to `b`, alpha too."""
+    return QColor.fromRgbF(
+        a.redF() + (b.redF() - a.redF()) * share,
+        a.greenF() + (b.greenF() - a.greenF()) * share,
+        a.blueF() + (b.blueF() - a.blueF()) * share,
+        a.alphaF() + (b.alphaF() - a.alphaF()) * share,
+    )
 
 
 def _coloured_range(start: int, end: int, colour: QColor) -> QTextLayout.FormatRange:

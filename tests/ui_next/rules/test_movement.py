@@ -8,10 +8,13 @@ judged by `python -m tools.scene_replay judge`; these are the quick cases.
 
 import pytest
 from PySide6.QtWidgets import QApplication
+from tests.ui_next.paced_replay import FRAME, letters_lit
+from tests.ui_next.test_wave import stream as wave_stream
 from tools.scene_replay import drive, plants, properties, streams
 from tools.scene_replay.frames import Frame
 from tools.scene_replay.rulebook import breaks, pins
 
+from polyglotic_desktop.core.listening.playout import DELAY_SEC, Ahead, PlayoutRules
 from polyglotic_desktop.ui_next.views.cards import GLIDE_FASTEST
 
 
@@ -199,3 +202,21 @@ def test_a_second_line_drawn_at_once_is_seen(qapp: QApplication) -> None:
 def test_a_second_part_drawn_at_once_is_seen(qapp: QApplication) -> None:
     broken = properties.waits_then_fades(replay("lines/a", "panel", "no-wait"))
     assert broken and "overlaps" in broken[0].what
+
+
+@pins("movement.letters-light-with-the-speech")
+@pytest.mark.parametrize("chinese", [False, True], ids=["english", "chinese"])
+def test_each_letter_lights_at_its_moment_and_the_delay(chinese: bool) -> None:
+    rules = PlayoutRules(delay=DELAY_SEC, hold_back=1, ahead=Ahead.WAITING)
+    found = letters_lit(wave_stream(chinese), rules)
+    assert found
+    for letter, began in found:
+        late = max(0.0, letter.shown - (letter.word_said + rules.delay))
+        assert -FRAME <= began - (letter.said + rules.delay) <= late + FRAME
+
+
+@breaks("movement.letters-light-with-the-speech")
+def test_a_word_lit_whole_lights_its_later_letters_early() -> None:
+    rules = PlayoutRules(delay=DELAY_SEC, hold_back=1, ahead=Ahead.WAITING)
+    found = letters_lit(wave_stream(False), rules, lighting=False)
+    assert any(began < letter.said + rules.delay - FRAME for letter, began in found)

@@ -31,9 +31,10 @@ fit one line. Everything after it - the view, the layout, word links,
 lookups, selection, copying - sees captions, as it always did; nothing
 downstream knows a deck exists (as nothing knows a playout does).
 
-`Glide` is the stack's one motion: a critically damped spring. `drum` is
-where a card is drawn as it recedes. Plain Python, no Qt; widths are
-measured by whoever lays the cards out (`Measure`).
+`Glide` is the stack's one motion: a critically damped spring. Older cards
+scroll up flat, as any list's lines, and leave over the top (decision 0307;
+the founder, 2026-11-29). Plain Python, no Qt; widths are measured by
+whoever lays the cards out (`Measure`).
 """
 
 import math
@@ -1048,6 +1049,7 @@ class Deck:
             established=established if live else 0,
             respoken=respoken,
             display_member=cause.display_member,
+            lighting=cause.lighting,
         )
 
 
@@ -1130,53 +1132,6 @@ GLIDE_FASTEST = tunable(
     source="552 card stack; 583 depth",
 )
 """Px a second: the stack never glides faster, however far it has to go."""
-
-FLAT_SHARE = tunable(
-    "cards.flat_share", 0.55, "fraction", (0.3, 0.9), source="552 card stack; 583 depth"
-)
-"""The foot of the window, as a share of its height, where cards are flat
-and full: the one being written and those still being read."""
-FAR_INK = tunable(
-    "cards.far_ink", 0.3, "fraction", (0.15, 1.0), source="552 card stack; 583 depth"
-)
-"""A card's ink at the far end, where it leaves: fainter all the way up,
-never an empty band while earlier cards exist."""
-GONE_AT = 1.15
-"""Radians a card has turned at the far end, the view's top edge."""
-SMEAR = 0.4
-"""A card squashed to less than this isn't drawn: its text would be a smear."""
-FLAT_ENOUGH = 0.95
-"""A card the drum squashes less than this (0.967 for Video's older card,
-0.986 for Everyday's second, at rest) is drawn flat at its place: a squash
-so slight only softened its text (584)."""
-
-
-def drum(top: float, height: float, view: float) -> tuple[float, float, float]:
-    """Where a card whose top is at `top` (in a flat list `view` tall, 0
-    its top edge; negative: above it) is drawn on the drum, for a card
-    `height` tall: its top, how much it is squashed (1.0 flat) and its ink
-    (1.0 full, 0.0 gone). Flat in the foot of the view; above that it
-    turns away - closer together, flatter, fainter (`FAR_INK` at the far
-    end) - and leaves over the view's top edge, the only way a card ever
-    goes. Each edge of a card is turned by itself, so a
-    card's foot stays on the top of the card under it."""
-    flat = view * (1.0 - FLAT_SHARE.value)  # what is below this is flat
-    if top >= flat or flat <= 0.0 or height <= 0.0:
-        return top, 1.0, 1.0
-    radius = flat / math.sin(GONE_AT)
-
-    def turned(y: float) -> float:
-        if y >= flat:
-            return y
-        return flat - radius * math.sin(min(GONE_AT, (flat - y) / radius))
-
-    if (flat - top - height) / radius >= GONE_AT:
-        return 0.0, 0.0, 0.0  # all of it past the far end
-    at, foot = turned(top), turned(top + height)
-    middle = min(GONE_AT, max(0.0, (flat - top - height / 2.0) / radius))
-    ink = 1.0 - (1.0 - FAR_INK.value) * middle / GONE_AT
-    return at, min(1.0, max(0.0, (foot - at) / height)), ink
-
 
 DEPTH_SCALES = tunable(
     "cards.depth_scales",
@@ -1325,12 +1280,3 @@ def _between(steps: tuple[float, ...], place: float) -> float:
     low = int(place)
     share = place - low
     return steps[low] + (steps[low + 1] - steps[low]) * share
-
-
-def drum_room(view: float) -> float:
-    """How much more of a flat list a drum `view` px tall shows than the
-    view itself would: what turns away above its flat part."""
-    flat = view * (1.0 - FLAT_SHARE.value)
-    if flat <= 0.0:
-        return 0.0
-    return flat / math.sin(GONE_AT) * GONE_AT - flat

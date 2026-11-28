@@ -59,9 +59,15 @@ change is being confirmed.
 
 ### New
 
+- Steady and Calm light each word letter by letter, at the pace it was said.
+
 ### Better
 
+- Steady and Calm's older lines now scroll up flat, without turning away.
+
 ### Fixed
+
+- Steady and Calm no longer leave a line grey after its words were said, or show a joined line twice.
 
 ## 0.1.13 - 2026-11-28
 

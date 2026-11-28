@@ -4,12 +4,12 @@
 
 Every rule the caption display applies, one entry each: what you see, when, where, a picture, what it conflicts with, what was said about it before, and a recommendation. Each rule is held by a named test that fails when the rule is broken on purpose. Mark each one keep, change or drop; a change is recorded in your words.
 
-**So far:** 5 rules, the ones you have already ruled on, written out as the pattern. The nine families follow, one at a time:
+**So far:** 6 rules, the ones you have already ruled on, written out as the pattern. The nine families follow, one at a time:
 
 | Family | Rules written |
 |---|---:|
 | Wrapping and line breaks | 1 |
-| Movement: what moves, falls, slides, glides or fades, and what waits | 4 |
+| Movement: what moves, falls, slides, glides or fades, and what waits | 5 |
 | Ink: colours, word links, known words, highlights | 0 |
 | Readings and underlines | 0 |
 | The card stack and zones | 0 |
@@ -119,7 +119,7 @@ that comes while they are gliding joins the same glide.
 
 **When.** A new caption arrives, or a caption on screen gains a row.
 
-**Where.** In caption windows (Everyday, Conversation, Learning), the joined window. Not in Steady's transcript and live zone: a caption moving from the live zone to the transcript above steps into place. Not in Steady's card stack: the card stack turns and steps in its own way. Not in Video, Instant: subtitles lift in their own steps. Not in Video, Scrolling: subtitles lift in their own steps. Not in the transcript window: the transcript does not glide: a new line moves the page in one step.
+**Where.** In caption windows (Everyday, Conversation, Learning), the joined window. Not in Steady's transcript and live zone: a caption moving from the live zone to the transcript above steps into place. Not in Steady's card stack: the card stack moves a card at a time on its own glide; its older cards scroll flat (the founder, 2026-11-29: the turn away is gone). Not in Video, Instant: subtitles lift in their own steps. Not in Video, Scrolling: subtitles lift in their own steps. Not in the transcript window: the transcript does not glide: a new line moves the page in one step.
 
 **Conflicts with.**
 
@@ -146,7 +146,7 @@ share this glide is yours to rule on when those families are written.
 - Decided in `ui_next/caption_window.py::CaptionWindow._note_arrivals` (outside the paint) - turns a change in the rows into a glide
 - Decided in `ui_next/caption_window.py::Canvas._list_positions` (inside the paint) - reads how far the glide has got on every paint
 - Decided in `ui_next/caption_window.py::CaptionWindow._settle_burst` (outside the paint) - more than the window's height at once: put in place with no glide
-- Shaped by: 552 and 583: the card stack's glide and its top speed; 830: the glide for every growth of the stack, and the motion replay; desktop #1237 (969)
+- Shaped by: 552 and 583: the card stack's glide and its top speed; 830: the glide for every growth of the stack, and the motion replay; desktop #1237 (969); 1070: the founder, 2026-11-29, "remove this weird 3d flip thing on older captions in calm and steady": the cards' drum is gone (desktop decision 0307)
 - Test: `tests/ui_next/rules/test_movement.py::test_the_glides_top_speed_is_the_one_the_rulebook_states`
 - Test: `tests/ui_next/rules/test_movement.py::test_rows_glide_and_never_jump`
 - Test: `tests/ui_next/rules/test_movement.py::test_rows_glide_when_a_word_moves_to_the_next_row`
@@ -260,5 +260,46 @@ live style is already planned, and that would make this one rule everywhere.
 - Test: `tests/ui_next/rules/test_wrapping.py::test_a_long_caption_carries_on_in_rows_of_its_own`
 - Test: `tests/ui_next/rules/test_wrapping.py::test_the_transcript_is_where_a_row_does_wrap`
 - Planted break: `tests/ui_next/rules/test_wrapping.py::test_a_row_left_wrapped_is_seen`
+
+</details>
+
+## 6. Letters light with the speech
+
+**What you see.** In Steady and Calm, words become final letter by letter, at the pace they
+were said and a short delay behind. Each letter brightens from the waiting
+grey to full ink over a moment, so the edge between the two is soft and
+moves smoothly along the line, like a wave. No letter brightens before it
+was said plus the delay. With the computer's reduced motion setting on,
+whole words brighten at once, as before.
+
+**When.** In Steady or Calm, a word's time comes: it was said, and the delay has
+passed. A translation brightens with the word that completes its sentence.
+
+**Where.** In Steady's card stack, Steady's transcript and live zone. Not in caption windows (Everyday, Conversation, Learning): Instant shows each update as it comes: its words are final at once, a word at a time. Not in the joined window: the replay's joined window is in Instant; in Steady each column lights at its own speaker's pace. Not in Video, Instant: Video shows each update as it comes. Not in Video, Scrolling: Video shows each update as it comes. Not in the transcript window: the transcript shows finished captions, final from the first.
+
+**Conflicts with.** None found among the rules written so far.
+
+**What was said before.**
+
+- The founder, 2026-11-29 ~03:00 (1070's brief): "Can you also make the word letters themselves establish smoothly too? like a clean mexican wave in line with the pace of the speech (basically smoothed out)".
+
+**Recommendation.** Keep. Steady showed a whole word final at once, a step every word. Each letter now
+starts to brighten at the moment it was said plus the delay, to within a
+frame, unless the word itself came late; a word drawn whole is caught by its
+planted break, its later letters final before they were said.
+
+**Your mark.** keep, 2026-11-29 - "Can you also make the word letters themselves establish smoothly too? like a clean mexican wave in line with the pace of the speech (basically smoothed out)"
+
+<details><summary>For engineers</summary>
+
+- Rule id: `movement.letters-light-with-the-speech`
+- Decided in `ui_next/views/wave.py::Wave.to` (outside the paint) - spreads a shown word's letters across the time it took to say
+- Decided in `ui_next/views/wave.py::Wave.lit` (outside the paint) - how far each letter is lit: the soft front
+- Decided in `ui_next/caption_window.py::Canvas._lit` (inside the paint) - the wave for each line drawn live, or none with reduced motion
+- Decided in `ui_next/caption_layout.py::CaptionLayout.paint` (outside the paint) - draws the front's letters between the waiting and the full ink
+- Decided in `ui_next/caption_window.py::CaptionWindow._tick` (outside the paint) - frames go on only for the lines still lighting
+- Shaped by: 1070: the playout says how long each shown word took to say (`CaptionUpdate.lighting`)
+- Test: `tests/ui_next/rules/test_movement.py::test_each_letter_lights_at_its_moment_and_the_delay`
+- Planted break: `tests/ui_next/rules/test_movement.py::test_a_word_lit_whole_lights_its_later_letters_early`
 
 </details>

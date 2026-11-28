@@ -41,7 +41,7 @@ def ink(window: CaptionWindow) -> dict[Glyph, float]:
         if canvas.isHidden():
             continue
         page = [(ln, laid, rect, 1.0) for ln, laid, rect in canvas.placed]
-        page.extend(canvas.turning)
+        page.extend((ln, laid, rect, 1.0) for ln, laid, rect in canvas.fading)
         for line, laid, rect, scale in page:
             for row in laid.rows:
                 if getattr(row, "opacity", 1.0) <= 0:

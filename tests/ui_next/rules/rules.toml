@@ -217,6 +217,7 @@ shaped_by = [
     "552 and 583: the card stack's glide and its top speed",
     "830: the glide for every growth of the stack, and the motion replay",
     "desktop #1237 (969)",
+    "1070: the founder, 2026-11-29, \"remove this weird 3d flip thing on older captions in calm and steady\": the cards' drum is gone (desktop decision 0307)",
 ]
 said_before = [
     "827's SPEC, rule 6: \"One motion rule. The stack only grows, by whole pairs. Every growth, whatever its cause, is one glide ... never faster than 300 px/s, keeping its speed when another change comes mid-glide.\"",
@@ -233,7 +234,7 @@ share this glide is yours to rule on when those families are written.
 
 [rule.not_here]
 zones = "a caption moving from the live zone to the transcript above steps into place."
-cards = "the card stack turns and steps in its own way."
+cards = "the card stack moves a card at a time on its own glide; its older cards scroll flat (the founder, 2026-11-29: the turn away is gone)."
 video-instant = "subtitles lift in their own steps."
 video-scrolling = "subtitles lift in their own steps."
 transcript = "the transcript does not glide: a new line moves the page in one step."
@@ -309,3 +310,51 @@ stream = "lines/motion"
 setup = "panel"
 frames = [2938, 2940, 2943]
 caption = "The made-up stream of rapid revisions: a new caption slides in (middle frame) while the row above it is still held low, and the two touch until that row has moved up (bottom)."
+
+[[rule]]
+id = "movement.letters-light-with-the-speech"
+title = "Letters light with the speech"
+statement = """
+In Steady and Calm, words become final letter by letter, at the pace they
+were said and a short delay behind. Each letter brightens from the waiting
+grey to full ink over a moment, so the edge between the two is soft and
+moves smoothly along the line, like a wave. No letter brightens before it
+was said plus the delay. With the computer's reduced motion setting on,
+whole words brighten at once, as before.
+"""
+trigger = """
+In Steady or Calm, a word's time comes: it was said, and the delay has
+passed. A translation brightens with the word that completes its sentence.
+"""
+applies = ["cards", "zones"]
+decided = [
+    { function = "ui_next/views/wave.py::Wave.to", in_paint = false, note = "spreads a shown word's letters across the time it took to say" },
+    { function = "ui_next/views/wave.py::Wave.lit", in_paint = false, note = "how far each letter is lit: the soft front" },
+    { function = "ui_next/caption_window.py::Canvas._lit", in_paint = true, note = "the wave for each line drawn live, or none with reduced motion" },
+    { function = "ui_next/caption_layout.py::CaptionLayout.paint", in_paint = false, note = "draws the front's letters between the waiting and the full ink" },
+    { function = "ui_next/caption_window.py::CaptionWindow._tick", in_paint = false, note = "frames go on only for the lines still lighting" },
+]
+shaped_by = [
+    "1070: the playout says how long each shown word took to say (`CaptionUpdate.lighting`)",
+]
+said_before = [
+    "The founder, 2026-11-29 ~03:00 (1070's brief): \"Can you also make the word letters themselves establish smoothly too? like a clean mexican wave in line with the pace of the speech (basically smoothed out)\".",
+]
+recommendation = "keep"
+why = """
+Steady showed a whole word final at once, a step every word. Each letter now
+starts to brighten at the moment it was said plus the delay, to within a
+frame, unless the word itself came late; a word drawn whole is caught by its
+planted break, its later letters final before they were said.
+"""
+mark = "keep"
+marked_on = "2026-11-29"
+his_words = "Can you also make the word letters themselves establish smoothly too? like a clean mexican wave in line with the pace of the speech (basically smoothed out)"
+marked_statement = "0037def2c686"
+
+[rule.not_here]
+panel = "Instant shows each update as it comes: its words are final at once, a word at a time."
+joined = "the replay's joined window is in Instant; in Steady each column lights at its own speaker's pace."
+video-instant = "Video shows each update as it comes."
+video-scrolling = "Video shows each update as it comes."
+transcript = "the transcript shows finished captions, final from the first."

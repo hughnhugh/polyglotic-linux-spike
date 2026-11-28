@@ -100,7 +100,7 @@ from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
-from functools import lru_cache
+from functools import lru_cache, partial
 from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -337,14 +337,9 @@ from polyglotic_desktop.ui_next.views.card_window_defaults import (
 )
 from polyglotic_desktop.ui_next.views.cards import (
     CARD,
-    FLAT_ENOUGH,
-    FLAT_SHARE,
-    SMEAR,
     TO_SPARE,
     Deck,
     Glide,
-    drum,
-    drum_room,
 )
 from polyglotic_desktop.ui_next.views.dwell import (
     MEANT_PACE,
@@ -398,6 +393,7 @@ from polyglotic_desktop.ui_next.views.tone import (
     reading_weight,
     vibrant,
 )
+from polyglotic_desktop.ui_next.views.wave import WAVE_FADE, Lit, Waves
 from polyglotic_desktop.ui_next.views.zones import PAUSE_SEC, Zones
 from polyglotic_desktop.ui_next.word_classes import legend_html
 
@@ -1397,11 +1393,17 @@ class Canvas(CaptionSurface):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.placed: list[tuple[Line, LaidLine, QRectF]] = []
         """The lines the last paint drew, laid out, and where."""
-        self.turning: list[tuple[Line, LaidLine, QRectF, float]] = []
+        self.fading: list[tuple[Line, LaidLine, QRectF]] = []
+        """The cards the last paint drew fading - leaving at the top, or
+        coming in - drawn, never pointed at (decision 0260)."""
+        self.waves = Waves()
+        """Steady's wave: the rows whose letters light one by one
+        (`views.wave`, polyglotic-hq 1070)."""
+        self._waving: dict[int, QRectF] = {}
+        """Where the last paint drew each line with a wave: the frames go
+        to those alone (`waving`)."""
         self._covered: dict[int, tuple[bool, float]] = {}
         self._drawn: set[int] = set()
-        """The cards the last paint drew turned away on the drum, and how
-        much each is squashed: drawn, never pointed at (decision 0260)."""
         self._runs: tuple[int, Sequence[Line], dict[int, int]] | None = None
         self._entered: (
             tuple[tuple[int, int, float], CaptionStyle, dict[int, Open | None]] | None
@@ -1607,14 +1609,13 @@ class Canvas(CaptionSurface):
     def _view_height(self) -> float:
         """The height the scroll fills: the room for text - less the live
         zone's, with two zones; with cards, less the room kept for a card
-        made ahead, and more by what the drum holds above its flat part."""
+        made ahead."""
         if self.owner.deck is None:
             return max(
                 1.0,
                 super()._view_height() - self.owner.zone_room() - self._pace_inset(),
             )
-        room = self._seen_height() - self.owner.held_top()
-        return max(1.0, room) + self._rolled()
+        return max(1.0, self._seen_height() - self.owner.held_top())
 
     def _pace_inset(self) -> float:
         """Top room reserved for pace in the list's own coordinates."""
@@ -1653,13 +1654,6 @@ class Canvas(CaptionSurface):
             return max(1.0, self.height() - VIDEO_MARGIN - PAD)
         taken = owner.zone_room() + owner.pill_room()
         return max(1.0, super()._view_height() - taken)
-
-    def _rolled(self) -> float:
-        """How much more of the list the drum shows than a flat list
-        would, in px (`views.cards.drum_room`); 0 without cards."""
-        if self.owner.deck is None or not self.owner.view.scroll.following:
-            return 0.0  # scrolled back: a flat list, every card readable
-        return drum_room(self._seen_height())
 
     def _height(self, line: Line, laid: LaidLine | None = None) -> float:
         """How much further down `line` takes the text: its height as far
@@ -1786,12 +1780,11 @@ class Canvas(CaptionSurface):
     def _positioned(
         self, line: Line, placed_top: float, laid: LaidLine | None = None
     ) -> tuple[Line, LaidLine, float]:
-        """Where `line` is drawn, for where the scroll placed it - with
-        cards, in the flat list the drum then turns (`_rolled`)."""
+        """Where `line` is drawn, for where the scroll placed it."""
         held = self.owner.held_top()
         if laid is None:
             laid = self._laid(line)
-        top = PAD + held + placed_top + self._above(line, laid) - self._rolled()
+        top = PAD + held + placed_top + self._above(line, laid)
         if self.owner.deck is None:
             top += self._pace_inset()
         return line, laid, top
@@ -1866,7 +1859,7 @@ class Canvas(CaptionSurface):
     def _recover_paint(self) -> None:
         """Replace the failed frame with a clean panel and the drawable captions."""
         self.placed = []
-        self.turning = []
+        self.fading = []
         self.mark_rect = None
         self.shown = 0
         owner = self.owner
@@ -2074,14 +2067,14 @@ class Canvas(CaptionSurface):
         painter.setClipRegion(self.owner._pace_clip)
         asked = max(self.owner.question_foot(), self.owner.notice_foot())
         cards = self.owner.deck is not None
-        drummed = cards and view.scroll.following
+        live_cards = cards and view.scroll.following
         if self.owner.video_enabled:
             self._paint_video(painter, asked, listening)
             return
         foot = PAD + self._seen_height()
         shown, offset = self._list_positions()
         if cards:
-            # The drum fades whole cards as they pass the toolbar or question.
+            # Whole cards fade as they pass the toolbar or question.
             top = max(band_height() + 1.0 if self.owner.band_shown else 0.0, asked)
         else:
             # List captions clear whole rows, including the marks under them.
@@ -2188,7 +2181,7 @@ class Canvas(CaptionSurface):
         )
         self._drawn = {line.key for line, _, _ in self.placed}
         self.placed = []
-        self.turning = []
+        self.fading = []
         seen = self._seen_height()
         limit = self.owner.card_limit if cards else None
         whole = self._dirty.contains(QRectF(self.rect()))  # a part: its lines
@@ -2241,36 +2234,31 @@ class Canvas(CaptionSurface):
         self._held = held_words([ln for ln, _, _ in shown], chosen) if chosen else {}
         stack_foot = -math.inf
         for place, (line, laid, y) in enumerate(shown):
-            squash = turned = 1.0
-            if drummed:
+            solid = 1.0
+            if live_cards:  # older cards scroll up flat (decision 0307)
                 tall = self._tall(line, laid)
-                y, squash, turned = drum(y - PAD, tall, seen)
-                y += PAD
-                # Keep nearly flat text sharp. Start turning from full height:
-                # snapping from 1 to FLAT_ENOUGH moved the translation a frame
-                # before the rest of the card had travelled that far (617).
-                squash = min(1.0, squash / FLAT_ENOUGH)
                 if y + tall > PAD + seen:  # coming in at the foot: it fades in
-                    turned *= max(0.0, min(1.0, (PAD + seen - y) / max(1.0, tall)))
+                    solid *= max(0.0, min(1.0, (PAD + seen - y) / max(1.0, tall)))
                 previous_foot = stack_foot
-                stack_foot = max(stack_foot, y + tall * squash)
+                stack_foot = max(stack_foot, y + tall)
                 if self.owner.card_offset(line.key, offset) < offset:
                     # Cards that arrived behind a held view are already at
                     # their final positions. Each fades in as the moving
                     # cards clear its own top, including their translations.
                     over = previous_foot - y - CARD_CLEAR_PX.value
                     clear = 1.0 - over / max(1.0, 0.08 * tall)
-                    turned *= max(0.0, min(1.0, clear))
+                    solid *= max(0.0, min(1.0, clear))
                 if limit is not None and len(shown) - place > limit:
-                    turned = 0.0  # subtitles: so many cards, no more
-                if turned <= 0.02 or squash < SMEAR:
-                    continue  # gone, or a smear
-                # what comes to stand at the top (the toolbar, a question)
-                # never cuts a card or removes one at full ink: it fades
-                # out, and back in after - but the newest is always there
+                    solid = 0.0  # subtitles: so many cards, no more
+                if solid <= 0.02:
+                    continue
+                # what comes to stand at the top (the window's top edge, the
+                # toolbar, a question) never cuts a card or removes one at
+                # full ink: it fades out, and back in after - but the newest
+                # is always there
                 covered = y < top - 0.5 and place < len(shown) - 1
-                turned *= self._cover(line.key, covered, now)
-                if turned <= 0.02:
+                solid *= self._cover(line.key, covered, now)
+                if solid <= 0.02:
                     continue
             elif limit is not None and len(shown) - place > limit:
                 continue
@@ -2283,8 +2271,8 @@ class Canvas(CaptionSurface):
                 tall = self._tall(line, laid)
                 rest = y - offset
                 if rest < max(top, PAD) - 0.5:
-                    turned = min(1.0, abs(offset) / max(1.0, 0.75 * tall))
-                    if turned <= 0.02:
+                    solid = min(1.0, abs(offset) / max(1.0, 0.75 * tall))
+                    if solid <= 0.02:
                         continue
             elif not any(
                 y + row.top + row.layout.boundingRect().height() > top + 0.01
@@ -2292,8 +2280,8 @@ class Canvas(CaptionSurface):
             ):
                 continue  # every row above the top: none drawn (W3)
             if cards and veil < 1.0:
-                turned *= veil
-                if turned <= 0.02:
+                solid *= veil
+                if solid <= 0.02:
                     continue
             at = QPointF(PAD, y)
             alpha = translation = 1.0
@@ -2312,12 +2300,15 @@ class Canvas(CaptionSurface):
             correction = self.owner.correction_colour(line.key, now, ink.original)
             if correction is not None:  # a quiet correction (494)
                 ink = replace(ink, correction=correction)
-            if line.live and self.owner.faint_ahead:  # karaoke's waiting words
-                ink = replace(ink, live_alpha=AHEAD_ALPHA)
-            if turned < 1.0:  # fainter through its colours: an outline stays
-                ink = replace(ink, alpha=ink.alpha * turned)  # solid (584)
+            lit = self._lit(line, now)
+            if (line.live or lit is not None) and self.owner.faint_ahead:
+                ink = replace(ink, live_alpha=AHEAD_ALPHA)  # karaoke's waiting words
+            if solid < 1.0:  # fainter through its colours: an outline stays
+                ink = replace(ink, alpha=ink.alpha * solid)  # solid (584)
             height = self._tall(line, laid)
             rect = QRectF(at.x(), at.y(), width, height)
+            if lit is not None:
+                self._waving[line.key] = rect
             asked = whole or self._dirty.intersects(rect.adjusted(*AROUND))
             if asked:  # else outside what this paint redraws: placed, not painted
                 highlighted = (
@@ -2333,44 +2324,38 @@ class Canvas(CaptionSurface):
                         QRectF(0.0, y, float(self.width()), height),
                         Qt.ClipOperation.IntersectClip,
                     )
-                if squash < 1.0:  # a card turning away on the drum
-                    painter.save()
-                    painter.translate(0.0, y)
-                    painter.scale(1.0, squash)
-                    flat = QPointF(at.x(), 0.0)
-                    if highlighted:
-                        self._paint_marked(painter, line, laid, flat)
-                    self.engine.paint(painter, line, laid, flat, ink, self.marks)
-                    painter.restore()
+                self._paint_hovered_line(painter, line, rect)
+                if highlighted:
+                    self._paint_marked(painter, line, laid, at)
+                fades = None
+                if not cards and offset and y < top + laid.height:
+                    pairs: dict[int, tuple[float, float]] = {}
+                    for row in laid.rows:
+                        start = y + row.top
+                        end = start + row.layout.boundingRect().height()
+                        clause = row.row.clause
+                        first, last = pairs.get(clause, (start, end))
+                        pairs[clause] = min(first, start), max(last, end)
+                    fades = {
+                        clause: visible_ink(first, last, top)
+                        for clause, (first, last) in pairs.items()
+                    }
+                paint = partial(self.engine.paint, painter, line, laid, at, ink)
+                if fades and lit is not None:
+                    paint(self.marks, pair_opacity=fades, lit=lit)
+                elif fades:
+                    paint(self.marks, pair_opacity=fades)
+                elif lit is not None:
+                    paint(self.marks, lit=lit)
                 else:
-                    self._paint_hovered_line(painter, line, rect)
-                    if highlighted:
-                        self._paint_marked(painter, line, laid, at)
-                    fades = None
-                    if not cards and offset and y < top + laid.height:
-                        pairs: dict[int, tuple[float, float]] = {}
-                        for row in laid.rows:
-                            start = y + row.top
-                            end = start + row.layout.boundingRect().height()
-                            clause = row.row.clause
-                            first, last = pairs.get(clause, (start, end))
-                            pairs[clause] = min(first, start), max(last, end)
-                        fades = {
-                            clause: visible_ink(first, last, top)
-                            for clause, (first, last) in pairs.items()
-                        }
-                    if fades:
-                        self.engine.paint(
-                            painter, line, laid, at, ink, self.marks, pair_opacity=fades
-                        )
-                    else:
-                        self.engine.paint(painter, line, laid, at, ink, self.marks)
+                    paint(self.marks)
                 if part:
                     painter.restore()
-            if squash == 1.0 and turned > 0.5:
+            if solid > 0.5:
                 self.placed.append((line, laid, rect))
-            else:  # a card turned away isn't pointed at: drawn, not placed
-                self.turning.append((line, laid, rect, squash))
+            else:  # a card fading isn't pointed at: drawn, not placed
+                self.fading.append((line, laid, rect))
+        self.waves.drawn()
         painter.restore()
         if not view.lines:
             self._paint_empty(painter)
@@ -2457,7 +2442,7 @@ class Canvas(CaptionSurface):
             self.track_read_until = until
             owner.wake_frames()
         self.clear_top = top
-        self.turning = []
+        self.fading = []
         self.shown = len(self.placed)
         if not self.placed and not self.view.lines:
             self._paint_empty(painter)
@@ -2496,6 +2481,45 @@ class Canvas(CaptionSurface):
             self._covered.clear()
         return 1.0 - share if covered else share
 
+    def _lit(self, line: Line, now: float) -> Callable[[LaidRow], Lit | None] | None:
+        """How far `line`'s letters are lit, row by row, in a paced mode:
+        its newly established letters light one by one at the speaker's
+        pace (`views.wave`); a line just finished lights its last word so.
+        None for any other line, and for every line with the OS's reduced
+        motion on: words light whole, as before."""
+        if not self.owner.timing.paced or reduced_motion():
+            return None
+        if not line.live and not self.waves.has(line.key):
+            return None  # never drawn live here: all lit
+        over = self.owner.lighting.get(line.caption_id, 0.0)
+        fade = WAVE_FADE.value
+        rows = {}
+        for row in line.rows:
+            text = row.text.removesuffix(LIVE_TRAIL)
+            count = row.established if line.live else None
+            key = (line.key, row.kind, row.clause)
+            wave = self.waves.to(
+                key, len(text) if count is None else count, now, over, text
+            )
+            rows[row.kind, row.clause] = wave.lit(now, fade)
+        if not line.live and line.key not in self.waves.moving(now, fade):
+            self.waves.forget(line.key)  # its last word lit: a finished line
+            return None
+
+        def lit(laid: LaidRow) -> Lit | None:
+            found = rows.get((laid.row.kind, laid.row.clause))
+            if found is None:
+                return None
+            return found.within(laid.start, len(laid.row.text.removesuffix(LIVE_TRAIL)))
+
+        return lit
+
+    def waving(self, now: float) -> list[QRectF]:
+        """Where lines whose letters are still lighting were last drawn."""
+        lines = self.waves.moving(now, WAVE_FADE.value)
+        self._waving = {key: rect for key, rect in self._waving.items() if key in lines}
+        return list(self._waving.values())
+
     def covering(self) -> bool:
         """A card is fading under what covers it, or back: frames go on."""
         now = self.owner.clock()
@@ -2511,7 +2535,7 @@ class Canvas(CaptionSurface):
         if offset > 0.0:  # drawn lower: older cards show above
             at = keys.index(out[0].line.key) if out[0].line.key in keys else 0
             y = out[0].top
-            while at > 0 and y + offset > -self._rolled():
+            while at > 0 and y + offset > 0.0:
                 at -= 1
                 y -= self._height(lines[at]) + gap
                 out.insert(0, Placed(lines[at], y))
@@ -3502,13 +3526,20 @@ class ZoneCanvas(Canvas):
                 correction = owner.correction_colour(line.key, now, ink.original)
                 if correction is not None:
                     ink = replace(ink, correction=correction)
-                if line.live and owner.faint_ahead:  # karaoke's waiting words
-                    ink = replace(ink, live_alpha=AHEAD_ALPHA)
+                lit = self._lit(line, now)
+                if (line.live or lit is not None) and owner.faint_ahead:
+                    ink = replace(ink, live_alpha=AHEAD_ALPHA)  # karaoke's waiting
                 block = QRectF(PAD, y, self._width(), laid.height)
+                if lit is not None:
+                    self._waving[line.key] = block
                 self._paint_hovered_line(painter, line, block)
                 self._paint_marked(painter, line, laid, at)
-                self.engine.paint(painter, line, laid, at, ink, self.marks)
+                if lit is None:
+                    self.engine.paint(painter, line, laid, at, ink, self.marks)
+                else:
+                    self.engine.paint(painter, line, laid, at, ink, self.marks, lit=lit)
                 self.placed.append((line, laid, block))
+            self.waves.drawn()
             self.shown = len(walked)
             if self.hovered_line is not None:
                 owner._sync_line_actions()
@@ -4179,6 +4210,9 @@ pace (`GLIDE_FASTEST`): from further back it starts this far from home."""
 VEIL_SEC = 0.3
 """Back to live from further than it slides: the view fades out and in,
 this long in all."""
+LIGHTING_KEPT = 64
+"""Captions and cards whose last lighting a window keeps: far more than it
+draws live at once."""
 COVER_FADE_SEC = 0.3
 """A card that something at the top of the window comes to cover (the
 toolbar, a question) fades out over this long, and back in after."""
@@ -4413,6 +4447,9 @@ class CaptionWindow(CaptionTopLevel):
         self.look = look or CaptionLook()
         self.mic = mic
         self.timing = CaptionMode.WHOLE
+        self.lighting: dict[CaptionId, float] = {}
+        """How long the letters each caption's (or card's) last update newly
+        established take to light, in seconds (Steady's wave)."""
         self.second_languages: Mapping[Language, Language] = {}
         self.spoken_fallback = False
         """Its spoken language can't be used as it is: the server takes one
@@ -4935,6 +4972,7 @@ class CaptionWindow(CaptionTopLevel):
             trace.tracer().windowed(update.times.seq)
         if update.source_id not in self.view.sources:
             return self.view.apply(update)
+        self._note_lighting(update)
         if update.replaces:
             # CaptionGroups projects server continuations into these same replacements.
             visible = {(ln.source, ln.caption_id): ln.key for ln in self.view.lines}
@@ -5012,6 +5050,7 @@ class CaptionWindow(CaptionTopLevel):
         back until then, `CARD_WAIT_SEC` at most (`check_card_room` shows
         it): a line isn't pushed while it is being read."""
         key = card.caption_id
+        self._note_lighting(card)
         if card.kind is CaptionKind.WITHDRAWN:
             self._kept_back.pop(key, None)
             return self.view.apply(card)
@@ -5106,13 +5145,14 @@ class CaptionWindow(CaptionTopLevel):
         return reading.read_by() if reading is not None else -1e9
 
     def _leaving(self) -> int | None:
-        """The card a new one would take out of reading."""
+        """The card a new one would take out of reading: the oldest drawn,
+        which it pushes over the top."""
         cards = [ln for ln in self.view.lines if ln.caption_id.startswith(CARD)]
         if self.card_limit is not None:
             count = self.card_limit
         else:
-            flat = FLAT_SHARE.value * self.canvas._seen_height()
-            count = max(1, int(flat / self._card_pitch()))
+            seen = self.canvas._seen_height()
+            count = max(1, int(seen / self._card_pitch()))
         return cards[-count].key if len(cards) >= count else None
 
     def _note_reading(self) -> None:
@@ -5272,6 +5312,15 @@ class CaptionWindow(CaptionTopLevel):
         many as the window holds)."""
         self._card_limit = cards
         self.canvas.update()
+
+    def _note_lighting(self, update: CaptionUpdate) -> None:
+        """How long the letters `update` newly establishes take to light
+        (`CaptionUpdate.lighting`): the canvases' wave reads it."""
+        self.lighting.pop(update.caption_id, None)
+        if update.kind is not CaptionKind.WITHDRAWN:
+            self.lighting[update.caption_id] = update.lighting
+        while len(self.lighting) > LIGHTING_KEPT:
+            del self.lighting[next(iter(self.lighting))]
 
     def _remember_dealt(self, update: CaptionUpdate) -> None:
         dealt = self._dealt
@@ -6288,7 +6337,7 @@ class CaptionWindow(CaptionTopLevel):
 
     def _hold_view(self) -> None:
         """The view stops where it stands for the mouse: with cards, at the
-        newest card shown (`view_held`) - the drum stays as it is; without,
+        newest card shown (`view_held`) - the stack stays as it is; without,
         the scroll holds where it stands, as scrolled back."""
         canvas, scroll = self.canvas, self.view.scroll
         lines = canvas.lines_in_view()
@@ -9005,6 +9054,10 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
             self.canvas.update()
         self._corrected = correcting
         moving = moving or correcting
+        for canvas in (self.canvas, self.zone):  # Steady's wave: its lines only
+            for rect in canvas.waving(self.clock()):
+                canvas.update(rect.adjusted(*AROUND).toAlignedRect())
+                moving = True
         fading, new_due = self._newness(self.clock())  # the Lab's New for
         moving = moving or fading
         moving = moving or self._step_bar_fade(self.clock())
