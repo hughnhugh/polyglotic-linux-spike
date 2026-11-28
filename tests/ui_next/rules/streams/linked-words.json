@@ -1,0 +1,261 @@
+{
+  "about": "996's ink family: three made-up French captions with their English, each with three word links; the second is still being spoken for a second before it is finished.",
+  "window": {
+    "width": 900,
+    "height": 420
+  },
+  "events": [
+    {
+      "t": 0.0,
+      "key": 1,
+      "source": "video",
+      "live": true,
+      "language": "fr",
+      "clauses": [
+        {
+          "said": "Le chat dort",
+          "words": [],
+          "reading": [],
+          "translation": "The cat sleeps",
+          "links": [
+            {
+              "original": [
+                3,
+                7
+              ],
+              "translation": [
+                4,
+                7
+              ]
+            },
+            {
+              "original": [
+                8,
+                12
+              ],
+              "translation": [
+                8,
+                14
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": 0.5,
+      "key": 1,
+      "source": "video",
+      "live": false,
+      "language": "fr",
+      "clauses": [
+        {
+          "said": "Le chat dort sur la table",
+          "words": [],
+          "reading": [],
+          "translation": "The cat sleeps on the table",
+          "links": [
+            {
+              "original": [
+                3,
+                7
+              ],
+              "translation": [
+                4,
+                7
+              ]
+            },
+            {
+              "original": [
+                8,
+                12
+              ],
+              "translation": [
+                8,
+                14
+              ]
+            },
+            {
+              "original": [
+                20,
+                25
+              ],
+              "translation": [
+                22,
+                27
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": 1.5,
+      "key": 2,
+      "source": "video",
+      "live": true,
+      "language": "fr",
+      "clauses": [
+        {
+          "said": "Un oiseau chante",
+          "words": [],
+          "reading": [],
+          "translation": "A bird sings",
+          "links": [
+            {
+              "original": [
+                3,
+                9
+              ],
+              "translation": [
+                2,
+                6
+              ]
+            },
+            {
+              "original": [
+                10,
+                16
+              ],
+              "translation": [
+                7,
+                12
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": 2.5,
+      "key": 2,
+      "source": "video",
+      "live": false,
+      "language": "fr",
+      "clauses": [
+        {
+          "said": "Un oiseau chante dans le jardin",
+          "words": [],
+          "reading": [],
+          "translation": "A bird sings in the garden",
+          "links": [
+            {
+              "original": [
+                3,
+                9
+              ],
+              "translation": [
+                2,
+                6
+              ]
+            },
+            {
+              "original": [
+                10,
+                16
+              ],
+              "translation": [
+                7,
+                12
+              ]
+            },
+            {
+              "original": [
+                25,
+                31
+              ],
+              "translation": [
+                20,
+                26
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": 3.5,
+      "key": 3,
+      "source": "video",
+      "live": true,
+      "language": "fr",
+      "clauses": [
+        {
+          "said": "La pluie tombe sur",
+          "words": [],
+          "reading": [],
+          "translation": "The rain falls on",
+          "links": [
+            {
+              "original": [
+                3,
+                8
+              ],
+              "translation": [
+                4,
+                8
+              ]
+            },
+            {
+              "original": [
+                9,
+                14
+              ],
+              "translation": [
+                9,
+                14
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": 6.0,
+      "key": 3,
+      "source": "video",
+      "live": false,
+      "language": "fr",
+      "clauses": [
+        {
+          "said": "La pluie tombe sur le toit",
+          "words": [],
+          "reading": [],
+          "translation": "The rain falls on the roof",
+          "links": [
+            {
+              "original": [
+                3,
+                8
+              ],
+              "translation": [
+                4,
+                8
+              ]
+            },
+            {
+              "original": [
+                9,
+                14
+              ],
+              "translation": [
+                9,
+                14
+              ]
+            },
+            {
+              "original": [
+                22,
+                26
+              ],
+              "translation": [
+                22,
+                26
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

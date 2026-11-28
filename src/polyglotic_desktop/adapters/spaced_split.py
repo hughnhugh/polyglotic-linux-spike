@@ -82,46 +82,14 @@ written onto the next word with an apostrophe (lower case, without it)."""
 _APOSTROPHES = "'’"
 
 
-_AR_BEFORE = (
-    "وال",
-    "فال",
-    "بال",
-    "كال",
-    "ولل",
-    "فلل",
-    "لل",
-    "ال",
-    "و",
-    "ف",
-    "ب",
-    "ل",
-    "ك",
-)
-"""Arabic's small words written onto the next one, longest first: and,
-so, with, for, like, the - and لل, ل + ال ("for the")."""
-_AR_AFTER = ("هما", "كما", "هم", "هن", "ها", "كم", "كن", "نا", "ني", "ه", "ك", "ي")
-"""Its pronouns written onto the end: his, her, their, your, our, my."""
 _ID_AFTER = ("nya", "lah", "kah", "pun", "ku", "mu")
 """Indonesian's: his/her/its/the, emphasis, the question, too, my, your."""
 
 
 def arabic_bases(word: str) -> tuple[str, ...]:
-    """What an Arabic word may be without its small words, likeliest first:
-    the word without vowel marks, then without the words before it, then
-    without a pronoun after it (a ت left at the end is ة's: مدرسته is
-    مدرسة + ه). Two letters at least are left."""
-    plain = arabic.plain(word)
-    out = [plain] if plain != word else []
-    stems = [plain] + [plain[len(p) :] for p in _AR_BEFORE if plain.startswith(p)]
-    for stem in stems:
-        if stem != plain and len(stem) >= 2:
-            out.append(stem)
-    for stem in stems:
-        for ending in _AR_AFTER:
-            base = stem[: -len(ending)]
-            if stem.endswith(ending) and len(base) >= 2:
-                out += [base] + ([base[:-1] + "ة"] if base.endswith("ت") else [])
-    return tuple(dict.fromkeys(w for w in out if w != word))
+    """What an Arabic word may be without its small words or regular endings,
+    likeliest first (`core.lexicon.arabic.bases`)."""
+    return arabic.bases(word)
 
 
 _ID_SUFFIXES = ("kan", "an", "i")

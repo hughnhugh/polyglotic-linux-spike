@@ -3,14 +3,18 @@ what may never be in the packed app, the licences collected, Windows' file
 properties. The build itself runs in CI (.github/workflows/package.yml)."""
 
 import ast
+import json
 import os
+import shutil
 import struct
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
-from tools.package import build
+from tools.package import build, pack_identity, stamp
 
+from polyglotic_desktop.core.releases.identity import flavour
 from polyglotic_desktop.ui.interface_language import OFFERED
 
 
@@ -274,11 +278,7 @@ def test_the_installer_gives_the_app_and_its_shortcuts_one_taskbar_id() -> None:
     from polyglotic_desktop.main import TASKBAR_ID
 
     script = (Path(build.__file__).parent / "pack.sh").read_text(encoding="utf-8")
-    pack_id = next(
-        line.removeprefix("id=")
-        for line in script.splitlines()
-        if line.startswith("id=")
-    )
+    pack_id = flavour("release").pack_id  # pack.sh's, from pack_identity
     assert '--packId "$id"' in script
     assert '--aumid "$id.Desktop"' in script
     assert f"{pack_id}.Desktop" == TASKBAR_ID
@@ -409,3 +409,185 @@ def test_linux_is_packed_as_one_unversioned_appimage() -> None:
     assert "--runtime linux-x64" in linux and "--mainExe Polyglotic " in linux
     assert 'mv -f "$outdir/$id-$channel.AppImage" "$outdir/$id.AppImage"' in linux
     assert "--aumid" not in linux  # Windows' taskbar ID only
+
+
+@pytest.fixture
+def no_pyinstaller(monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    """Every command the build would run, none of them run."""
+    called: list[object] = []
+    monkeypatch.setattr(build.subprocess, "run", lambda *a, **k: called.append(a))
+    for name in (stamp.FLAVOUR_ENV, stamp.FEED_ENV, stamp.HOTKEYS_ENV):
+        monkeypatch.delenv(name, raising=False)
+    return called
+
+
+def test_a_build_in_the_wrong_environment_is_refused_before_pyinstaller(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_pyinstaller: list[object]
+) -> None:
+    monkeypatch.setenv(stamp.FLAVOUR_ENV, "preview")
+    with pytest.raises(ValueError, match="a release build in a 'preview' environment"):
+        build.build("v0.1.13", "win-x64-alpha", tmp_path, tmp_path / "out")
+    monkeypatch.delenv(stamp.FLAVOUR_ENV)
+    with pytest.raises(
+        ValueError, match="a rehearsal build in a 'release' environment"
+    ):
+        build.build("v0.1.13", "win-x64-alpha", tmp_path, tmp_path / "out",
+                    build_flavour="rehearsal")  # fmt: skip
+    assert no_pyinstaller == []
+
+
+def test_a_release_given_a_private_feed_is_refused_before_pyinstaller(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_pyinstaller: list[object]
+) -> None:
+    monkeypatch.setenv(stamp.FEED_ENV, str(tmp_path / "feed"))
+    with pytest.raises(ValueError, match="a release takes no"):
+        build.build("v0.1.13", "win-x64-alpha", tmp_path, tmp_path / "out")
+    assert no_pyinstaller == []
+
+
+def test_a_previews_build_inputs_are_stamped_and_read_back(tmp_path: Path) -> None:
+    feed = str(tmp_path / "feed")
+    environ = {
+        stamp.FLAVOUR_ENV: "preview",
+        stamp.FEED_ENV: feed,
+        stamp.HOTKEYS_ENV: "1",
+    }
+    inputs = stamp.build_inputs("preview", environ)
+    text = stamp.stamp("0.1.14", "win-x64-alpha", "2026-11-29T00:00:00Z", **inputs)
+    read = pack_identity.from_stamp(json.loads(text))
+    assert (read.stamp, read.updates, read.global_hotkeys) == ("preview", feed, True)
+    assert stamp.build_inputs("release", {}) == {"flavour": "release"}
+    assert "flavour" not in json.loads(stamp.stamp("0.1.14", "win-x64-alpha"))
+    with pytest.raises(ValueError, match="isn't a folder"):
+        stamp.build_inputs("preview", {stamp.FLAVOUR_ENV: "preview",
+                                       stamp.FEED_ENV: "https://updates.polyglotic.io/"})  # fmt: skip
+
+
+# -- the pack: pack.sh's arguments to vpk, per flavour (polyglotic-hq 1045) --
+
+MAINS_RELEASE_PACK = [
+    "vpk", "pack", "--packId", "Polyglotic", "--packVersion", "0.1.14",
+    "--aumid", "Polyglotic.Desktop", "--packTitle", "Polyglotic",
+    "--packAuthors", "Polyglotic", "--packDir", "dist/Polyglotic",
+    "--mainExe", "Polyglotic.exe", "--icon", "Polyglotic.ico",
+    "--releaseNotes", "notes.md", "--runtime", "win-x64",
+    "--channel", "win-x64-alpha", "--outputDir", "releases", "--noPortable",
+]  # fmt: skip
+"""What main's pack.sh gave vpk for the release on Windows before 1045
+(origin/main 1c868cf54): no --shortcuts, so Velopack makes its own, the
+desktop's and the Start menu's."""
+needs_bash = pytest.mark.skipif(
+    sys.platform == "win32" or shutil.which("bash") is None,
+    reason="a bare bash on Windows is WSL's (polyglotic-hq 254)",
+)
+STAND_IN_VPK = """#!/bin/bash
+printf "%s\\n" "$@" > "$VPK_SAID"
+for a in "$@"; do last=$a; done
+[ "$last" = --noPortable ] || touch "$VPK_OUT/Polyglotic-$VPK_CHANNEL.AppImage"
+"""
+"""A stand-in `dotnet` that records what vpk was given (and, for Linux,
+leaves the AppImage pack.sh renames)."""
+
+
+def vpk_arguments(
+    tmp_path: Path,
+    flavour_name: str | None,
+    packdir: str = "dist/Polyglotic",
+    channel: str = "win-x64-alpha",
+) -> list[str]:
+    """What pack.sh hands vpk."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir(exist_ok=True)
+    (bin_ / "dotnet").write_text(STAND_IN_VPK, encoding="utf-8", newline="\n")
+    (bin_ / "dotnet").chmod(0o755)
+    said = tmp_path / "vpk-args"
+    out = "releases" if channel.startswith("win") else str(tmp_path)
+    uv = Path(shutil.which("uv") or os.environ["UV"]).parent
+    env = dict(
+        os.environ,
+        PATH=os.pathsep.join([str(bin_), str(uv), os.environ["PATH"]]),
+        VPK_SAID=str(said),
+        VPK_OUT=out,
+        VPK_CHANNEL=channel,
+    )
+    env.pop(stamp.FLAVOUR_ENV, None)
+    if flavour_name is not None:
+        env[stamp.FLAVOUR_ENV] = flavour_name
+    script = Path(build.__file__).parent / "pack.sh"
+    subprocess.run(
+        [
+            "bash",
+            str(script),
+            "0.1.14",
+            channel,
+            packdir,
+            out,
+            "Polyglotic.ico",
+            "notes.md",
+        ],
+        env=env,
+        check=True,
+        cwd=Path(build.__file__).parents[2],
+    )
+    return said.read_text(encoding="utf-8").splitlines()
+
+
+@needs_bash
+def test_the_release_is_packed_as_main_packed_it(tmp_path: Path) -> None:
+    """The real release keeps its shortcuts: pack.sh passes vpk exactly
+    main's arguments, flavour named or not."""
+    assert vpk_arguments(tmp_path, None) == MAINS_RELEASE_PACK
+    assert vpk_arguments(tmp_path, "release") == MAINS_RELEASE_PACK
+    linux = vpk_arguments(tmp_path, None, channel="linux-x64-alpha")
+    assert "--shortcuts" not in linux
+    assert linux[linux.index("--packId") + 1] == "Polyglotic"
+    assert linux[linux.index("--packTitle") + 1] == "Polyglotic"
+
+
+@needs_bash
+@pytest.mark.parametrize("name", ["preview", "rehearsal"])
+def test_a_flavours_pack_differs_from_the_release_only_in_who_it_is(
+    tmp_path: Path, name: str
+) -> None:
+    """One build, stamped: the same arguments but the pack ID (and the
+    taskbar's ID with it), the title and the shortcuts - a rehearsal's
+    none at all (RULES #7)."""
+    own = flavour(name)
+    expected = list(MAINS_RELEASE_PACK)
+    expected[expected.index("--packId") + 1] = own.pack_id
+    expected[expected.index("--aumid") + 1] = f"{own.pack_id}.Desktop"
+    expected[expected.index("--packTitle") + 1] = own.title
+    at = expected.index("--icon")
+    expected[at:at] = ["--shortcuts", str(own.shortcuts)]
+    assert vpk_arguments(tmp_path, name) == expected
+    assert own.shortcuts == ("" if name == "rehearsal" else "StartMenuRoot")
+
+
+@needs_bash
+def test_a_build_is_never_packed_as_another_flavour(tmp_path: Path) -> None:
+    """The app's stamp in the pack folder decides: a preview build packed
+    as the release is refused before vpk runs."""
+    app = tmp_path / "app"
+    (app / "_internal" / "polyglotic_desktop").mkdir(parents=True)
+    (app / "_internal" / "polyglotic_desktop" / "release.json").write_text(
+        stamp.stamp("0.1.14", "win-x64-alpha", flavour="preview"), encoding="utf-8"
+    )
+    with pytest.raises(subprocess.CalledProcessError):
+        vpk_arguments(tmp_path, None, str(app))
+    assert not (tmp_path / "vpk-args").exists()
+    assert vpk_arguments(tmp_path, "preview", str(app))[3] == "PolygloticPreview"
+
+
+def test_the_pack_identity_reads_no_qt() -> None:
+    check = (
+        "import sys; import tools.package.pack_identity;"
+        " assert not any(n.startswith('PySide6') for n in sys.modules), 'Qt'"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", check],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path(build.__file__).parents[2],
+    )
+    assert done.returncode == 0, done.stderr

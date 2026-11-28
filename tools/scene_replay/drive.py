@@ -10,9 +10,10 @@ window asked for with `update()`. A frame that the window did not repaint
 is, on a screen, the frame before, and that is what is recorded.
 
 What this reads is where each row and character is, and how opaque a row
-is. It does not read colours, underlines, marks, link curves, the fades
-the paint works out for itself at the top edge, or anything the pointer
-does; `REPORT.md` of polyglotic-hq project 982 lists what it cannot see.
+is; asked (`ink=True`), it also photographs each repainted frame and reads
+each character's ink and each row's underlines off the picture (`inks`).
+It does not read link curves as such, or anything the pointer does;
+`REPORT.md` of polyglotic-hq projects 982 and 996 list what it cannot see.
 """
 
 import hashlib
@@ -38,7 +39,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 from polyglotic_desktop.core.listening import history
 from polyglotic_desktop.core.listening.captions import CaptionUpdate, Language
-from polyglotic_desktop.core.listening.display import LongLines
+from polyglotic_desktop.core.listening.display import LongLines, WordLinks
 from polyglotic_desktop.core.listening.sources import SourceId, SourceLabel
 from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.ui_next import caption_layout, caption_window
@@ -50,8 +51,10 @@ from polyglotic_desktop.ui_next.transcript_window import TranscriptWindow
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook, WindowChoices
 from polyglotic_desktop.ui_next.views.placement import Rect
 from polyglotic_desktop.ui_next.views.transcript import Transcript, TranscriptChoices
+from tools.scene_replay import inks
 from tools.scene_replay.clock import START, Hands
 from tools.scene_replay.frames import FRAME, Char, Frame, Row, Surface, q
+from tools.scene_replay.inks import Shape
 from tools.scene_replay.streams import FIRST, OTHER, Stream
 
 SURFACES = (
@@ -74,6 +77,14 @@ second line pair."""
 TAIL = 4.0
 """Seconds played after a stream's last update, so the last arrival, its
 fade and its reading hold have all ended."""
+
+LINKS = WordLinks.COLOURS
+"""Word links for a set-up with links: each linked word in its link's
+colour and underlined in it. The app starts with Arrows
+(`ui.settings.AppSettings.word_links`), which draws the same colours and
+underlines and adds curves between the rows; the ink reading would take a
+curve for an underline, so the replay draws none. The transcript has no
+word-link setting: it draws none either way."""
 
 AREA = Rect(0, 0, 1920, 1040)
 SECOND = SourceId("app-2")
@@ -102,6 +113,9 @@ class Setup:
     narrow: bool = False
     paired: bool = False
     """Long lines: Display new lines (otherwise Grouped)."""
+    links: bool = False
+    """Word links as the app's own settings start them (`LINKS`); off
+    otherwise, as a bare `CaptionLook` has them."""
 
     @property
     def name(self) -> str:
@@ -109,14 +123,22 @@ class Setup:
         parts += ["readings"] if self.readings else []
         parts += ["narrow"] if self.narrow else []
         parts += ["paired"] if self.paired else []
+        parts += ["links"] if self.links else []
         return "+".join(parts)
 
     @staticmethod
     def named(name: str) -> "Setup":
         surface, *flags = name.split("+")
-        if surface not in SURFACES or set(flags) - {"readings", "narrow", "paired"}:
+        known = {"readings", "narrow", "paired", "links"}
+        if surface not in SURFACES or set(flags) - known:
             raise ValueError(f"no setup called {name}")
-        return Setup(surface, "readings" in flags, "narrow" in flags, "paired" in flags)
+        return Setup(
+            surface,
+            "readings" in flags,
+            "narrow" in flags,
+            "paired" in flags,
+            "links" in flags,
+        )
 
 
 def app() -> QApplication:
@@ -244,10 +266,15 @@ class Stage:
         )
         window.animate = False
         window.list.zone = UTC
-        if self.setup.readings:
-            stream = self.stream
-            window.list._readings = lambda *_: stream.readings(True)
-            window.list.set_reading(replace(CaptionLook(), reading_lines=("zh", "ja")))
+        if self.setup.readings or self.setup.links:
+            look = CaptionLook()
+            if self.setup.readings:
+                stream = self.stream
+                window.list._readings = lambda *_: stream.readings(True)
+                look = replace(look, reading_lines=("zh", "ja"))
+            if self.setup.links:
+                look = replace(look, word_links=LINKS)
+            window.list.set_reading(look)
         self.transcript = window
         self.top = window
         window.resize(max(size[0], 480), max(size[1], 420))
@@ -261,6 +288,8 @@ class Stage:
         look = window.look
         if setup.readings:
             look = replace(look, reading_lines=("zh", "ja"))
+        if setup.links:
+            look = replace(look, word_links=LINKS)
         window.set_look(look)
         if setup.paired:
             window.set_presets(
@@ -316,8 +345,11 @@ class Stage:
     # --- reading ---
 
     def frame(self, n: int) -> Frame:
+        """What the surfaces placed at frame `n`; where each row's ink can
+        be is kept for `inked` (`shapes`)."""
         surfaces = []
         rows: list[Row] = []
+        shapes: list[Shape] = []
         for name, widget in self.canvases():
             if widget.isHidden():
                 continue
@@ -347,11 +379,21 @@ class Stage:
             seen: dict[tuple[int, str, int, int], int] = {}
             for line, laid, rect, scale in page:
                 for row in laid.rows:
-                    rows.append(
-                        _row(name, line, row, rect, scale, origin, top, foot, seen)
+                    found, shape = _row(
+                        name, line, row, rect, scale, origin, top, foot, seen
                     )
+                    rows.append(found)
+                    shapes.append(shape)
         bursts = sum(int(getattr(w, "bursts", 0)) for w in self.windows)
+        self.shapes = tuple(shapes)
         return Frame(n, tuple(surfaces), tuple(rows), bursts)
+
+    def inked(self, frame: Frame) -> Frame:
+        """`frame`, just read, with its ink read off a photograph of the
+        surface taken now: the lab's own (`tools/ui_lab/lab.py`)."""
+        from tools.ui_lab.lab import photograph
+
+        return inks.read(photograph(self.top, True), frame, self.shapes)
 
 
 def _row(
@@ -364,7 +406,7 @@ def _row(
     top: float,
     foot: float,
     seen: dict[tuple[int, str, int, int], int],
-) -> Row:
+) -> tuple[Row, Shape]:
     layout = row.layout
     kind = str(row.row.kind.value)
     visual = int(getattr(row, "visual_line", 0))
@@ -374,7 +416,7 @@ def _row(
     inks = [part.naturalTextRect() for part in lines]
     row_top = rect.y() + scale * (row.top + (lines[0].y() if lines else 0.0))
     left = rect.x() + min((ink.x() for ink in inks), default=0.0)
-    chars = []
+    shown = []
     ink = QRectF()
     for cursor, glyph, box in glyphs(layout):
         y = rect.y() + scale * (row.top + box.top())
@@ -382,17 +424,32 @@ def _row(
             ink = ink.united(
                 QRectF(rect.x() + box.left(), y, box.width(), scale * box.height())
             )
-            chars.append(
-                Char(
-                    row.source_index(cursor),
-                    glyph,
-                    q(origin.x() + rect.x() + box.left()),
-                    q(origin.y() + y),
-                )
-            )
+            x = origin.x() + rect.x() + box.left()
+            char = Char(row.source_index(cursor), glyph, q(x), q(origin.y() + y))
+            bottom = origin.y() + y + scale * box.height()
+            shown.append((char, (x, origin.y() + y, x + box.width(), bottom)))
     # Qt hands back a layout's glyph runs (one per font it fell back to) in
     # an order that changes from one launch to the next; the page does not.
-    chars.sort(key=lambda char: (char.index, char.left, char.top, str(char.glyph)))
+    shown.sort(key=lambda each: _order(each[0]))
+    chars = [char for char, _ in shown]
+    unders = []
+    for part in lines:
+        text = part.naturalTextRect()
+        y = rect.y() + scale * (row.top + part.y() + part.ascent() + part.descent())
+        x = origin.x() + rect.x()
+        unders.append((x + text.left(), x + text.right(), origin.y() + y))
+    font_px = scale * layout.font().pixelSize()
+    state = (
+        "provisional"
+        if getattr(line, "provisional", False)
+        else "live"
+        if line.live
+        else "finished"
+    )
+    speaking = bool(line.live) and row.row.clause == max(r.clause for r in line.rows)
+    shape = Shape(
+        tuple(box for _, box in shown), tuple(unders), font_px, state, speaking
+    )
     readings = []
     for reading in (*getattr(row, "above", ()), *getattr(row, "below", ())):
         y = rect.y() + scale * (row.top + reading.y)
@@ -405,7 +462,7 @@ def _row(
                     q(origin.y() + y),
                 )
             )
-    return Row(
+    found = Row(
         surface,
         line.key,
         kind,
@@ -430,6 +487,11 @@ def _row(
         tuple(chars),
         tuple(readings),
     )
+    return found, shape
+
+
+def _order(char: Char) -> tuple[int, int, int, str]:
+    return (char.index, char.left, char.top, str(char.glyph))
 
 
 @contextmanager
@@ -493,9 +555,12 @@ def play(
     *,
     each: Callable[[Stage, int], None] | None = None,
     paths: set[str] | None = None,
+    ink: bool = False,
 ) -> Iterator[Frame]:
     """Every frame of `stream` on a stage set up as `setup`. `each` runs
-    after a frame is read (a picture is taken there)."""
+    after a frame is read (a picture is taken there). `ink`: each repainted
+    frame is photographed and its ink read (`Stage.inked`); the picture's
+    own paint is not counted as the window's."""
     with staged(stream, setup) as (stage, seen):
         hands = stage.hands
         events = list(stream.events)
@@ -509,8 +574,10 @@ def play(
                 stage.receive(events.pop(0)[1])
             stage.settle()
             if last is None or stage.paints.count != painted:
-                painted = stage.paints.count
                 last = stage.frame(n)
+                if ink:
+                    last = stage.inked(last)
+                painted = stage.paints.count
             else:
                 last = replace(last, n=n)
             yield last

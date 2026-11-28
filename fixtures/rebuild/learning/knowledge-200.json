@@ -1,0 +1,3802 @@
+[
+  {
+    "answer": {
+      "confidence": 3,
+      "reason": "said",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:known",
+      "frequency_rank": 1,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:001",
+      "frequency_rank": 2,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:002",
+      "frequency_rank": 3,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:003",
+      "frequency_rank": 4,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:004",
+      "frequency_rank": 5,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:005",
+      "frequency_rank": 6,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:006",
+      "frequency_rank": 7,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:007",
+      "frequency_rank": 8,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:008",
+      "frequency_rank": 9,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:009",
+      "frequency_rank": 10,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:010",
+      "frequency_rank": 11,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:011",
+      "frequency_rank": 12,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:012",
+      "frequency_rank": 13,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:013",
+      "frequency_rank": 14,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:014",
+      "frequency_rank": 15,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:015",
+      "frequency_rank": 16,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:016",
+      "frequency_rank": 17,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:017",
+      "frequency_rank": 18,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:018",
+      "frequency_rank": 19,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:019",
+      "frequency_rank": 20,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:020",
+      "frequency_rank": 21,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:021",
+      "frequency_rank": 22,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:022",
+      "frequency_rank": 23,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:023",
+      "frequency_rank": 24,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:024",
+      "frequency_rank": 25,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:025",
+      "frequency_rank": 26,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:026",
+      "frequency_rank": 27,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:027",
+      "frequency_rank": 28,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:028",
+      "frequency_rank": 29,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:029",
+      "frequency_rank": 30,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:030",
+      "frequency_rank": 31,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:031",
+      "frequency_rank": 32,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:032",
+      "frequency_rank": 33,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:033",
+      "frequency_rank": 34,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:034",
+      "frequency_rank": 35,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:035",
+      "frequency_rank": 36,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:036",
+      "frequency_rank": 37,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:037",
+      "frequency_rank": 38,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:038",
+      "frequency_rank": 39,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:039",
+      "frequency_rank": 40,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:040",
+      "frequency_rank": 41,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:041",
+      "frequency_rank": 42,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:042",
+      "frequency_rank": 43,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:043",
+      "frequency_rank": 44,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:044",
+      "frequency_rank": 45,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:045",
+      "frequency_rank": 46,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:046",
+      "frequency_rank": 47,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:047",
+      "frequency_rank": 48,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:048",
+      "frequency_rank": 49,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "line",
+      "status": "known"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:049",
+      "frequency_rank": 50,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:050",
+      "frequency_rank": 51,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:051",
+      "frequency_rank": 52,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:052",
+      "frequency_rank": 53,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:053",
+      "frequency_rank": 54,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:054",
+      "frequency_rank": 55,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:055",
+      "frequency_rank": 56,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:056",
+      "frequency_rank": 57,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:057",
+      "frequency_rank": 58,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:058",
+      "frequency_rank": 59,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:059",
+      "frequency_rank": 60,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:060",
+      "frequency_rank": 61,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:061",
+      "frequency_rank": 62,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:062",
+      "frequency_rank": 63,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:063",
+      "frequency_rank": 64,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:064",
+      "frequency_rank": 65,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:065",
+      "frequency_rank": 66,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:066",
+      "frequency_rank": 67,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:067",
+      "frequency_rank": 68,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:068",
+      "frequency_rank": 69,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:069",
+      "frequency_rank": 70,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:070",
+      "frequency_rank": 71,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:071",
+      "frequency_rank": 72,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:072",
+      "frequency_rank": 73,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:073",
+      "frequency_rank": 74,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:074",
+      "frequency_rank": 75,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:075",
+      "frequency_rank": 76,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:076",
+      "frequency_rank": 77,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:077",
+      "frequency_rank": 78,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:078",
+      "frequency_rank": 79,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:079",
+      "frequency_rank": 80,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:080",
+      "frequency_rank": 81,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:081",
+      "frequency_rank": 82,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:082",
+      "frequency_rank": 83,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:083",
+      "frequency_rank": 84,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:084",
+      "frequency_rank": 85,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:085",
+      "frequency_rank": 86,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:086",
+      "frequency_rank": 87,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:087",
+      "frequency_rank": 88,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:088",
+      "frequency_rank": 89,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:089",
+      "frequency_rank": 90,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:090",
+      "frequency_rank": 91,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:091",
+      "frequency_rank": 92,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:092",
+      "frequency_rank": 93,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:093",
+      "frequency_rank": 94,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:094",
+      "frequency_rank": 95,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:095",
+      "frequency_rank": 96,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:096",
+      "frequency_rank": 97,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:097",
+      "frequency_rank": 98,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:098",
+      "frequency_rank": 99,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:099",
+      "frequency_rank": 100,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:100",
+      "frequency_rank": 101,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:101",
+      "frequency_rank": 102,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:102",
+      "frequency_rank": 103,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:103",
+      "frequency_rank": 104,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:104",
+      "frequency_rank": 105,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:105",
+      "frequency_rank": 106,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:106",
+      "frequency_rank": 107,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:107",
+      "frequency_rank": 108,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:108",
+      "frequency_rank": 109,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:109",
+      "frequency_rank": 110,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:110",
+      "frequency_rank": 111,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:111",
+      "frequency_rank": 112,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:112",
+      "frequency_rank": 113,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:113",
+      "frequency_rank": 114,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:114",
+      "frequency_rank": 115,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:115",
+      "frequency_rank": 116,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:116",
+      "frequency_rank": 117,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:117",
+      "frequency_rank": 118,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:118",
+      "frequency_rank": 119,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:119",
+      "frequency_rank": 120,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:120",
+      "frequency_rank": 121,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:121",
+      "frequency_rank": 122,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:122",
+      "frequency_rank": 123,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:123",
+      "frequency_rank": 124,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:124",
+      "frequency_rank": 125,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:125",
+      "frequency_rank": 126,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:126",
+      "frequency_rank": 127,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:127",
+      "frequency_rank": 128,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:128",
+      "frequency_rank": 129,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:129",
+      "frequency_rank": 130,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:130",
+      "frequency_rank": 131,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:131",
+      "frequency_rank": 132,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:132",
+      "frequency_rank": 133,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:133",
+      "frequency_rank": 134,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:134",
+      "frequency_rank": 135,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:135",
+      "frequency_rank": 136,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:136",
+      "frequency_rank": 137,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:137",
+      "frequency_rank": 138,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:138",
+      "frequency_rank": 139,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:139",
+      "frequency_rank": 140,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:140",
+      "frequency_rank": 141,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:141",
+      "frequency_rank": 142,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:142",
+      "frequency_rank": 143,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:143",
+      "frequency_rank": 144,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:144",
+      "frequency_rank": 145,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:145",
+      "frequency_rank": 146,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:146",
+      "frequency_rank": 147,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:147",
+      "frequency_rank": 148,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:148",
+      "frequency_rank": 149,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:149",
+      "frequency_rank": 150,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:150",
+      "frequency_rank": 151,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:151",
+      "frequency_rank": 152,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:152",
+      "frequency_rank": 153,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:153",
+      "frequency_rank": 154,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:154",
+      "frequency_rank": 155,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:155",
+      "frequency_rank": 156,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:156",
+      "frequency_rank": 157,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:157",
+      "frequency_rank": 158,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:158",
+      "frequency_rank": 159,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:159",
+      "frequency_rank": 160,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:160",
+      "frequency_rank": 161,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:161",
+      "frequency_rank": 162,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:162",
+      "frequency_rank": 163,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:163",
+      "frequency_rank": 164,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:164",
+      "frequency_rank": 165,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:165",
+      "frequency_rank": 166,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:166",
+      "frequency_rank": 167,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:167",
+      "frequency_rank": 168,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:168",
+      "frequency_rank": 169,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:169",
+      "frequency_rank": 170,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:170",
+      "frequency_rank": 171,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:171",
+      "frequency_rank": 172,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:172",
+      "frequency_rank": 173,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:173",
+      "frequency_rank": 174,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:174",
+      "frequency_rank": 175,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:175",
+      "frequency_rank": 176,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:176",
+      "frequency_rank": 177,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:177",
+      "frequency_rank": 178,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:178",
+      "frequency_rank": 179,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:179",
+      "frequency_rank": 180,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:180",
+      "frequency_rank": 181,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:181",
+      "frequency_rank": 182,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:182",
+      "frequency_rank": 183,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:183",
+      "frequency_rank": 184,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:184",
+      "frequency_rank": 185,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:185",
+      "frequency_rank": 186,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:186",
+      "frequency_rank": 187,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:187",
+      "frequency_rank": 188,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:188",
+      "frequency_rank": 189,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:189",
+      "frequency_rank": 190,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:190",
+      "frequency_rank": 191,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:191",
+      "frequency_rank": 192,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:192",
+      "frequency_rank": 193,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:193",
+      "frequency_rank": 194,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:194",
+      "frequency_rank": 195,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:195",
+      "frequency_rank": 196,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:196",
+      "frequency_rank": 197,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:197",
+      "frequency_rank": 198,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:198",
+      "frequency_rank": 199,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  },
+  {
+    "answer": {
+      "confidence": 2,
+      "reason": "past_line",
+      "status": "new"
+    },
+    "entry": {
+      "entry_id": "fixture:answer:199",
+      "frequency_rank": 200,
+      "is_filler": false,
+      "is_name": false,
+      "is_number": false,
+      "level": null,
+      "level_words": null,
+      "names_capitalised": false,
+      "spells_a_number": false,
+      "spoken_rank": null
+    }
+  }
+]

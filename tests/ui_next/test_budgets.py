@@ -172,15 +172,38 @@ def test_w1_a_resize_step(w1: CaptionWindow, qapp: QApplication) -> None:
     within(budgets.FRAME, lambda: sampled(qapp, steps))
 
 
-def test_w1_the_pace_readout_paints_within_one_ms(
-    w1: CaptionWindow, qapp: QApplication
-) -> None:
+def pace_readout_paints(w1: CaptionWindow, qapp: QApplication) -> Sampled:
+    """One run: the average milliseconds for 100 pace-readout repaints."""
     started = time.perf_counter()
     for _ in range(100):
         w1.pace.repaint()
         qapp.processEvents()
     average_ms = (time.perf_counter() - started) * 1_000 / 100
-    assert average_ms < 1.0
+    return Sampled((average_ms,))
+
+
+def test_w1_the_pace_readout_paints_within_one_ms(
+    w1: CaptionWindow, qapp: QApplication
+) -> None:
+    within(budgets.PACE_READOUT, lambda: pace_readout_paints(w1, qapp))
+
+
+def test_a_three_ms_pace_readout_paint_still_fails(
+    w1: CaptionWindow,
+    qapp: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = w1.pace.repaint
+
+    def slower() -> None:
+        real()
+        time.sleep(0.003)
+
+    monkeypatch.setattr(w1.pace, "repaint", slower)
+    monkeypatch.setattr(busy_pc, "busy_share", lambda seconds=0.0: 0.1)
+    monkeypatch.setattr(budget_judge, "JUDGED", [])  # not in the run's summary
+    with pytest.raises(AssertionError, match="pace_readout over .* both tries"):
+        within(budgets.PACE_READOUT, lambda: pace_readout_paints(w1, qapp))
 
 
 def test_w1_a_text_size_step(w1: CaptionWindow, qapp: QApplication) -> None:

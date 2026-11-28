@@ -1,5 +1,8 @@
 """The rebuild fixtures remain exact recordings of today's caption model."""
 
+import pytest
+from tools.rebuild_fixtures import learning
+from tools.rebuild_fixtures import record as recorder
 from tools.rebuild_fixtures.record import FIXTURES, record, specs
 
 
@@ -24,3 +27,12 @@ def test_acceptance_scenarios_are_separate_and_complete() -> None:
     assert {
         (fixture.target, fixture.events[0][1]["language"]) for fixture in fixtures
     } >= {("en", "zh"), ("zh", "en"), ("en", "ja")}
+
+
+def test_the_check_covers_the_learning_corpus(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`record --check` fails on a stale learning file too (933's learning-1),
+    and never writes one."""
+    monkeypatch.setattr(learning, "check", lambda: ["ladder/v03.json"])
+    monkeypatch.setattr(learning, "record", lambda: pytest.fail("wrote the corpus"))
+    with pytest.raises(SystemExit, match="learning/ladder/v03.json"):
+        recorder.main(["--check"])

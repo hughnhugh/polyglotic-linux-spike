@@ -1,0 +1,13 @@
+AnkiFormat	polyglotic_desktop.core.learning.vocabulary	AnkiFormat
+AnkiWords	polyglotic_desktop.core.learning.vocabulary	AnkiWords
+Changed	polyglotic_desktop.core.learning.vocabulary	Changed
+EntryText	polyglotic_desktop.core.learning.vocabulary	EntryText
+FactsLookup	polyglotic_desktop.core.learning.vocabulary	FactsLookup
+FactsRead	polyglotic_desktop.core.learning.vocabulary	FactsRead
+LineSource	polyglotic_desktop.core.learning.vocabulary	LineSource
+QUIET_SET	polyglotic_desktop.core.learning.vocabulary	QUIET_SET
+Vocabulary	polyglotic_desktop.core.learning.vocabulary	Vocabulary
+VocabularyChanged	polyglotic_desktop.core.learning.vocabulary	VocabularyChanged
+_stored_sentence	polyglotic_desktop.core.learning.vocabulary	_stored_sentence
+sentence_key	polyglotic_desktop.core.learning.vocabulary	sentence_key
+words_and_sentences	polyglotic_desktop.core.learning.vocabulary	words_and_sentences

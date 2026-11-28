@@ -81,8 +81,13 @@ jobs:
     # Checks (Windows) limit, so a walk outwaits a whole pytest run on the
     # PC's other runner (12-20 minutes; ci_lock's own 10 gave up twice on
     # 2026-11-27). Minutes; at least `checks`' timeout-minutes.
+    # Memory gate (polyglotic-hq 1023): before each pass, wait for at least
+    # `ui_lab.min_free_gb` (5 GB, range 2-12) free physical memory so the UI
+    # lab leaves room for live and the user's PC (every 15 s, up to 30 min;
+    # zero wait when 5 GB or more is already free).
     env:
       POLYGLOTIC_CI_LOCK_MINUTES: 30
+      POLYGLOTIC_CI_LOCK_MIN_FREE_GB: 5
     # 80 (polyglotic-hq 994 and 999, measured 2026-11-27): five gated walks
     # of about 410 states at 0.5-0.6 s each (a calm-PC reading, the
     # reference step, the state) are 21-25 minutes, every other language
@@ -121,11 +126,19 @@ jobs:
       # The interface in every other language it's offered in (polyglotic-hq
       # 156, 176, 294): every state's code checks - text clipped at the size
       # its widget gives it, a symbol drawn as a box, Chinese in a Japanese
-      # face - each language in its own process, four at a time; not the
-      # budgets (side by side they'd be slow) or the goldens (English's)
+      # face - each language in its own process, two at a time; not the
+      # budgets (side by side they'd be slow) or the goldens (English's).
+      # Untimed (`--checks-only`), so it runs at below-normal priority
+      # (polyglotic-hq 1023); the timed `alone` passes stay normal so live's
+      # normal-priority work doesn't preempt their 4-50 ms wall-clock budgets.
+      # Two workers, down from four after four used about 6 GB and left only
+      # 0.35 GB free on 2026-11-28. A 2.5 GB gate also runs immediately before
+      # each worker starts. Its six recorded four-job runs on 2026-11-28 took
+      # 10.3-11.6 minutes, so two jobs should take up to about 21-23 minutes:
+      # at most about 10-12 minutes more train time.
       - name: The same in every other language
         if: ${{ !cancelled() }}
-        run: uv run --no-sync python -m tools.ci_lock shared -- uv run --no-sync python -m tools.ui_lab languages --out build/ui-lab/languages --jobs 4
+        run: uv run --no-sync python -m tools.ci_lock shared --below-normal -- uv run --no-sync python -m tools.ui_lab languages --out build/ui-lab/languages --jobs 2
 
       # The app's own Largest text size (Settings > App, polyglotic-hq 292,
       # decision 0084), every state built at it, in each interface language:

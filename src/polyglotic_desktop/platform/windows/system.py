@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Literal
 
+from polyglotic_desktop.core.releases.identity import current
+
 WINDOWS_11_BUILD = 22000
 """Windows 11 still reports itself as version 10.0; its builds start here."""
 
@@ -52,4 +54,4 @@ def data_folder() -> Path:
     folder, `%LOCALAPPDATA%\\Polyglotic`, on install and uninstall (decision
     0014)."""
     base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-    return Path(base) / "Polyglotic"
+    return Path(base) / current().data_folder  # a preview's is its own (1045)

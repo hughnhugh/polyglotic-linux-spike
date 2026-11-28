@@ -71,6 +71,11 @@ from typing import TYPE_CHECKING
 
 from packaging.requirements import Requirement
 
+from polyglotic_desktop.core.releases.identity import (
+    FLAVOURS,
+    BuildFlavour,
+    flavour,
+)
 from tools.i18n import __main__ as i18n
 from tools.package import stamp
 
@@ -356,7 +361,7 @@ def icns(pngs: dict[bytes, bytes]) -> bytes:
     return b"icns" + struct.pack(">I", 8 + len(entries)) + entries
 
 
-BUNDLE_ID = "io.polyglotic.desktop"
+BUNDLE_ID = flavour("release").bundle_id
 """The macOS app's identifier (decision 0186): fixed once a tester has
 given it a permission - macOS keeps the microphone's and the system
 audio's answers under it."""
@@ -380,12 +385,13 @@ approve: polyglotic-hq 410). Without them, macOS ends the app when it
 touches the microphone or a tap."""
 
 
-def info_plist(version: str) -> dict[str, object]:
+def info_plist(version: str, identity: BuildFlavour | None = None) -> dict[str, object]:
     """The app bundle's Info.plist entries (PyInstaller adds the rest)."""
+    selected = identity or flavour("release")
     return {
-        "CFBundleName": NAME,
-        "CFBundleDisplayName": NAME,
-        "CFBundleIdentifier": BUNDLE_ID,
+        "CFBundleName": selected.title,
+        "CFBundleDisplayName": selected.title,
+        "CFBundleIdentifier": selected.bundle_id,
         "CFBundleShortVersionString": version,
         "CFBundleVersion": version,
         "LSMinimumSystemVersion": MACOS_MINIMUM,
@@ -864,9 +870,14 @@ def build(
     out: Path,
     packs: Sequence[str] = (),
     packs_from: Path | None = None,
+    build_flavour: str = "release",
 ) -> int:
+    inputs = stamp.build_inputs(build_flavour, os.environ)  # before any building
+    selected = flavour(build_flavour)
     WORK.mkdir(parents=True, exist_ok=True)
-    release = stamp.stamp(stamp.version_from_tag(tag), channel, stamp.built_now())
+    release = stamp.stamp(
+        stamp.version_from_tag(tag), channel, stamp.built_now(), **inputs
+    )
     version = json.loads(release)["version"]
     (WORK / "release.json").write_text(release, encoding="utf-8")
     layout = LAYOUT
@@ -875,7 +886,7 @@ def build(
         icon = WORK / f"{NAME}.icns"
         write_icns(icon)
         (WORK / "info.json").write_text(
-            json.dumps(info_plist(version)), encoding="utf-8"
+            json.dumps(info_plist(version, selected)), encoding="utf-8"
         )
     elif layout is LINUX:  # the AppImage's (pack.sh takes it from here)
         icon = WORK / f"{NAME}.png"
@@ -981,6 +992,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         help="where the packs are built (default DICTIONARIES/packs)",
     )
+    parser.add_argument(
+        "--flavour",
+        choices=tuple(FLAVOURS),
+        default="release",
+        help=f"who the copy is (default release); {stamp.FLAVOUR_ENV} names it too",
+    )
     args = parser.parse_args(argv)
     try:
         return build(
@@ -990,6 +1007,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.out,
             args.packs,
             args.packs_from,
+            args.flavour,
         )
     except ValueError as e:
         print(f"Not a release: {e}", file=sys.stderr)

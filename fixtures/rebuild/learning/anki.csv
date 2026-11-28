@@ -1,0 +1,14 @@
+#separator:Comma
+#html:true
+#guid column:8
+#notetype:Basic
+#deck:Polyglotic
+#tags column:3
+hello,<div>hə-LOH</div><div>a greeting</div><hr><div>Fixture line with <b>hello</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,hə-LOH,a greeting,Fixture line with <b>hello</b>.,Synthetic translation.,polyglotic:fixture:en:hello
+tea,<div>tee</div><div>a drink</div><hr><div>Fixture line with <b>tea</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,tee,a drink,Fixture line with <b>tea</b>.,Synthetic translation.,polyglotic:fixture:en:tea
+茶,<div>cha</div><div>tea</div><hr><div>Fixture line with <b>茶</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,cha,tea,Fixture line with <b>茶</b>.,Synthetic translation.,polyglotic:fixture:ja:cha
+こんにちは,<div>konnichiwa</div><div>hello</div><hr><div>Fixture line with <b>こんにちは</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,konnichiwa,hello,Fixture line with <b>こんにちは</b>.,Synthetic translation.,polyglotic:fixture:ja:konnichiwa
+trà,<div>cha</div><div>tea</div><hr><div>Fixture line with <b>trà</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,cha,tea,Fixture line with <b>trà</b>.,Synthetic translation.,polyglotic:fixture:vi:tra
+xin chào,<div>sin chow</div><div>hello</div><hr><div>Fixture line with <b>xin chào</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,sin chow,hello,Fixture line with <b>xin chào</b>.,Synthetic translation.,polyglotic:fixture:vi:xinchao
+茶,<div>chá</div><div>tea</div><hr><div>Fixture line with <b>茶</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,chá,tea,Fixture line with <b>茶</b>.,Synthetic translation.,polyglotic:fixture:zh:cha
+你,<div>nǐ</div><div>you</div><hr><div>Fixture line with <b>你</b>.</div><div>Synthetic translation.</div>,polyglotic polyglotic::Interesting,nǐ,you,Fixture line with <b>你</b>.,Synthetic translation.,polyglotic:fixture:zh:ni

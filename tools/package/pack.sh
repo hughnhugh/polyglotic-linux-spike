@@ -27,8 +27,8 @@
 # Windows' taskbar knows the app by (`--aumid`). Velopack gives it to the
 # installed app's process and to its Start-menu and desktop shortcuts, so a
 # pin and the running app are one button - and it's the app's own from
-# source too (main.TASKBAR_ID; decision 0057). A rehearsal packed under
-# another ID gets another taskbar ID with it.
+# source too (main.TASKBAR_ID; decision 0057). A preview or a rehearsal,
+# packed under its own ID, gets its own taskbar ID with it.
 set -euo pipefail
 
 if [ $# -lt 4 ] || [ $# -gt 6 ]; then
@@ -36,7 +36,14 @@ if [ $# -lt 4 ] || [ $# -gt 6 ]; then
   exit 2
 fi
 version=$1 channel=$2 packdir=$3 outdir=$4 icon=${5:-} notes=${6:-}
-id=Polyglotic
+# Who the pack is (polyglotic-hq 1045): the flavour's pack ID, title and
+# vpk --shortcuts (none for the release: Velopack's own, the desktop's and
+# the Start menu's), from POLYGLOTIC_BUILD_FLAVOUR - refused when the app's
+# own stamp in PACKDIR names another flavour (tools/package/pack_identity.py)
+identity=$(uv run --no-sync python -m tools.package.pack_identity "$packdir")
+id='' title='' shortcuts=()
+eval "$identity"
+[ -n "$id" ] && [ -n "$title" ] || { echo "pack.sh: no pack identity" >&2; exit 1; }
 
 # A Mac (polyglotic-hq 430; decision 0202), on a Mac only (Velopack can't
 # pack one elsewhere): the full package, the portable zip testers download
@@ -56,8 +63,9 @@ macos-*)
   printf '#!/bin/bash\nexec bash "%s" "$@"\n' "$here/macos_codesign.sh" > "$shim/codesign"
   chmod +x "$shim/codesign"
   PATH="$shim:$PATH" dotnet vpk pack --packId "$id" --packVersion "$version" \
-    --packTitle Polyglotic --packAuthors Polyglotic \
+    --packTitle "$title" --packAuthors Polyglotic \
     --packDir "$packdir" --mainExe Polyglotic \
+    ${shortcuts[@]+"${shortcuts[@]}"} \
     ${notes:+--releaseNotes "$notes"} --runtime osx-arm64 \
     --channel "$channel" --outputDir "$outdir" --noInst \
     --signAppIdentity "${POLYGLOTIC_CODESIGN_IDENTITY:--}" --signDisableDeep \
@@ -73,8 +81,9 @@ macos-*)
 # working after each update.
 linux-*)
   dotnet vpk pack --packId "$id" --packVersion "$version" \
-    --packTitle Polyglotic --packAuthors Polyglotic \
+    --packTitle "$title" --packAuthors Polyglotic \
     --packDir "$packdir" --mainExe Polyglotic \
+    ${shortcuts[@]+"${shortcuts[@]}"} \
     ${icon:+--icon "$icon"} ${notes:+--releaseNotes "$notes"} --runtime linux-x64 \
     --channel "$channel" --outputDir "$outdir"
   # vpk names it after the channel too (Polyglotic-linux-x64-alpha.AppImage),
@@ -87,7 +96,8 @@ linux-*)
 esac
 
 dotnet vpk pack --packId "$id" --packVersion "$version" --aumid "$id.Desktop" \
-  --packTitle Polyglotic --packAuthors Polyglotic \
+  --packTitle "$title" --packAuthors Polyglotic \
   --packDir "$packdir" --mainExe Polyglotic.exe \
+  ${shortcuts[@]+"${shortcuts[@]}"} \
   ${icon:+--icon "$icon"} ${notes:+--releaseNotes "$notes"} --runtime win-x64 \
   --channel "$channel" --outputDir "$outdir" --noPortable

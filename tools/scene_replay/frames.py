@@ -72,6 +72,22 @@ class Row:
     """Its visible ink: left, top, right, bottom; all 0 when none shows."""
     chars: tuple[Char, ...]
     readings: tuple[Char, ...] = ()
+    paper: int = -1
+    """What the row is drawn on, 0xRRGGBB, as photographed: -1 when the
+    replay did not read ink (`drive.play(..., ink=True)`)."""
+    colours: tuple[int, ...] = ()
+    """Each of `chars`' ink, 0xRRGGBB, in the same order: the pixel of its
+    glyph that stands out most from `paper`."""
+    bars: tuple[tuple[int, int, int], ...] = ()
+    state: str = ""
+    """Its caption's: `live` (still being spoken), `provisional` (Quick
+    preview's line) or `finished`. Kept with the ink only."""
+    speaking: bool = False
+    """It is a row of the clause still being spoken: a live caption's last
+    clause, whether or not the surface shows that caption's other clauses.
+    Kept with the ink only."""
+    """What is drawn just under the row's text (a word link's underline):
+    each run of it as its left and right edge, in 1/64 px, and its colour."""
 
     @property
     def id(self) -> tuple[str, int, str, int, int, int]:
@@ -150,6 +166,17 @@ def _plain(frame: Frame) -> list[Any]:
                 [[c.index, c.glyph, c.left, c.top] for c in r.chars],
                 [[c.index, c.glyph, c.left, c.top] for c in r.readings],
             ]
+            + (
+                [
+                    r.paper,
+                    list(r.colours),
+                    [list(b) for b in r.bars],
+                    r.state,
+                    r.speaking,
+                ]
+                if r.paper >= 0
+                else []
+            )
             for r in frame.rows
         ],
     ]
@@ -182,6 +209,11 @@ def from_json(text: str) -> Frame:
                 ink=(r[13][0], r[13][1], r[13][2], r[13][3]),
                 chars=tuple(Char(*c) for c in r[14]),
                 readings=tuple(Char(*c) for c in r[15]),
+                paper=r[16] if len(r) > 16 else -1,
+                colours=tuple(r[17]) if len(r) > 16 else (),
+                bars=tuple((b[0], b[1], b[2]) for b in r[18]) if len(r) > 16 else (),
+                state=r[19] if len(r) > 16 else "",
+                speaking=bool(r[20]) if len(r) > 16 else False,
             )
             for r in rows
         ),

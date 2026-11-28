@@ -14,7 +14,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 from tests.ui.fakes import Built, MemorySettingsStore
 from tools.i18n import __main__ as i18n
-from tools.i18n import extract, keep, ts
+from tools.i18n import extract, keep, snapshot, ts
 
 from polyglotic_desktop.connection.app import AppInfo
 from polyglotic_desktop.core.lexicon.entries import SCHEMES
@@ -42,6 +42,21 @@ def test_every_string_reaches_the_translation_files() -> None:
     "(s)" outside a count) and each `.ts` up to date with the code: else
     `python -m tools.i18n update`."""
     assert i18n.problems() == []
+
+
+def test_r1_refactors_keep_the_translation_lookup_contract() -> None:
+    """Moving a call is harmless, but changing its Qt context, English source,
+    disambiguation comment or plural, or moving it to a module that imports
+    `_tr` instead of defining it, silently loses its translation (859 S4).
+    A product PR that means to change text accepts it with
+    ``python -m tools.i18n snapshot``; a refactor PR keeps it unchanged.
+    """
+    recorded = i18n.SNAPSHOT.read_text(encoding="utf-8")
+    changed = snapshot.changes(recorded, extract.read().messages)
+    assert not changed, (
+        "translation lookups changed (if meant: python -m tools.i18n snapshot)\n"
+        + "\n".join(changed)
+    )
 
 
 def test_every_offered_language_has_its_files() -> None:

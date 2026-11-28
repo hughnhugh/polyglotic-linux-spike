@@ -1,0 +1,86 @@
+{
+  "built_ins": 2,
+  "caption_lab_version": 1,
+  "caption_mode_chosen": "delayed_translation",
+  "caption_path": "acquisition",
+  "changed": [
+    "caption_mode_chosen",
+    "interface_text_size",
+    "opacity",
+    "steady_words_ahead",
+    "type_theirs",
+    "whole_system"
+  ],
+  "first_run_step": "done",
+  "hotkeys": {
+    "copy": "ctrl+alt+c",
+    "live": "space",
+    "lock": "ctrl+alt+l",
+    "pause": "f9",
+    "smaller": ""
+  },
+  "interface_text_size": "larger",
+  "language_choices": {
+    "zh": {
+      "links": "past_known",
+      "window": 1000
+    }
+  },
+  "language_links_chosen": true,
+  "legacy_respeaking": true,
+  "lyrics": true,
+  "main_window_size": [1280, 840],
+  "marks_in": "both",
+  "my_speech": true,
+  "no_second_language": ["ja"],
+  "opacity": 0.92,
+  "own_presets": ["own1"],
+  "preset": "video",
+  "preset_languages": {
+    "Sample Player": {
+      "spoken_language": "ja",
+      "translate_into": "en"
+    }
+  },
+  "preset_names": {
+    "own1": "Anime Night",
+    "video": "Films"
+  },
+  "preset_parents": {
+    "own1": "video"
+  },
+  "preset_second_languages": {
+    "ja": "en"
+  },
+  "preset_values": {
+    "own1": {
+      "caption_lab": {
+        "older": 0.65
+      },
+      "opacity": 0.4,
+      "subtitles": true
+    },
+    "video": {
+      "subtitle_width": 0.7
+    }
+  },
+  "respeak_key": "f7",
+  "show_translation": false,
+  "steady_cards": false,
+  "steady_newest_word": true,
+  "steady_two_zones": false,
+  "steady_words_ahead": "all",
+  "subtitle_size": 0.06,
+  "subtitle_width": 0.7,
+  "subtitles": true,
+  "translation_after": 3.5,
+  "type_theirs": false,
+  "type_what": "translation",
+  "unlock_spot": false,
+  "unlock_told": true,
+  "video_lines_shown": 1,
+  "video_timing_explained": {
+    "words": "live"
+  },
+  "whole_system": false
+}

@@ -4,6 +4,7 @@ python -m tools.i18n update   # every .ts from the code, then every .qm
 python -m tools.i18n build    # every .qm from its .ts (tests and builds do it too)
 python -m tools.i18n check    # what the tests check: exit 1 on a problem
 python -m tools.i18n carry --from-diff BASE  # rewrites keep draft translations
+python -m tools.i18n snapshot # accept the current R1 translation contract
 python -m tools.i18n sheet zh_CN review.csv   # a spreadsheet for a reviewer
 python -m tools.i18n sheet de review.csv --most-seen 60   # the 60 seen most
 python -m tools.i18n apply zh_CN review.csv   # its corrections back in
@@ -31,10 +32,11 @@ from pathlib import Path
 import PySide6
 
 from polyglotic_desktop.ui import interface_language
-from tools.i18n import carry, draft, extract, keep, review, ts
+from tools.i18n import carry, draft, extract, keep, review, snapshot, ts
 
 TS_DIR = extract.REPO / "translations"
 QM_DIR = extract.SOURCE / "ui" / "assets" / "translations"
+SNAPSHOT = extract.REPO / "tests" / "facades" / "messages.json"
 # each interface language offered has a file; English's holds only its
 # counts' two forms (-> True: plurals only)
 LANGUAGES = {
@@ -206,6 +208,10 @@ def main(argv: list[str]) -> int:
     if argv == ["build"]:
         for path in build():
             print(path.relative_to(extract.REPO))
+        return 0
+    if argv == ["snapshot"]:
+        snapshot.write(SNAPSHOT, extract.read().messages)
+        print(SNAPSHOT.relative_to(extract.REPO))
         return 0
     if len(argv) == 3 and argv[0] == "apply" and argv[1] in LANGUAGES:
         return apply(argv[1], Path(argv[2]))

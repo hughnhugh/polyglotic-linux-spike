@@ -1490,6 +1490,34 @@
     </message>
 </context>
 <context>
+    <name>CrashOffer</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/crash_offer.py"/>
+        <source>Polyglotic closed unexpectedly</source>
+        <translation type="unfinished">Polyglotic wurde unerwartet beendet</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/crash_offer.py"/>
+        <source>Polyglotic closed unexpectedly last time. Send the crash details to help fix it?</source>
+        <translation type="unfinished">Polyglotic wurde beim letzten Mal unerwartet beendet. Absturzdetails senden, damit der Fehler behoben werden kann?</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/crash_offer.py"/>
+        <source>See what&apos;s sent</source>
+        <translation type="unfinished">Ansehen, was gesendet wird</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/crash_offer.py"/>
+        <source>Don&apos;t send</source>
+        <translation type="unfinished">Nicht senden</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/crash_offer.py"/>
+        <source>Send</source>
+        <translation type="unfinished">Senden</translation>
+    </message>
+</context>
+<context>
     <name>DeleteLearningDialog</name>
     <message>
         <location filename="../src/polyglotic_desktop/ui/delete_learning.py"/>

@@ -1,0 +1,381 @@
+[
+    {
+        "caption": "speaker-1",
+        "event": "listener.update",
+        "kind": "live",
+        "original": "\u6211\u7684\u7535\u8111",
+        "source": "made-up-speaker"
+    },
+    {
+        "caption_window": [
+            {
+                "id": "speaker-1",
+                "kind": "live",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6211\u7684\u7535\u8111"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "my computer \u2026"
+                    }
+                ]
+            }
+        ],
+        "event": "surfaces.hold",
+        "joined_window": {
+            "Conversation": [
+                {
+                    "id": "speaker-1",
+                    "kind": "live",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6211\u7684\u7535\u8111"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "my computer \u2026"
+                        }
+                    ]
+                }
+            ],
+            "Video Player": []
+        },
+        "source": "made-up-speaker",
+        "transcript": [],
+        "video": []
+    },
+    {
+        "caption": "player-1",
+        "event": "listener.update",
+        "kind": "live",
+        "original": "\u6253\u6e38\u620f",
+        "source": "made-up-player"
+    },
+    {
+        "caption_window": [
+            {
+                "id": "player-1",
+                "kind": "live",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6253\u6e38\u620f"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "play games"
+                    }
+                ]
+            }
+        ],
+        "event": "surfaces.hold",
+        "joined_window": {
+            "Conversation": [
+                {
+                    "id": "speaker-1",
+                    "kind": "live",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6211\u7684\u7535\u8111"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "my computer \u2026"
+                        }
+                    ]
+                }
+            ],
+            "Video Player": [
+                {
+                    "id": "player-1",
+                    "kind": "live",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6253\u6e38\u620f"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "play games"
+                        }
+                    ]
+                }
+            ]
+        },
+        "source": "made-up-player",
+        "transcript": [],
+        "video": [
+            {
+                "id": "player-1",
+                "kind": "live",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6253\u6e38\u620f"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "play games"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "caption": "speaker-1",
+        "event": "listener.update",
+        "kind": "finished",
+        "original": "\u6211\u7684\u7535\u8111\u53c8\u5361\u4e86\u3002",
+        "source": "made-up-speaker"
+    },
+    {
+        "caption": "speaker-1",
+        "event": "learning.delivery",
+        "lines_heard": [
+            "speaker-1"
+        ],
+        "source": "made-up-speaker",
+        "words_met": [
+            [
+                2,
+                4,
+                "\u7535\u8111"
+            ],
+            [
+                6,
+                7,
+                "\u4e86"
+            ]
+        ]
+    },
+    {
+        "caption_window": [
+            {
+                "id": "speaker-1",
+                "kind": "finished",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6211\u7684\u7535\u8111\u53c8\u5361\u4e86\u3002"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "My computer froze again."
+                    }
+                ]
+            }
+        ],
+        "event": "surfaces.hold",
+        "joined_window": {
+            "Conversation": [
+                {
+                    "id": "speaker-1",
+                    "kind": "finished",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6211\u7684\u7535\u8111\u53c8\u5361\u4e86\u3002"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "My computer froze again."
+                        }
+                    ]
+                }
+            ],
+            "Video Player": [
+                {
+                    "id": "player-1",
+                    "kind": "live",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6253\u6e38\u620f"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "play games"
+                        }
+                    ]
+                }
+            ]
+        },
+        "source": "made-up-speaker",
+        "transcript": [
+            {
+                "id": "speaker-1",
+                "kind": "finished",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6211\u7684\u7535\u8111\u53c8\u5361\u4e86\u3002"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "My computer froze again."
+                    }
+                ]
+            }
+        ],
+        "video": [
+            {
+                "id": "player-1",
+                "kind": "live",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6253\u6e38\u620f"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "play games"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "caption": "player-1",
+        "event": "listener.update",
+        "kind": "finished",
+        "original": "\u6253\u6e38\u620f\u3002",
+        "source": "made-up-player"
+    },
+    {
+        "caption": "player-1",
+        "event": "learning.delivery",
+        "lines_heard": [
+            "player-1"
+        ],
+        "source": "made-up-player",
+        "words_met": [
+            [
+                0,
+                3,
+                "\u6253\u6e38\u620f"
+            ]
+        ]
+    },
+    {
+        "caption_window": [
+            {
+                "id": "player-1",
+                "kind": "finished",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6253\u6e38\u620f\u3002"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "Play games."
+                    }
+                ]
+            }
+        ],
+        "event": "surfaces.hold",
+        "joined_window": {
+            "Conversation": [
+                {
+                    "id": "speaker-1",
+                    "kind": "finished",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6211\u7684\u7535\u8111\u53c8\u5361\u4e86\u3002"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "My computer froze again."
+                        }
+                    ]
+                }
+            ],
+            "Video Player": [
+                {
+                    "id": "player-1",
+                    "kind": "finished",
+                    "rows": [
+                        {
+                            "kind": "original",
+                            "language": "zh",
+                            "text": "\u6253\u6e38\u620f\u3002"
+                        },
+                        {
+                            "kind": "translation",
+                            "language": "en",
+                            "text": "Play games."
+                        }
+                    ]
+                }
+            ]
+        },
+        "source": "made-up-player",
+        "transcript": [
+            {
+                "id": "player-1",
+                "kind": "finished",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6253\u6e38\u620f\u3002"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "Play games."
+                    }
+                ]
+            }
+        ],
+        "video": [
+            {
+                "id": "player-1",
+                "kind": "finished",
+                "rows": [
+                    {
+                        "kind": "original",
+                        "language": "zh",
+                        "text": "\u6253\u6e38\u620f\u3002"
+                    },
+                    {
+                        "kind": "translation",
+                        "language": "en",
+                        "text": "Play games."
+                    }
+                ]
+            }
+        ]
+    }
+]

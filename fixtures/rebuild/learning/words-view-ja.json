@@ -1,0 +1,84 @@
+[
+  {
+    "entry": {
+      "entry_id": "fixture:ja:konnichiwa",
+      "frequency_rank": 1,
+      "headword": "こんにちは",
+      "levels": [
+        [
+          "fixture",
+          1
+        ]
+      ],
+      "meanings": [
+        "hello"
+      ],
+      "reading": "konnichiwa",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:ja:konnichiwa",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    "saved": null,
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:ja:konnichiwa",
+      "source": "learner",
+      "status": "known"
+    }
+  },
+  {
+    "entry": {
+      "entry_id": "fixture:ja:cha",
+      "frequency_rank": 2,
+      "headword": "茶",
+      "levels": [
+        [
+          "fixture",
+          2
+        ]
+      ],
+      "meanings": [
+        "tea"
+      ],
+      "reading": "cha",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:ja:cha",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    "saved": {
+      "category_id": "interesting",
+      "entry_id": "fixture:ja:cha",
+      "headword": "茶",
+      "meaning": "tea",
+      "reading": "cha",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found 茶 in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:ja:cha",
+      "source": "learner",
+      "status": "learning"
+    }
+  }
+]

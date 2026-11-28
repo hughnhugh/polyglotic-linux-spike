@@ -11,10 +11,11 @@ touch the PC's.
 import winreg
 from typing import Any, Protocol
 
+from polyglotic_desktop.core.releases.identity import current
 from polyglotic_desktop.ports.startup import IN_TRAY  # main reads it too (0038)
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-VALUE = "Polyglotic"
+VALUE = current().run_value  # a preview's and a rehearsal's are their own (1045)
 
 
 class Registry(Protocol):

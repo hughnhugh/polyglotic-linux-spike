@@ -272,6 +272,7 @@ def flags_in_order(source: str | None, today: date) -> Item:
 # -- 3, the part the repos answer: addresses and the server's code -------------------
 
 APP_MAIN = "src/polyglotic_desktop/main.py"
+APP_IDENTITY = "src/polyglotic_desktop/core/releases/identity.py"
 APP_PROTOCOL = "src/polyglotic_desktop/connection/protocol.py"
 SERVER_SESSION = "src/polyglotic_server/api/session.py"
 SERVER_MAIN = "src/polyglotic_server/main.py"
@@ -313,7 +314,10 @@ def _version(text: str) -> tuple[int, ...]:
 
 def what_the_app_needs(sha: str, version: str, git: Git, server_git: Git) -> Item:
     item = Item(3, "(the repos' part) real addresses; the server's code takes this app")
-    app = constants(git("show", f"{sha}:{APP_MAIN}") or "")
+    # 0.1.12 kept these in main; newer builds keep them in a Qt-free module.
+    app = constants(git("show", f"{sha}:{APP_IDENTITY}") or "")
+    if not app:
+        app = constants(git("show", f"{sha}:{APP_MAIN}") or "")
     for name in ("SERVER", "UPDATES"):
         address = str(app.get(name, ""))
         host = address.removeprefix("https://").split("/")[0]
@@ -332,7 +336,9 @@ def what_the_app_needs(sha: str, version: str, git: Git, server_git: Git) -> Ite
             else " - the feed's signature isn't checked (DECISIONS #13: before the beta)"
         )
     )
-    protocol = constants(git("show", f"{sha}:{APP_PROTOCOL}") or "").get("PROTOCOL")
+    protocol = app.get("PROTOCOL")
+    if protocol is None:
+        protocol = constants(git("show", f"{sha}:{APP_PROTOCOL}") or "").get("PROTOCOL")
     served = constants(server_git("show", f"origin/main:{SERVER_SESSION}") or "").get(
         "PROTOCOLS"
     )

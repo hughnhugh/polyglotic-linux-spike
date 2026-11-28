@@ -1,0 +1,41 @@
+{
+  "apps": ["Sample Player"],
+  "built_ins": 1,
+  "caption_mode_chosen": "words",
+  "changed": [
+    "hotkeys"
+  ],
+  "hotkeys": {
+    "pause": "f8"
+  },
+  "long_lines": "ellipsis",
+  "own_presets": ["own1"],
+  "preset": "own9",
+  "preset_names": {
+    "own1": "Study",
+    "video": "   "
+  },
+  "preset_parents": {
+    "own1": "not_a_builtin",
+    "own9": "video"
+  },
+  "preset_values": {
+    "nobody": {
+      "opacity": 0.5
+    },
+    "own1": {
+      "long_lines": "carry",
+      "opacity": "not_a_number",
+      "theme": "glaze",
+      "word_links": "hover"
+    }
+  },
+  "recommended_look_before": {
+    "not_a_look_key": 123,
+    "opacity": 0.65,
+    "word_links": "invalid_value"
+  },
+  "respeak_key": "",
+  "targets": ["mn", "kk"],
+  "whole_system": true
+}

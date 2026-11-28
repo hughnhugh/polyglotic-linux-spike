@@ -287,3 +287,79 @@ def test_home_offers_a_report_once_and_either_button_puts_it_away(
     dismiss.click()
     assert offers() == [] and wanted == [True]
     built.close()
+
+
+def test_crash_offer_previews_exact_text_then_sends(qapp: QApplication) -> None:
+    from polyglotic_desktop.ui_next.crash_offer import CrashOffer
+
+    exact = "Polyglotic: 0.1.14\nOS: Windows 11\n\nLog:\nlistening: 1 source\n"
+    offer = CrashOffer(exact)
+    sent: list[str] = []
+    offer.send_wanted.connect(sent.append)
+    offer.show()
+    see = offer.findChild(QPushButton, "crash_offer.see")
+    assert see is not None
+    see.click()
+    assert offer.preview.isVisible()
+    assert offer.preview.toPlainText() == exact
+    send = offer.findChild(QPushButton, "crash_offer.send")
+    assert send is not None
+    send.click()
+    assert sent == [exact]
+
+
+def test_previous_crash_offer_requires_evidence_and_opens_problem_report(
+    qapp: QApplication,
+) -> None:
+    from polyglotic_desktop.ui_next.crash_offer import offer_previous_crash
+
+    parent = QWidget()
+    attached: list[str] = []
+    assert offer_previous_crash(None, parent, attached.append) is None
+
+    exact = "Polyglotic: 0.1.14\n\nStack frames:\napp/main.py:17 in beat\n"
+    offer = offer_previous_crash(exact, parent, attached.append)
+    assert offer is not None and offer.isVisible()
+    send = offer.findChild(QPushButton, "crash_offer.send")
+    assert send is not None
+    send.click()
+    assert attached == [exact]
+    parent.close()
+
+
+QUESTIONS = {
+    "en": (
+        "Polyglotic closed unexpectedly last time. Send the crash details "
+        "to help fix it?"
+    ),
+    "de": (
+        "Polyglotic wurde beim letzten Mal unerwartet beendet. Absturzdetails "
+        "senden, damit der Fehler behoben werden kann?"
+    ),
+}
+
+
+@pytest.mark.parametrize("language", QUESTIONS)
+def test_the_offers_question_never_ends_on_a_word_alone(
+    qapp: QApplication, language: str
+) -> None:
+    """At any width the offer gives it (polyglotic-hq 1009: English at 100 %
+    left "it?" alone): as many lines as greedy wrapping takes, balanced, so
+    the last word shares its line - the question without that word takes as
+    many lines."""
+    from polyglotic_desktop.ui_next.controls import label
+    from polyglotic_desktop.ui_next.crash_offer import balanced_width
+
+    text = QUESTIONS[language]
+    full = label(text, wrap=True)
+    without_last = label(text.rsplit(" ", 1)[0], wrap=True)
+    one_line = full.heightForWidth(100_000)
+    for room in range(200, 760, 6):
+        width = balanced_width(full, room)
+        lines = full.heightForWidth(width)
+        assert width <= room
+        assert lines == full.heightForWidth(room), f"more lines at {room} px"
+        if lines > one_line:
+            assert without_last.heightForWidth(width) == lines, (
+                f"{language}: the last word alone at {room} px (width {width})"
+            )

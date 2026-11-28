@@ -1,0 +1,84 @@
+[
+  {
+    "entry": {
+      "entry_id": "fixture:zh:ni",
+      "frequency_rank": 1,
+      "headword": "你",
+      "levels": [
+        [
+          "fixture",
+          1
+        ]
+      ],
+      "meanings": [
+        "you"
+      ],
+      "reading": "nǐ",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:zh:ni",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    "saved": null,
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:zh:ni",
+      "source": "learner",
+      "status": "known"
+    }
+  },
+  {
+    "entry": {
+      "entry_id": "fixture:zh:cha",
+      "frequency_rank": 2,
+      "headword": "茶",
+      "levels": [
+        [
+          "fixture",
+          2
+        ]
+      ],
+      "meanings": [
+        "tea"
+      ],
+      "reading": "chá",
+      "sense_classes": [],
+      "sense_prefixes": [],
+      "traditional": ""
+    },
+    "exposures": [
+      "fixture:zh:cha",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    "saved": {
+      "category_id": "interesting",
+      "entry_id": "fixture:zh:cha",
+      "headword": "茶",
+      "meaning": "tea",
+      "reading": "chá",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found 茶 in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    "status": {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:zh:cha",
+      "source": "learner",
+      "status": "learning"
+    }
+  }
+]

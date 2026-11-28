@@ -1,0 +1,7 @@
+ListeningSession	polyglotic_desktop.connection.session	ListeningSession
+SessionListener	polyglotic_desktop.connection.session	SessionListener
+SessionState	polyglotic_desktop.connection.session	SessionState
+SpeechSource	polyglotic_desktop.connection.session	SpeechSource
+Status	polyglotic_desktop.connection.session	Status
+Timings	polyglotic_desktop.connection.session	Timings
+session_url	polyglotic_desktop.connection.session	session_url

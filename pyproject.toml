@@ -31,7 +31,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "anki>=26.9.4",
+    "coverage>=7.17.5",
+    "hypothesis>=6.170.23",
     "import-linter>=2.15",
+    "mutmut>=3.8.1",
     "mypy>=2.4.1",
     "pip-audit>=2.10.1",
     "pre-commit>=4.7.0",
@@ -299,3 +302,25 @@ forbidden_modules = [
     "polyglotic_desktop.ui_next.transcript_window",
     "polyglotic_desktop.ui_next.transcripts",
 ]
+
+# ---------------------------------------------------------------------------
+# R1 (859): each lane adds its import-linter contracts under its own line
+# below, so lanes running at once never edit the same lines.
+# ---------------------------------------------------------------------------
+# -- 859 lane: main --
+
+# -- 859 lane: caption --
+
+# -- 859 lane: layout --
+
+# -- 859 lane: windows --
+
+# -- 859 lane: pages --
+
+# -- 859 lane: video --
+
+# -- 859 lane: settings --
+
+# -- 859 lane: learning --
+
+# -- 859 lane: session --

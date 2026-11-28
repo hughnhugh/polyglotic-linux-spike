@@ -1,90 +1,70 @@
-"""Prepare the disposable build checkout for an isolated Mac tester preview."""
+"""The isolated Mac tester preview's identity, checked before its build in
+the disposable hosted Mac checkout (polyglotic-hq 1045, RULES #7).
+
+The app's own modules, in a copy stamped as the preview, must read only
+the preview's bundle ID and names, data folder, keychain entry, locks and
+caches folder; no application updates (its feed is its own program
+folder, which holds none, unsigned); and the dictionary packs from https,
+signed. macos_preview_qa.sh then builds the preview flavour itself.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
+from unittest import mock
 
+from polyglotic_desktop.core.releases import identity
 from tools.macos_ui_lab import hosted_mac
-
-
-def replace_once(path: str, changes: dict[str, str]) -> None:
-    target = Path(path)
-    text = target.read_text(encoding="utf-8")
-    for old, new in changes.items():
-        if text.count(old) != 1:
-            raise ValueError(f"Preview identity patch has drifted in {path}")
-        text = text.replace(old, new, 1)
-    target.write_text(text, encoding="utf-8")
+from tools.package import stamp
 
 
 def prepare(out: Path) -> None:
     if not hosted_mac():
         raise RuntimeError("Prepare only the disposable hosted Mac checkout")
-    folder = "Polyglotic-Preview"
-    service = "Polyglotic/preview"
-    identifier = "io.polyglotic.desktop.preview"
-    name = "Polyglotic Preview"
-    replace_once(
-        "tools/package/build.py",
-        {
-            'BUNDLE_ID = "io.polyglotic.desktop"': f'BUNDLE_ID = "{identifier}"',
-            '"CFBundleDisplayName": NAME': f'"CFBundleDisplayName": "{name}"',
-            '"CFBundleName": NAME': f'"CFBundleName": "{name}"',
-        },
-    )
-    replace_once(
-        "src/polyglotic_desktop/platform/macos/system.py",
-        {'APP_FOLDER = "Polyglotic"': f'APP_FOLDER = "{folder}"'},
-    )
-    replace_once(
-        "src/polyglotic_desktop/platform/macos/keychain.py",
-        {'SERVICE = "Polyglotic/device"': f'SERVICE = "{service}"'},
-    )
-    replace_once(
-        "src/polyglotic_desktop/main.py",
-        {
-            'UPDATES = "https://updates.polyglotic.io/"': "UPDATES = str(Path(sys.executable).resolve().parent)",
-            "PACKS = UPDATES": 'PACKS = "https://updates.polyglotic.io/"',
-            # The installer self-check constructs a manager independently of the
-            # disabled application updater. Only the production HTTPS origin is signed.
-            "signed = feed == UPDATES and bool(FEED_KEYS)": "signed = feed == PACKS and bool(FEED_KEYS)",
-            'CREDENTIALS_ELSEWHERE = "Polyglotic/device@{server}"': 'CREDENTIALS_ELSEWHERE = "Polyglotic/preview@{server}"',
-            "updater_or_store = None if store_copy else updater(args.updates)": "updater_or_store = None  # isolated tester preview has no application updates",
-            '/ "Caches"\n            / "Polyglotic"': f'/ "Caches"\n            / "{folder}"',
-        },
-    )
-    from polyglotic_desktop import main
-    from polyglotic_desktop.platform.macos import keychain, system
-    from polyglotic_desktop.platform.macos.one_copy import locks_folder
-    from tools.package.build import info_plist
+    if os.environ.get(stamp.FLAVOUR_ENV) != "preview":
+        raise RuntimeError(f"preview QA requires {stamp.FLAVOUR_ENV}=preview")
+    preview, release = identity.flavour("preview"), identity.flavour("release")
+    with (
+        tempfile.TemporaryDirectory(prefix="preview-stamp-") as folder,
+        mock.patch.object(identity, "files", lambda _name: Path(folder)),
+    ):  # this process reads a preview's stamp, as the packed preview does
+        (Path(folder) / identity.STAMP).write_text(
+            stamp.stamp("0.1.10", "macos-arm64-alpha", flavour="preview"),
+            encoding="utf-8",
+        )
+        identity.current.cache_clear()
+        assert identity.current() == preview
+        from polyglotic_desktop import main
+        from polyglotic_desktop.platform.macos import keychain, system
+        from polyglotic_desktop.platform.macos.one_copy import locks_folder
+        from tools.package.build import info_plist
 
-    plist = info_plist("0.1.10")
-    assert (
-        plist["CFBundleIdentifier"] == identifier
-        and plist["CFBundleDisplayName"] == name
-    )
-    assert system.data_folder().name == folder and service == keychain.SERVICE
-    assert locks_folder().parent == system.data_folder()
-    assert (
-        main.verified_feed_folder("/tmp/P.app/Contents/MacOS/Polyglotic").parent.name
-        == folder
-    )
-    assert Path(main.UPDATES).is_dir() and not list(
-        Path(main.UPDATES).glob("releases.*.json")
-    )
-    assert main.PACKS.startswith("https://") and main.pack_storage("", (), True)[1]
+        plist = info_plist("0.1.10", identity.current())
+        assert plist["CFBundleIdentifier"] == preview.bundle_id != release.bundle_id
+        assert plist["CFBundleDisplayName"] == preview.title != release.title
+        assert system.data_folder().name == preview.data_folder != release.data_folder
+        assert keychain.SERVICE == preview.credential != release.credential
+        assert locks_folder().parent == system.data_folder()
+        caches = main.verified_feed_folder("/tmp/P.app/Contents/MacOS/Polyglotic")
+        assert caches.parent.name == preview.data_folder
+        program = Path(sys.executable).resolve().parent
+        assert str(program) == main.UPDATES and main.FEED_KEYS == ()
+        assert not list(program.glob("releases.*.json"))  # no application updates
+        assert main.PACKS.startswith("https://") and main.pack_storage("", (), True)[1]
     out.mkdir(parents=True, exist_ok=True)
     (out / "identity.json").write_text(
         json.dumps(
             {
-                "bundle": identifier,
-                "name": name,
-                "data_folder": folder,
-                "keychain": service,
+                "bundle": preview.bundle_id,
+                "name": preview.title,
+                "data_folder": preview.data_folder,
+                "keychain": preview.credential,
                 "locks_in_preview_data": True,
-                "update_feed": "application updater disabled; local empty program directory",
+                "update_feed": "its own program folder, which holds no feed",
                 "signed_dictionary_feed": True,
             },
             indent=2,

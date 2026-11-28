@@ -19,13 +19,24 @@ def manifest(channel: str) -> str:
     return f"<package><metadata><version>0.1.0</version><channel>{channel}</channel></metadata></package>"
 
 
-def package(path: Path, channel: str, **changes: bytes) -> Path:
-    """A full package as `vpk pack` lays it out, for `channel`."""
+def package(
+    path: Path, channel: str, flavour: str = "release", /, **changes: bytes
+) -> Path:
+    """A full package as `vpk pack` lays it out, for `channel`, built as
+    `flavour` (1045's stamp names it unless it's a release). `changes` are
+    files under `lib/app/` by name, so the flavour is positional: no file
+    name can be taken for it."""
     files = {
         "Polyglotic.nuspec": manifest(channel).encode(),
         "lib/app/Polyglotic.exe": b"the app",
         "lib/app/_internal/python312.dll": b"python",
-        STAMP: json.dumps({"version": "0.1.0", "channel": channel}).encode(),
+        STAMP: json.dumps(
+            {
+                "version": "0.1.0",
+                "channel": channel,
+                **({"flavour": flavour} if flavour != "release" else {}),
+            }
+        ).encode(),
         "lib/app/sq.version": manifest(channel).encode(),
         "lib/app/Squirrel.exe": b"velopack's updater",
         "lib/app/Polyglotic_ExecutionStub.exe": b"velopack's stub",
@@ -63,6 +74,56 @@ def test_the_build_is_unpacked_without_velopacks_files_and_stamped_for_the_chann
         "channel": "win-x64-beta",
     }
     assert (tmp_path / "out" / "Polyglotic.ico").read_bytes() == b"ico"
+
+
+@pytest.mark.parametrize("flavour", ["preview", "rehearsal"])
+def test_a_non_release_build_is_refused(
+    tmp_path: Path, flavour: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    build = package(tmp_path / f"{flavour}.nupkg", "win-x64-alpha", flavour)
+
+    assert (
+        promote.main(
+            [
+                "unpack",
+                str(build),
+                "--channel",
+                "win-x64-beta",
+                "--out",
+                str(tmp_path / "out"),
+            ]
+        )
+        == 1
+    )
+    assert capsys.readouterr().out == (
+        f"::error::Not the build: {build.name} has flavour {flavour!r}; "
+        "only release builds can be promoted\n"
+    )
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.usefixtures("no_qt")
+def test_a_release_build_is_promoted_with_its_flavour_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    build = package(tmp_path / "release.nupkg", "win-x64-alpha")
+    stamped_flavours: list[str] = []
+    real_stamp = promote.stamp.stamp
+
+    def recording_stamp(
+        version: str, channel: str, built: str | None, *, flavour: str
+    ) -> str:
+        stamped_flavours.append(flavour)
+        return real_stamp(version, channel, built, flavour=flavour)
+
+    monkeypatch.setattr(promote.stamp, "stamp", recording_stamp)
+    app = unpack(build, "win-x64-beta", tmp_path / "out", expected=None)
+
+    assert stamped_flavours == ["release"]
+    assert json.loads((app / promote.STAMP).read_text(encoding="utf-8")) == {
+        "version": "0.1.0",
+        "channel": "win-x64-beta",
+    }
 
 
 @pytest.mark.usefixtures("no_qt")

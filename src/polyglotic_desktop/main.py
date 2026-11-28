@@ -101,6 +101,7 @@ import json
 import logging
 import logging.handlers
 import os
+import signal
 import sys
 import tempfile
 import threading
@@ -159,13 +160,14 @@ from PySide6.QtWidgets import (
 from polyglotic_desktop import tunable_config
 from polyglotic_desktop.adapters.anki_package import GenankiDeckWriter
 from polyglotic_desktop.adapters.app_log import LIMIT as LOG_LIMIT
-from polyglotic_desktop.adapters.app_log import read_log
+from polyglotic_desktop.adapters.app_log import RUN_LOG, read_log
 from polyglotic_desktop.adapters.background_learning import BackgroundLearningStore
 from polyglotic_desktop.adapters.background_outbox import BackgroundOutbox
 from polyglotic_desktop.adapters.caption_word_breaks import (
     CaptionWordSplit,
     PackWordBreaks,
 )
+from polyglotic_desktop.adapters.crash_report import crash_report_text
 from polyglotic_desktop.adapters.crash_trace import CRASH_TRACE_CHECK_MS, CrashTrace
 from polyglotic_desktop.adapters.feedback_files import FeedbackFolder
 from polyglotic_desktop.adapters.japanese_dictionary import (
@@ -179,6 +181,14 @@ from polyglotic_desktop.adapters.json_settings import (
 from polyglotic_desktop.adapters.meanings_file import MeaningsShelf
 from polyglotic_desktop.adapters.problem_report_files import ProblemReportFolder
 from polyglotic_desktop.adapters.relaunch import relaunch as relaunch_app
+from polyglotic_desktop.adapters.run_health import (
+    FREEZE_AFTER_SECONDS,
+    FREEZE_POLL_SECONDS,
+    CleanShutdown,
+    FreezeWatch,
+    RunningNote,
+    new_run_id,
+)
 from polyglotic_desktop.adapters.spaced_split import SpacedSplit
 from polyglotic_desktop.adapters.sqlite_dictionary import FORMAT as DICTIONARY_FORMAT
 from polyglotic_desktop.adapters.sqlite_dictionary import (
@@ -203,6 +213,10 @@ from polyglotic_desktop.adapters.velopack_updates import (
     cache_folder,
     run_installer_hooks,
     this_appimage,
+)
+from polyglotic_desktop.adapters.windows_session import (
+    NativeSessionFilter,
+    WindowsSessionEnd,
 )
 from polyglotic_desktop.connection.app import (
     FIRST_CHANNEL,
@@ -368,6 +382,7 @@ from polyglotic_desktop.core.listening.type_theirs import (
     theirs_text,
 )
 from polyglotic_desktop.core.listening.unreachable import Unreachable
+from polyglotic_desktop.core.releases.identity import current
 from polyglotic_desktop.core.releases.notes import (
     plain,
     sections,
@@ -521,6 +536,7 @@ from polyglotic_desktop.ui_next import maintenance as maintenance_words
 from polyglotic_desktop.ui_next.account_page import AccountPage as NextAccountPage
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow, notice_text
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.crash_offer import offer_previous_crash
 from polyglotic_desktop.ui_next.dictation_key import (
     KeyBox,
     event_key,
@@ -820,14 +836,18 @@ the installer's stands (decision 0051). Fixed once testers pin the app: a
 changed ID leaves their pins behind."""
 
 
-SERVER = "https://api.polyglotic.io"
+_BUILD_IDENTITY = current()
+"""Which copy this is: the release, a preview or a rehearsal, from the
+build's stamp (`core.releases.identity`, polyglotic-hq 1045)."""
+
+SERVER = _BUILD_IDENTITY.server
 """The live server, built into every installed copy (the domain since
 2026-11-09; the tunnel's address since 2026-11-11, polyglotic-hq DECISIONS
 #108). Changed only by a pull request, never by the build (decision
 0015); `--server` overrides it for development, and for the PC the server
-runs on."""
+runs on. A rehearsal's is its own (`identity`)."""
 
-CREDENTIALS_ELSEWHERE = "Polyglotic/device@{server}"
+CREDENTIALS_ELSEWHERE = f"{_BUILD_IDENTITY.credential}@{{server}}"
 """The Credential Manager entry for a server other than `SERVER` (a test
 server, from source): one per server, so signing in to one never replaces
 another's sign-in (polyglotic-hq 288: on 2026-11-11 the from-source copy's
@@ -847,11 +867,12 @@ def credentials_entry(server: str, named: str | None) -> str | None:
     return CREDENTIALS_ELSEWHERE.format(server=urlsplit(server).netloc or server)
 
 
-UPDATES = "https://updates.polyglotic.io/"
+UPDATES = _BUILD_IDENTITY.update_feed(Path(sys.executable).resolve().parent)
 """The update feed, built into every installed copy (decision 0015). Not
 served yet on 2026-11-11: the first friends' builds find no feed and stay
 as installed. `--updates` overrides it to try updates from a folder on
-this PC."""
+this PC. A preview's or rehearsal's is its private folder, else its own
+program folder: never the release's (`identity`, RULES #7)."""
 UPDATES_AT_EXIT_SEC = 5.0  # at quit, how long to wait for the updater
 RFC8032_TEST_1 = (  # key, signature of the empty message (RFC 8032, 7.1)
     "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
@@ -861,13 +882,14 @@ RFC8032_TEST_1 = (  # key, signature of the empty message (RFC 8032, 7.1)
     ),
 )
 
-FEED_KEYS: tuple[str, ...] = ("T9JEreM5nPkehQOMIfPbjUz1+UoZ73pUJ7rslb72xBs=",)
+FEED_KEYS = _BUILD_IDENTITY.feed_keys
 """The public keys (Ed25519, base64) the update feed must be signed with
 (decision 0019) - on since 0.1.1, with the key the user made on 2026-11-11
 (polyglotic-hq DECISIONS.md #97). Every feed and package is checked first,
 and an unsigned or tampered one is refused. Empty would turn it off:
 Velopack reads the feed as it is (0.1.0 did). Up to two keys while one replaces
-the other. Changed only by a pull request, like the addresses."""
+the other. Changed only by a pull request, like the addresses. A preview's
+and a rehearsal's are empty: their feed is a folder on this PC."""
 
 
 def this_copys_release(system: str = sys.platform) -> Release:
@@ -923,14 +945,16 @@ def verified_feed_folder(
     packed app's (`sys.executable` unless given); `system`: `sys.platform`'s
     name; `environ`: where `$XDG_CACHE_HOME` is read (`os.environ`)."""
     if system.startswith("linux"):
-        return cache_folder(environ, home) / "Polyglotic" / "verified-feed"
+        return (
+            cache_folder(environ, home) / _BUILD_IDENTITY.data_folder / "verified-feed"
+        )
     path = Path(executable if executable is not None else sys.executable)
     if path.parent.name == "MacOS" and path.parent.parent.name == "Contents":
         return (
             (home or Path.home())
             / "Library"
             / "Caches"
-            / "Polyglotic"
+            / _BUILD_IDENTITY.data_folder
             / "verified-feed"
         )
     return path.parent.parent / "verified-feed"
@@ -940,15 +964,15 @@ def pack_storage(
     packs_from: str, packs_keys: Sequence[str], packed: bool
 ) -> tuple[str, tuple[str, ...]]:
     """Where the dictionary packs come from, and the keys their list may be
-    signed with (decision 0122): `PACKS` and `FEED_KEYS` - and from source,
+    signed with (decision 0122): `PACKS` and `PACKS_KEYS` - and from source,
     a developer's stand-in (`--packs-from`) and keys (`--packs-key`) too. An
     installed copy (`packed`) ignores both switches and says so: a shortcut
     can't send it to another host or make it trust another key."""
     if packed:
         if packs_from != PACKS or packs_keys:
             log.warning("--packs-from and --packs-key are ignored in an installed copy")
-        return PACKS, FEED_KEYS
-    return packs_from, (*FEED_KEYS, *packs_keys)
+        return PACKS, PACKS_KEYS
+    return packs_from, (*PACKS_KEYS, *packs_keys)
 
 
 def _open_pack_url(request: Any, timeout: float) -> Any:
@@ -4536,10 +4560,13 @@ class LearningOffer:
         return self.packs.line(code).size
 
 
-PACKS = UPDATES
+PACKS = _BUILD_IDENTITY.packs
 """Where the dictionary packs' signed list and files are (decision 0122):
 the update storage, under `packs/`. `--packs-from` overrides it to try a
-stand-in on this PC, checked against `--packs-key` as well as `FEED_KEYS`."""
+stand-in on this PC, checked against `--packs-key` as well as `PACKS_KEYS`."""
+PACKS_KEYS = _BUILD_IDENTITY.packs_keys
+"""The keys the packs' list must be signed with: the update feed's own
+(`FEED_KEYS`) in every flavour, though a preview's feed is unsigned."""
 PACKS_AFTER_START_MS = 1500  # the packs are opened after the first paint (322)
 PAGES_STYLED_AFTER_START_MS = 1000
 """The main window's pages not on show get its stylesheet this long after
@@ -8334,13 +8361,15 @@ def tools_beside(
     return opened
 
 
-def start_logging(data: Path) -> None:
+def start_logging(data: Path, run: str | None = None) -> None:
     """To a rotating file in the data folder - the log the feedback form
     shows and attaches, where an exception is written as its type and
     place only (`ContentFreeLog`) - and, from source, to the console as
     well (installed, the app has none: sys.stderr is None). From source
     too, so a report sent while trying the app carries its log
-    (polyglotic-hq project 062)."""
+    (polyglotic-hq project 062). `run`: this run's id, as its first line
+    (`app_log.RUN_LOG`), so the next start can find this run's lines if
+    it ends improperly (polyglotic-hq 1009)."""
     form = "%(asctime)s %(levelname)s %(name)s: %(message)s"
     folder = data / "logs"
     folder.mkdir(parents=True, exist_ok=True)
@@ -8360,6 +8389,8 @@ def start_logging(data: Path) -> None:
     root.setLevel(logging.INFO)
     for handler in handlers:
         root.addHandler(handler)
+    if run is not None:
+        logging.getLogger(RUN_LOG).info("run %s", run)
     # The caption log (core.listening.delays; polyglotic-hq 271): a line per
     # caption event, several a second while someone talks - in a file of
     # its own, so it never pushes the app's own lines out of theirs.
@@ -9535,6 +9566,51 @@ def windows_deleted() -> None:
     QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
+FREEZE_HEARTBEAT_MS = 1000
+"""The interface's heartbeat to the freeze watch (ms, 250-1000): one a second."""
+QUIT_SIGNALS = ("SIGINT", "SIGTERM")
+"""Ctrl+C from source, and a termination asked of the process (a Linux
+session's end, `kill`): each quits as tray Quit does (polyglotic-hq 1009)."""
+
+
+def quit_on_signals(app: QApplication) -> None:
+    """Each of `QUIT_SIGNALS` ends the event loop, so the one quit path
+    (`aboutToQuit`) runs. Python runs the handler on the interface thread
+    between two of its own steps - its timers run some every second - and
+    the handler only asks the loop, at its next turn. Before this nothing
+    handled Ctrl+C: Python raised KeyboardInterrupt inside whichever slot
+    ran next, and `CrashLog` lets that one pass."""
+
+    def asked(_number: int, _frame: object) -> None:
+        QTimer.singleShot(0, lambda: app.exit(0))
+
+    for name in QUIT_SIGNALS:
+        number = getattr(signal, name, None)
+        if number is not None:
+            signal.signal(number, asked)
+
+
+def start_freeze_watch(
+    app: QApplication,
+    trace: CrashTrace,
+    *,
+    after: float = FREEZE_AFTER_SECONDS,
+    poll: float = FREEZE_POLL_SECONDS,
+    heartbeat_ms: int = FREEZE_HEARTBEAT_MS,
+) -> tuple[FreezeWatch | None, QTimer]:
+    """Install the production UI heartbeat and its background freeze watch,
+    writing to `trace`'s file as it is at the time (it can start again)."""
+    watch = (
+        FreezeWatch(lambda: trace.stream, after=after, poll=poll)
+        if trace.stream is not None
+        else None
+    )
+    heartbeat = QTimer(app, interval=heartbeat_ms)
+    if watch is not None:
+        heartbeat.timeout.connect(watch.beat)
+    return watch, heartbeat
+
+
 def main(argv: list[str] | None = None) -> None:
     """The app, from its start to its quit - Python's garbage collector held
     off until the main window's first paint (decision 0233): the start makes
@@ -9597,17 +9673,41 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     start_parts.done("arguments")
     taskbar_id = system.taskbar_identity(TASKBAR_ID)  # before any window
     data = args.data or system.data_folder()
-    start_logging(data)
+    # this run's id, kept on this PC: its note, first log line and trace's
+    # first line, so the next start sends this run's evidence alone (1009)
+    run_id = new_run_id()
+    start_logging(data, run_id)
+    release = this_copys_release()
+    run_note = RunningNote(data, release.version, run_id=run_id)
+    previous_run = run_note.previous()
+    # Read the previous run's evidence before CrashTrace.start() rotates it.
+    previous_crash_report = (
+        crash_report_text(
+            data / "logs",
+            run=previous_run.run_id,
+            app_version=previous_run.version,  # the run that failed, not this one
+            os_version=system.os_version(),
+        )
+        if previous_run is not None
+        else None
+    )
     # a fatal error's Python stacks, where the log can't follow (997)
-    crash_trace = CrashTrace(data / "logs")
+    crash_trace = CrashTrace(data / "logs", run=run_id)
     crash_trace.start()
+    # this run is running, from before its window is built: a crash while
+    # it's built (997's 1 in 250 starts, in Flow.add_layout) leaves the note,
+    # so the next start offers it. Every way this run ends properly removes
+    # it - the one quit path and each early return below (1009)
+    try:
+        run_note.start()
+    except OSError as error:  # the app starts all the same, unwatched
+        log.warning("no running note: %s", type(error).__name__)
     crashes = CrashLog(
         partial(show_start_failure, data, system.show_error) if installed() else None,
         data / CRASH_NOTE,
     )
     crashed = last_crash(data / CRASH_NOTE)  # before this run can note one
     crashes.install()
-    release = this_copys_release()
     log.info(
         "Polyglotic %s (%s), taskbar ID %s%s",
         release.version,
@@ -9640,6 +9740,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         system.qt_platform
     )  # Linux: the desktop's own, by its portal (0280)
     app = QApplication(sys.argv[:1])
+    freeze_watch, freeze_heartbeat = start_freeze_watch(app, crash_trace)
     # Windows' fonts, read on a thread of their own from now - beside the
     # learner's data, not at Home's first label (about 0.3 s; polyglotic-hq
     # 322, decision 0112)
@@ -9691,6 +9792,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     if moved_to_applications(place, Settings(store)):
         store.close()
         watchdog.stop()
+        run_note.finish()  # ended properly: opened again from Applications
         return
     # the dictionary packs (decision 0122): opened after the first paint, into
     # the lookups' own dict every learner's tools read - so a pack downloaded
@@ -9811,6 +9913,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         windows_deleted()
         if copy is not None:
             copy.lock.release()
+        run_note.finish()  # before the new copy writes its own
         relaunch_app(given_argv)
         return
     except NotAgreed:  # closed without the yes: no further (polyglotic-hq 185)
@@ -9818,6 +9921,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         outbox.close()
         store.close()
         watchdog.stop()
+        run_note.finish()
         return
     if first_account is not None:
         beta_supported = True
@@ -9900,6 +10004,12 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     start_parts.done("first_paint")
     start_parts.end()
     shown()  # the garbage collector on again (decision 0233)
+    if freeze_watch is not None:
+        # The timer runs on the interface thread.  If that thread blocks it
+        # cannot acknowledge the watch, which then writes every thread's
+        # frames to the same content-free trace used for fatal crashes.
+        freeze_watch.start()
+        freeze_heartbeat.start()
     show_whats_new(  # after an update: once per version (polyglotic-hq 345)
         hub,
         desktop.settings,
@@ -10080,6 +10190,7 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         mode: ReportMode,
         session_id: str | None,
         check_result: str | None = None,
+        crash_details: str | None = None,
     ) -> None:
         """Unified "Report a problem" / "Make a suggestion" dialog, not modal.
         One at a time: asked again, the open one comes to the front in `mode`
@@ -10091,7 +10202,11 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         speech: list[SpeechPart] = []
         values: dict[str, object] | None = None
         facts: dict[str, object] | None = None
-        if tester:
+        log_text: str | None
+        if crash_details is not None:
+            log_text = crash_details
+            parts = non_tester_problem_parts(log_text, check_result)
+        elif tester:
             captions = captions_as_shown(
                 desktop.feed.history.captions, datetime.now(UTC)
             )
@@ -10227,7 +10342,15 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     updates.tell(update_shown.found)
     settings_page.set_notices(third_party_notices())
 
-    if crashed is not None:  # offered once, quietly, on Home
+    if previous_run is not None and previous_crash_report is not None:
+        # Modeless: captioning and startup continue while the learner decides.
+        # Over the window, as today's dialogs are: it gives it its stylesheet
+        offer_previous_crash(
+            previous_crash_report,
+            over,
+            lambda details: open_report_dialog("problem", None, crash_details=details),
+        )
+    elif crashed is not None:  # Python exception marker's existing offer
         hub.home.offer_crash_report(crashed.at_start)
         hub.home.crash_report_wanted.connect(
             lambda: open_feedback("problem", crashed.session_id)
@@ -11794,6 +11917,8 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         here = platform()
         keys = hotkey_keys(value.hotkeys, here)
         scopes = hotkey_scopes(keys, value.hotkey_scopes)
+        if not _BUILD_IDENTITY.global_hotkeys:
+            scopes = dict.fromkeys(scopes, HotkeyScope.APP)
         others_on = value.type_theirs or (system.dictation and value.legacy_respeaking)
         other_binding = value.respeak_key or (
             DEFAULT_RESPEAK_KEY if not system.dictation else ""
@@ -11917,6 +12042,9 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
     sources.follow(captured(desktop.settings.value))
 
     def stop() -> None:
+        freeze_heartbeat.stop()
+        if freeze_watch is not None:
+            freeze_watch.stop()
         resending.stop()
         sender.close()
         problem_sender.close()
@@ -11957,8 +12085,30 @@ def _start_and_run(argv: list[str] | None, shown: Callable[[], None]) -> None:
         for other in beside:
             other.close()
 
-    app.aboutToQuit.connect(stop)
-    app.aboutToQuit.connect(packs.close)
+    quit_cleanly = CleanShutdown(
+        [
+            ("application parts", stop),
+            ("language packs", packs.close),
+            ("running note", run_note.finish),
+        ],
+        timed_out=lambda part: log.error(
+            "quit: the 3 second limit ended the app while closing %s", part
+        ),
+        before_force_exit=run_note.finish,
+    )
+    # Every quit source converges here: tray Quit, the last window and an
+    # update's restart end the event loop (aboutToQuit); Windows' session
+    # end calls it before its handler returns; Ctrl+C and a termination
+    # signal end the loop (`quit_on_signals`). It's idempotent because a
+    # session end brings more than one notification. (A second start has
+    # no quit to ask for: `one_copy.COMMANDS`.)
+    app.aboutToQuit.connect(quit_cleanly)
+    session_end = WindowsSessionEnd(quit_cleanly)
+    native_session_filter = None
+    if os.name == "nt":
+        native_session_filter = NativeSessionFilter(session_end)
+        app.installNativeEventFilter(native_session_filter)
+    quit_on_signals(app)
     crashes.running = True
     code = app.exec()
     windows_deleted()

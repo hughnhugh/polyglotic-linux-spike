@@ -49,6 +49,9 @@ PAGE_SWITCH_WARM = Budget("page_switch_warm", 8.0, "a page shown again")
 DISPLAY_CHANGE = Budget(
     "display_change", 16.0, "a text size, language or display change"
 )
+PACE_READOUT = Budget(
+    "pace_readout", 1.0, "the average paint of one speaking-pace readout"
+)
 THEME = Budget("theme", 100.0, "a theme or light / dark change")
 START_FROM_SOURCE = Budget(
     "start_from_source", 400.0, "start to the window shown, from source"
@@ -75,6 +78,7 @@ ALL = (
     PAGE_SWITCH_COLD,
     PAGE_SWITCH_WARM,
     DISPLAY_CHANGE,
+    PACE_READOUT,
     THEME,
     START_FROM_SOURCE,
     START_PACKED,

@@ -1,0 +1,30 @@
+{
+  "app_text_size": "normal",
+  "better_voice_quiet": ["ja", "zh"],
+  "caption_contrast": 25,
+  "caption_edge": "shadow",
+  "caption_faces": {
+    "ja": "Demo Mincho",
+    "zh": "Demo Kai"
+  },
+  "caption_vibrance": -20,
+  "caption_weight": 700,
+  "changed": [
+    "opacity",
+    "quiet_words",
+    "reading_colour",
+    "reading_lines",
+    "word_links"
+  ],
+  "curriculum_size": 120,
+  "opacity": 0.78,
+  "quiet_view": true,
+  "quiet_words": ["curriculum", "load", "saved"],
+  "reading_colour": "link",
+  "reading_lines": ["ja", "zh"],
+  "respelling_past": false,
+  "said_in_link_colours": false,
+  "say_it_translation_first": true,
+  "translation_in_link_colours": false,
+  "word_links": "off"
+}

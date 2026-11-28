@@ -3,6 +3,7 @@ runners share (polyglotic-hq 312) - a step held alone waits for shared
 ones and keeps new ones waiting; shared steps run side by side; the
 step's exit code is kept; the lock never fails a step."""
 
+import ctypes
 import os
 import subprocess
 import sys
@@ -245,3 +246,282 @@ def test_what_a_step_started_ends_with_it(tmp_path: Path, ends: str) -> None:
             _end(int(pid_file.read_text()))
         if started.poll() is None:
             started.kill()
+
+
+# -- memory gate and priority (polyglotic-hq 1023) ------------------------------------
+
+
+def test_min_free_gb_tunable_has_metadata_and_range_check() -> None:
+    """RULES #40 / polyglotic-hq 1023: `ui_lab.min_free_gb` is declared once
+    with default 5 GB, unit GB, bounds 2-12 and reason, and rejects values
+    outside its range."""
+    assert ci_lock.MIN_FREE_GB.name == "ui_lab.min_free_gb"
+    assert ci_lock.MIN_FREE_GB.default == 5.0
+    assert ci_lock.MIN_FREE_GB.unit == "GB"
+    assert ci_lock.MIN_FREE_GB.bounds == (2.0, 12.0)
+    assert ci_lock.MIN_FREE_GB.source
+    assert ci_lock.MEMORY_POLL_SECONDS.default == 15.0
+    assert ci_lock.MEMORY_POLL_SECONDS.unit == "s"
+    assert ci_lock.MEMORY_WAIT_MINUTES.default == 30.0
+    assert ci_lock.MEMORY_WAIT_MINUTES.unit == "min"
+
+    for valid in (2, 2.0, 5, 5.0, 12, 12.0):
+        assert ci_lock.checked_min_free_gb(valid) == float(valid)
+
+    for out_of_range in (1.99, 0, -1.0, 12.01, 16, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match=r"outside 2\.\.12 GB"):
+            ci_lock.checked_min_free_gb(out_of_range)
+
+    for wrong_type in (True, False, "5", None):
+        with pytest.raises(TypeError, match="expected a number"):
+            ci_lock.checked_min_free_gb(wrong_type)
+
+    with pytest.raises(ValueError, match=r"outside 2\.\.12 GB"):
+        ci_lock.wait_for_memory(
+            1.5,
+            memory=lambda: pytest.fail("should reject before reading memory"),
+            sleep=lambda _: pytest.fail("should reject before sleeping"),
+        )
+
+
+def test_worker_min_free_gb_tunable_has_metadata_and_range_check() -> None:
+    """The per-worker floor is a separate named tunable: language workers
+    need enough headroom to start without requiring the pass gate's 5 GB."""
+    tunable = ci_lock.WORKER_MIN_FREE_GB
+    assert tunable.name == "ui_lab.worker_min_free_gb"
+    assert tunable.default == 2.5
+    assert tunable.unit == "GB"
+    assert tunable.bounds == (1.0, 8.0)
+    assert tunable.source
+
+    for valid in (1, 2.5, 8):
+        assert ci_lock.checked_worker_min_free_gb(valid) == float(valid)
+    for invalid in (0.99, 8.01, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match=r"outside 1\.\.8 GB"):
+            ci_lock.checked_worker_min_free_gb(invalid)
+
+
+@pytest.mark.parametrize("free", [5.0, 5.01, 8.5])
+def test_memory_gate_continues_at_or_above_floor_with_no_wait(free: float) -> None:
+    """Performance budget (1023): zero wait when 5 GB or more is free,
+    including exactly at the floor."""
+    logs: list[str] = []
+    result = ci_lock.wait_for_memory(
+        memory=lambda: free,
+        sleep=lambda _: pytest.fail("must not sleep at or above the floor"),
+        clock=lambda: 100.0,
+        say=logs.append,
+    )
+    assert result.ok is True
+    assert result.waits == 0
+    assert result.waited_seconds == 0.0
+    assert result.free_gb == free
+    assert logs == []
+
+
+def test_memory_gate_waits_under_floor_logs_each_wait_and_continues_at_floor() -> None:
+    """Under the floor, the gate polls every 15 s, logs each wait, and
+    continues as soon as a reading reaches the floor."""
+    readings = [3.1, 4.2, 4.99, 5.0]
+    now = [0.0]
+    sleeps: list[float] = []
+    logs: list[str] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        now[0] += seconds
+
+    result = ci_lock.wait_for_memory(
+        memory=lambda: readings.pop(0),
+        sleep=fake_sleep,
+        clock=lambda: now[0],
+        say=logs.append,
+    )
+    assert result.ok is True
+    assert result.waits == 3
+    assert sleeps == [15.0, 15.0, 15.0]
+    assert result.waited_seconds == 45.0
+    assert result.free_gb == 5.0
+    assert len(logs) == 3
+    assert "3.10 GB free < 5 GB; wait 1," in logs[0]
+    assert "4.20 GB free < 5 GB; wait 2," in logs[1]
+    assert "4.99 GB free < 5 GB; wait 3," in logs[2]
+
+
+def test_memory_gate_fails_after_30_minutes_with_plain_message() -> None:
+    """After 30 minutes under the floor, the gate fails with the plain
+    message naming the floor and does not sleep past the limit."""
+    now = [0.0]
+    sleeps: list[float] = []
+    logs: list[str] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        now[0] += seconds
+
+    result = ci_lock.wait_for_memory(
+        memory=lambda: 3.4,
+        sleep=fake_sleep,
+        clock=lambda: now[0],
+        say=logs.append,
+    )
+    assert result.ok is False
+    assert result.waits == 120
+    assert result.waited_seconds == 1800.0
+    assert sleeps == [15.0] * 120
+    assert len(logs) == 120
+    assert "this PC stayed under 5 GB free; the UI lab waits for live" in result.message
+
+    # Custom floor formats cleanly in the failure message too
+    now[0] = 0.0
+    custom = ci_lock.wait_for_memory(
+        6.5,
+        poll_seconds=15.0,
+        most_minutes=0.5,
+        memory=lambda: 4.0,
+        sleep=fake_sleep,
+        clock=lambda: now[0],
+        say=lambda _: None,
+    )
+    assert custom.ok is False
+    assert (
+        "this PC stayed under 6.5 GB free; the UI lab waits for live" in custom.message
+    )
+
+
+def test_memory_gate_skips_when_memory_cannot_be_read() -> None:
+    result = ci_lock.wait_for_memory(
+        memory=lambda: None,
+        sleep=lambda _: pytest.fail("must not sleep when memory is unreadable"),
+        clock=lambda: 0.0,
+    )
+    assert result.ok is True
+    assert result.waits == 0
+    assert result.free_gb is None
+
+
+def test_main_enforces_memory_gate_from_env_and_validates_range(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`main` reads the job's floor from `MIN_FREE_GB_VARIABLE`, validates
+    `--min-free-gb` and the env var against 2-12 GB, and blocks the command
+    without running it when the wait times out."""
+    monkeypatch.setenv("POLYGLOTIC_CI_LOCK", str(tmp_path / "steps.lock"))
+    ran: list[list[str]] = []
+
+    def fake_run(
+        command: list[str], **_kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        ran.append(command)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(ci_lock.subprocess, "run", fake_run)
+    monkeypatch.setattr(ci_lock, "ending_with_this_process", lambda: "end with it")
+
+    # Invalid range via flag and via env var
+    for bad in ("1", "15", "not-a-number"):
+        monkeypatch.delenv(ci_lock.MIN_FREE_GB_VARIABLE, raising=False)
+        with pytest.raises(SystemExit) as raised:
+            ci_lock.main(["alone", "--min-free-gb", bad, "--", "echo", "hi"])
+        assert raised.value.code == 2
+        assert "ui_lab.min_free_gb" in capsys.readouterr().err
+
+    monkeypatch.setenv(ci_lock.MIN_FREE_GB_VARIABLE, "1")
+    with pytest.raises(SystemExit) as raised:
+        ci_lock.main(["alone", "--", "echo", "hi"])
+    assert raised.value.code == 2
+    assert "ui_lab.min_free_gb" in capsys.readouterr().err
+
+    # Under the floor through the timeout: fails without running command
+    now = [0.0]
+
+    def fake_sleep(seconds: float) -> None:
+        now[0] += seconds
+
+    monkeypatch.setenv(ci_lock.MIN_FREE_GB_VARIABLE, "5")
+    monkeypatch.setattr(ci_lock, "free_gb", lambda: 3.0)
+    monkeypatch.setattr(ci_lock.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(ci_lock.time, "sleep", fake_sleep)
+    code = ci_lock.main(
+        [
+            "alone",
+            "--memory-poll-seconds",
+            "15",
+            "--memory-wait-minutes",
+            "0.5",
+            "--",
+            "echo",
+            "hi",
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code == 1
+    assert ran == []
+    assert "this PC stayed under 5 GB free; the UI lab waits for live" in out
+    assert "ci_lock: waiting for memory (3.00 GB free < 5 GB; wait 1," in out
+
+    # At the floor: runs the command with zero waits
+    monkeypatch.setattr(ci_lock, "free_gb", lambda: 5.0)
+    code = ci_lock.main(["alone", "--", "echo", "hi"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert ran == [["echo", "hi"]]
+    assert "ci_lock: memory ok: 5.00 GB free (floor 5 GB)" in out
+
+    # Explicit --min-free-gb wins over the env var
+    monkeypatch.setattr(ci_lock, "free_gb", lambda: 4.0)
+    code = ci_lock.main(["alone", "--min-free-gb", "4", "--", "echo", "flag"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert ran[-1] == ["echo", "flag"]
+    assert "ci_lock: memory ok: 4.00 GB free (floor 4 GB)" in out
+
+
+@WINDOWS
+def test_below_normal_priority_applies_to_command_and_its_children(
+    tmp_path: Path,
+) -> None:
+    """polyglotic-hq 1023: `--below-normal` starts the command at Windows'
+    BELOW_NORMAL_PRIORITY_CLASS (0x4000), which its child processes inherit
+    (the UI lab's parallel language workers)."""
+    lock = tmp_path / "steps.lock"
+    grandchild = (
+        "import ctypes; "
+        "k = ctypes.WinDLL('kernel32'); "
+        "k.GetCurrentProcess.restype = ctypes.c_void_p; "
+        "k.GetPriorityClass.argtypes = [ctypes.c_void_p]; "
+        "k.GetPriorityClass.restype = ctypes.c_uint32; "
+        "print(hex(k.GetPriorityClass(k.GetCurrentProcess())))"
+    )
+    probe = (
+        "import ctypes, subprocess, sys; "
+        "k = ctypes.WinDLL('kernel32'); "
+        "k.GetCurrentProcess.restype = ctypes.c_void_p; "
+        "k.GetPriorityClass.argtypes = [ctypes.c_void_p]; "
+        "k.GetPriorityClass.restype = ctypes.c_uint32; "
+        "p = hex(k.GetPriorityClass(k.GetCurrentProcess())); "
+        f"g = subprocess.check_output([sys.executable, '-c', {grandchild!r}], text=True).strip(); "
+        "print('prio', p, g)"
+    )
+
+    lowered = step("shared", lock, probe, "--below-normal")
+    out, _ = lowered.communicate(timeout=30)
+    assert lowered.returncode == 0
+    assert "ci_lock: priority below-normal" in out
+    assert "prio 0x4000 0x4000" in out
+
+    # Without the flag the command keeps this test's own priority class. A
+    # runner may already start pytest below normal (gpubox's runner does, as
+    # GitHub's did on 2026-11-29), so compare with ours, not with "normal".
+    k = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined,unused-ignore]
+    k.GetCurrentProcess.restype = ctypes.c_void_p
+    k.GetPriorityClass.argtypes = [ctypes.c_void_p]
+    k.GetPriorityClass.restype = ctypes.c_uint32
+    own = hex(k.GetPriorityClass(k.GetCurrentProcess()))
+    normal = step("shared", lock, probe)
+    out_normal, _ = normal.communicate(timeout=30)
+    assert normal.returncode == 0
+    assert "ci_lock: priority below-normal" not in out_normal
+    assert f"prio {own} {own}" in out_normal

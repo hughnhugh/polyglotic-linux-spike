@@ -1,0 +1,562 @@
+{
+  "en": [
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": false,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-en",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with hello.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-en",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          23
+        ],
+        "guess": "",
+        "heard": 3,
+        "language": null,
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "a greeting"
+              }
+            ],
+            "measure_words": [],
+            "reading": "/hə-LOH/"
+          }
+        ],
+        "saved_in": null,
+        "shows": "entry",
+        "simplified": [],
+        "status": "known",
+        "traditional": false,
+        "word": "hello",
+        "word_class": null
+      },
+      "entry_id": "fixture:en:hello"
+    },
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": false,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-en",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with tea.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-en",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          21
+        ],
+        "guess": "",
+        "heard": 2,
+        "language": null,
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "a drink"
+              }
+            ],
+            "measure_words": [],
+            "reading": "/tee/"
+          }
+        ],
+        "saved_in": {
+          "color": "#2f9e8f",
+          "id": "interesting",
+          "name": "Interesting"
+        },
+        "shows": "entry",
+        "simplified": [],
+        "status": "learning",
+        "traditional": false,
+        "word": "tea",
+        "word_class": null
+      },
+      "entry_id": "fixture:en:tea"
+    }
+  ],
+  "ja": [
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": true,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-ja",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with こんにちは.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-ja",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          23
+        ],
+        "guess": "",
+        "heard": 3,
+        "language": "ja",
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "hello"
+              }
+            ],
+            "measure_words": [],
+            "reading": "konnichiwa"
+          }
+        ],
+        "saved_in": null,
+        "shows": "entry",
+        "simplified": [],
+        "status": "known",
+        "traditional": false,
+        "word": "こんにちは",
+        "word_class": null
+      },
+      "entry_id": "fixture:ja:konnichiwa"
+    },
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": true,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-ja",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with 茶.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-ja",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          19
+        ],
+        "guess": "",
+        "heard": 2,
+        "language": "ja",
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "tea"
+              }
+            ],
+            "measure_words": [],
+            "reading": "cha"
+          }
+        ],
+        "saved_in": {
+          "color": "#2f9e8f",
+          "id": "interesting",
+          "name": "Interesting"
+        },
+        "shows": "entry",
+        "simplified": [],
+        "status": "learning",
+        "traditional": false,
+        "word": "茶",
+        "word_class": null
+      },
+      "entry_id": "fixture:ja:cha"
+    }
+  ],
+  "vi": [
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": true,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-vi",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with xin chào.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-vi",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          26
+        ],
+        "guess": "",
+        "heard": 3,
+        "language": "vi",
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "hello"
+              }
+            ],
+            "measure_words": [],
+            "reading": "sin chow"
+          }
+        ],
+        "saved_in": null,
+        "shows": "entry",
+        "simplified": [],
+        "status": "known",
+        "traditional": false,
+        "word": "xin chào",
+        "word_class": null
+      },
+      "entry_id": "fixture:vi:xinchao"
+    },
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": true,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-vi",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with trà.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-vi",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          21
+        ],
+        "guess": "",
+        "heard": 2,
+        "language": "vi",
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "tea"
+              }
+            ],
+            "measure_words": [],
+            "reading": "cha"
+          }
+        ],
+        "saved_in": {
+          "color": "#2f9e8f",
+          "id": "interesting",
+          "name": "Interesting"
+        },
+        "shows": "entry",
+        "simplified": [],
+        "status": "learning",
+        "traditional": false,
+        "word": "trà",
+        "word_class": null
+      },
+      "entry_id": "fixture:vi:tra"
+    }
+  ],
+  "zh": [
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": false,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-zh",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with 你.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-zh",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          19
+        ],
+        "guess": "",
+        "heard": 3,
+        "language": null,
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "you"
+              }
+            ],
+            "measure_words": [],
+            "reading": "nǐ"
+          }
+        ],
+        "saved_in": null,
+        "shows": "entry",
+        "simplified": [],
+        "status": "known",
+        "traditional": false,
+        "word": "你",
+        "word_class": null
+      },
+      "entry_id": "fixture:zh:ni"
+    },
+    {
+      "actions": true,
+      "card": {
+        "added": "",
+        "added_pack": 0,
+        "answered_by": "",
+        "back_to": "",
+        "base": "",
+        "basic": false,
+        "categories": [
+          {
+            "color": "#2f9e8f",
+            "id": "interesting",
+            "name": "Interesting"
+          }
+        ],
+        "chengyu": false,
+        "context": {
+          "counterpart": "counterpart-zh",
+          "counterpart_language": "en",
+          "sentence": "Fixture line with 茶.",
+          "translation": "Synthetic translation.",
+          "word_class": null
+        },
+        "counterpart": "counterpart-zh",
+        "counterpart_language": "en",
+        "found_at": [
+          18,
+          19
+        ],
+        "guess": "",
+        "heard": 2,
+        "language": null,
+        "load_heard": 0,
+        "load_offer": false,
+        "load_stage": null,
+        "load_step": 0,
+        "meaning": "",
+        "more_readings": 0,
+        "offer": "",
+        "other": "",
+        "parts": [],
+        "parts_title": null,
+        "pinned": true,
+        "problem": null,
+        "readings": [
+          {
+            "definitions": [
+              {
+                "classes": null,
+                "gloss": "tea"
+              }
+            ],
+            "measure_words": [],
+            "reading": "chá"
+          }
+        ],
+        "saved_in": {
+          "color": "#2f9e8f",
+          "id": "interesting",
+          "name": "Interesting"
+        },
+        "shows": "entry",
+        "simplified": [],
+        "status": "learning",
+        "traditional": false,
+        "word": "茶",
+        "word_class": null
+      },
+      "entry_id": "fixture:zh:cha"
+    }
+  ]
+}

@@ -6,12 +6,15 @@ running display, which the rule's property must see. The whole matrix is
 judged by `python -m tools.scene_replay judge`; these are the quick cases.
 """
 
+from unittest.mock import patch
+
 import pytest
 from PySide6.QtWidgets import QApplication
 from tools.scene_replay import drive, plants, properties, streams
 from tools.scene_replay.frames import Frame
 from tools.scene_replay.rulebook import breaks, pins
 
+from polyglotic_desktop.ui_next.caption_window import CaptionWindow
 from polyglotic_desktop.ui_next.views.cards import GLIDE_FASTEST
 
 
@@ -134,6 +137,26 @@ def test_rows_glide_when_a_word_moves_to_the_next_row(qapp: QApplication) -> Non
 def test_the_old_step_is_seen_as_a_jump(qapp: QApplication, stream: str) -> None:
     broken = properties.approved_glide(replay(stream, "panel", "step"))
     assert broken and "jump" in broken[0].what
+
+
+@pins("movement.a-burst-settles-at-once")
+def test_a_burst_too_tall_to_follow_settles_at_once(qapp: QApplication) -> None:
+    frames = replay("lines/m", "panel")
+    assert any(frame.bursts for frame in frames), (
+        "the fixture no longer sends more captions together than the window can follow"
+    )
+
+
+@breaks("movement.a-burst-settles-at-once")
+def test_a_burst_left_unsettled_is_seen(qapp: QApplication) -> None:
+    def leave_moving(_window: CaptionWindow) -> None:
+        pass
+
+    with patch.object(CaptionWindow, "_settle_burst", leave_moving):
+        frames = replay("lines/m", "panel")
+    assert not any(frame.bursts for frame in frames), (
+        "the planted break did not stop the burst being settled"
+    )
 
 
 @pins("movement.a-new-row-waits-then-fades-in")

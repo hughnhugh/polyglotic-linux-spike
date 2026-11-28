@@ -119,7 +119,8 @@ def test_a_run_that_writes_too_much_starts_its_file_again(tmp_path: Path) -> Non
 
 
 def test_a_report_never_attaches_the_trace(tmp_path: Path) -> None:
-    """Until the founder decides it may (RULES #28): the log only."""
+    """Report a problem's log only: a trace's frames go solely in the offer
+    after an improper exit, when the learner presses Send (1009)."""
     (tmp_path / "polyglotic.log").write_text("the app's own line\n", "utf-8")
     crashed(tmp_path)
     attached = read_log(tmp_path) or ""

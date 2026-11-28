@@ -10,7 +10,7 @@ function would do.
         frames = list(drive.play(stream, setup))
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from typing import Any
@@ -18,8 +18,13 @@ from unittest.mock import patch
 
 from PySide6.QtCore import QPointF
 
-from polyglotic_desktop.ui_next import caption_layout
+from polyglotic_desktop.core.listening.display import LIVE_TRAIL, RowKind
+from polyglotic_desktop.ui_next import caption_layout, caption_marks, caption_window
+from polyglotic_desktop.ui_next.caption_layout import LINK_MARK, CaptionLayout, Ink
+from polyglotic_desktop.ui_next.caption_marks import CaptionMarks
 from polyglotic_desktop.ui_next.caption_window import Canvas, CaptionWindow
+from polyglotic_desktop.ui_next.views import captions
+from polyglotic_desktop.ui_next.views.captions import Line
 
 NUDGE_PX = 1.0
 """The nudge: every row this far lower, in px. The smallest move the diff
@@ -138,6 +143,87 @@ def _no_wait() -> Any:
     return patch.object(Canvas, "_reveal_wraps", lambda _self, page, _rest: page)
 
 
+def _inked(change: Callable[[Ink], Ink]) -> Any:
+    """Every caption drawn with its ink passed through `change` first."""
+    real = CaptionLayout.paint
+
+    def planted(
+        self: CaptionLayout,
+        painter: Any,
+        line: Any,
+        laid: Any,
+        at: Any,
+        ink: Ink,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        real(self, painter, line, laid, at, change(ink), *args, **kwargs)
+
+    return patch.object(CaptionLayout, "paint", planted)
+
+
+def _swap_inks() -> Any:
+    """What was said drawn in the translation's colour, and the other way
+    round."""
+    return _inked(
+        lambda ink: replace(ink, original=ink.translation, translation=ink.original)
+    )
+
+
+def _full_while_spoken() -> Any:
+    """Text still being spoken drawn in full ink, as a finished caption is."""
+    return _inked(lambda ink: replace(ink, live_alpha=1.0, provisional_alpha=1.0))
+
+
+def _no_step_back() -> Any:
+    """Older captions keep all of the newest's contrast: no step back."""
+    return patch.object(caption_window, "older_alphas", lambda *_, **__: (1.0, 1.0))
+
+
+def _shifted_links() -> Any:
+    """The translation's word links each take the next link's colour."""
+    real = CaptionMarks.__call__
+
+    def planted(self: CaptionMarks, line: Line, row: int) -> Sequence[Any]:
+        marks = real(self, line, row)
+        if line.rows[row].kind is not RowKind.TRANSLATION:
+            return marks
+        moved = []
+        for start, end, format_ in marks:
+            link = format_.property(LINK_MARK)
+            if link is not None:
+                colour = caption_marks.link_colour(self.panel, int(link) + 1)
+                format_ = self._format("link", colour, int(link))
+            moved.append((start, end, format_))
+        return moved
+
+    return patch.object(CaptionMarks, "__call__", planted)
+
+
+def _links_near_the_text() -> Any:
+    """Every link colour kept, those like the rows' own text too (before
+    554)."""
+    return patch.object(
+        caption_marks, "link_colours", lambda _panel: caption_marks.LINK_COLORS
+    )
+
+
+def _links_while_spoken() -> Any:
+    """A caption still being spoken linked as if it were finished."""
+    real = captions.caption_rows
+
+    def planted(caption: Any, *args: Any, **kwargs: Any) -> list[Any]:
+        rows = real(caption, *args, **kwargs)
+        if not caption.live:
+            return rows
+        settled = real(replace(caption, live=False), *args, **kwargs)
+        if [r.text.removesuffix(LIVE_TRAIL) for r in rows] != [r.text for r in settled]:
+            return rows
+        return [replace(r, links=s.links) for r, s in zip(rows, settled, strict=True)]
+
+    return patch.object(captions, "caption_rows", planted)
+
+
 PLANTS: dict[str, tuple[Callable[[], Any], str]] = {
     "nudge": (_nudge, f"every row {NUDGE_PX:g} px lower from a canvas's third paint"),
     "fall": (_fall, f"every row {FALL_PX:g} px lower for one frame"),
@@ -145,6 +231,12 @@ PLANTS: dict[str, tuple[Callable[[], Any], str]] = {
     "step": (_step, "a caption that gains a row moves the stack in one frame"),
     "wrap": (_wrap, "a composed row keeps all its lines in one item"),
     "no-wait": (_no_wait, "a new wrapped row appears at once, over other text"),
+    "swap-inks": (_swap_inks, "what was said in gold, its translation in white"),
+    "full-while-spoken": (_full_while_spoken, "a live caption in full ink"),
+    "no-step-back": (_no_step_back, "older captions as bright as the newest"),
+    "shifted-links": (_shifted_links, "the translation's links one colour on"),
+    "links-near-the-text": (_links_near_the_text, "link colours like the text kept"),
+    "links-while-spoken": (_links_while_spoken, "a live caption's words linked"),
 }
 
 

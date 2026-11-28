@@ -20,9 +20,10 @@ The token never appears in an error or a log.
 import ctypes
 from ctypes import wintypes
 
+from polyglotic_desktop.core.releases.identity import current
 from polyglotic_desktop.ports.credentials import DeviceCredentials
 
-TARGET = "Polyglotic/device"
+TARGET = current().credential
 
 _CRED_TYPE_GENERIC = 1
 _CRED_PERSIST_LOCAL_MACHINE = 2  # this user, this PC; not roamed to others

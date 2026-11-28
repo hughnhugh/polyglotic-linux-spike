@@ -1,0 +1,45 @@
+{
+  "apps": ["Sample Player", "Demo Browser"],
+  "background_color": "#1b2a41",
+  "caption_font": "Georgia",
+  "caption_mic": true,
+  "caption_timing": "preview",
+  "common_words_only": false,
+  "everything_else": true,
+  "fade_after": 12.0,
+  "interface_language": "zh_CN",
+  "learning": "zh",
+  "link_detail": "key",
+  "live_update_interval": 1.5,
+  "locked": true,
+  "opacity": 0.72,
+  "original_color": "#cfe8ff",
+  "overlay_geometry": {
+    "ja": [100, 200, 700, 260]
+  },
+  "overlay_position": "bottom_left",
+  "overlay_width": 0.6,
+  "second_languages": {
+    "ja": "fr",
+    "kk": "en"
+  },
+  "show_language": false,
+  "show_original": false,
+  "show_source": false,
+  "source_colors": {
+    "Sample Player": "#ff6e9c"
+  },
+  "source_names": {
+    "Sample Player": "Cinema"
+  },
+  "spelling_hints": ["Kaito", "Mina"],
+  "spoken_language": "zh",
+  "targets": ["ja", "mn", "en"],
+  "text_scale": 1.3,
+  "theme": "glaze",
+  "translate_live": false,
+  "translation_color": "#ffb347",
+  "whole_system": false,
+  "window_theme": "light",
+  "word_links": "colours"
+}

@@ -11,9 +11,10 @@ import platform
 import time
 from pathlib import Path
 
+from polyglotic_desktop.core.releases.identity import current
 from polyglotic_desktop.platform.macos import cf
 
-APP_FOLDER = "Polyglotic"
+APP_FOLDER = current().data_folder
 """The app ID (ENGINEERING.md, "Releases"), as the Windows folder's."""
 
 _IMPORTED = time.monotonic()

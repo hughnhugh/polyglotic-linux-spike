@@ -1,0 +1,9 @@
+BehaviourPanel	polyglotic_desktop.ui_next.panels	BehaviourPanel
+LanguagesPanel	polyglotic_desktop.ui_next.panels	LanguagesPanel
+LookPanel	polyglotic_desktop.ui_next.panels	LookPanel
+Panel	polyglotic_desktop.ui_next.panels	Panel
+QuietViewPanel	polyglotic_desktop.ui_next.panels	QuietViewPanel
+ReadingLinesPanel	polyglotic_desktop.ui_next.panels	ReadingLinesPanel
+ResetCard	polyglotic_desktop.ui_next.panels	ResetCard
+TimingPanel	polyglotic_desktop.ui_next.panels	TimingPanel
+WordLinksPanel	polyglotic_desktop.ui_next.panels	WordLinksPanel

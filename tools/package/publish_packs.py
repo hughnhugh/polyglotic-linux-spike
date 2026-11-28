@@ -236,9 +236,8 @@ class Upload:
 
 
 def app_keys() -> list[VerifyKey]:
-    """The keys the app checks the list with (`main.FEED_KEYS`): the live
-    list must pass them. Imported when needed: `main` brings in Qt."""
-    from polyglotic_desktop.main import FEED_KEYS
+    """The keys the app checks the live list with, without importing Qt."""
+    from polyglotic_desktop.core.releases.identity import FEED_KEYS
 
     return public_keys(FEED_KEYS)
 

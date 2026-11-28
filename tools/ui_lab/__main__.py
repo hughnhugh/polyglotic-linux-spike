@@ -25,6 +25,8 @@ import os
 import statistics
 import subprocess
 import sys
+import threading
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -35,11 +37,12 @@ from PySide6.QtWidgets import QWidget
 
 from polyglotic_desktop.ui import interface_language
 from polyglotic_desktop.ui_next import languages, style
-from tools import busy_pc, qt_lock, start_record, timing_record
+from tools import busy_pc, ci_lock, qt_lock, start_record, timing_record
 from tools.i18n import __main__ as i18n
 from tools.ui_lab import (
     bar_timing,
     caption_window,
+    crash_offer,
     design,
     first_run,
     goldens,
@@ -77,7 +80,7 @@ def new_states() -> list[lab.State]:
     new += home.STATES + pages.STATES + qt_parts.STATES + first_run.STATES
     new += open_beta.STATES
     new += use_presets.STATES + bar_timing.STATES + learner_captions.STATES
-    new += typing_holds.STATES
+    new += typing_holds.STATES + crash_offer.STATES
     return new + sidebar.STATES + text_sizes.STATES
 
 
@@ -340,8 +343,43 @@ def every_language(out: Path, jobs: int, app_text_size: str) -> int:
     others = [c for c in interface_language.OFFERED if c != interface_language.ENGLISH]
 
     def one(code: str) -> tuple[str, int, list[str]]:
-        with (out / f"{code}.log").open("w", encoding="utf-8") as log:
-            done = subprocess.run(
+        return language_worker(code, out, app_text_size)
+
+    failed = []
+    with ThreadPoolExecutor(max(1, jobs)) as pool:
+        for code, returned, lines in pool.map(one, others):
+            print(f"{code:6s} {'ok' if returned == 0 else 'FAILED'}", flush=True)
+            if returned:
+                failed.append(code)
+                for line in lines:
+                    print(f"  {code}: {line}", file=sys.stderr)
+    return 1 if failed else 0
+
+
+_WORKER_START = threading.Lock()
+"""One language worker at a time checks the memory gate and starts
+(polyglotic-hq 1023): two passing a 2.5 GB gate together would start about
+3 GB of processes at once."""
+
+
+def language_worker(
+    code: str, out: Path, app_text_size: str
+) -> tuple[str, int, list[str]]:
+    """Gate and run one language process. The gate belongs here, inside the
+    pool task, so queued and concurrent workers each recheck memory immediately
+    before their roughly 1.5 GB process starts (polyglotic-hq 1023). The check
+    and the start share one lock, held `ui_lab.worker_settle_s` after the
+    start so the next worker's reading includes this one's memory."""
+    settle = ci_lock.checked_worker_settle_seconds(
+        ci_lock.WORKER_SETTLE_SECONDS.default
+    )
+    with (out / f"{code}.log").open("w", encoding="utf-8") as log:
+        with _WORKER_START:
+            memory = ci_lock.wait_for_worker_memory()
+            print(f"ui_lab worker {code}: {memory.message}", flush=True)
+            if not memory.ok:
+                return code, 1, [memory.message]
+            process = subprocess.Popen(
                 [
                     sys.executable,
                     "-m",
@@ -361,20 +399,11 @@ def every_language(out: Path, jobs: int, app_text_size: str) -> int:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                check=False,
             )
-        failures = [line for line in done.stderr.splitlines() if "check failed" in line]
-        return code, done.returncode, failures or done.stderr.splitlines()[-3:]
-
-    failed = []
-    with ThreadPoolExecutor(max(1, jobs)) as pool:
-        for code, returned, lines in pool.map(one, others):
-            print(f"{code:6s} {'ok' if returned == 0 else 'FAILED'}", flush=True)
-            if returned:
-                failed.append(code)
-                for line in lines:
-                    print(f"  {code}: {line}", file=sys.stderr)
-    return 1 if failed else 0
+            time.sleep(settle)
+        _, stderr = process.communicate()
+    failures = [line for line in stderr.splitlines() if "check failed" in line]
+    return code, process.returncode, failures or stderr.splitlines()[-3:]
 
 
 def see(out: Path) -> int:

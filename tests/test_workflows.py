@@ -292,7 +292,7 @@ def test_the_start_is_timed_alone_and_the_heavy_steps_share_the_pc() -> None:
     ]
     assert len(shared) == 2
     assert all(
-        r.startswith("uv run --no-sync python -m tools.ci_lock shared -- ")
+        r.startswith("uv run --no-sync python -m tools.ci_lock shared ") and " -- " in r
         for r in shared
     )
 
@@ -341,6 +341,42 @@ def test_the_ui_labs_walks_outwait_a_whole_checks_run() -> None:
     ]
     assert len(locked) >= 7  # five walks, the languages, the starts
     assert not [r for r in locked if "--most-minutes" in r]  # the job's, once
+
+
+def test_the_ui_lab_gates_memory_before_each_pass_and_lowers_untimed_priority() -> None:
+    """polyglotic-hq 1023: before the gate's first pass and before each
+    language and text-size pass, CI waits for `ui_lab.min_free_gb` (5 GB,
+    range 2-12) so live and the user's PC keep headroom. The untimed
+    `languages` pass runs at below-normal priority; timed `alone` passes stay
+    at normal priority so normal-priority background work cannot preempt
+    their 4-50 ms wall-clock budgets."""
+    windows = workflow("windows.yml")
+    lab = windows["jobs"]["ui-lab"]
+    checks = windows["jobs"]["checks"]
+
+    floor = ci_lock.checked_min_free_gb(float(lab["env"][ci_lock.MIN_FREE_GB_VARIABLE]))
+    assert floor == ci_lock.MIN_FREE_GB.default
+    assert ci_lock.MIN_FREE_GB_VARIABLE not in (checks.get("env") or {})
+
+    passes = [
+        str(step.get("run", ""))
+        for step in lab["steps"]
+        if "tools.ui_lab" in str(step.get("run", ""))
+    ]
+    assert len(passes) == 6  # first pass, 200%, languages, largest, zh_CN, zh_TW
+    assert all("tools.ci_lock " in run for run in passes)
+    assert not [run for run in passes if "--min-free-gb" in run]
+
+    languages_pass = [run for run in passes if "tools.ui_lab languages" in run]
+    timed_passes = [run for run in passes if "tools.ui_lab languages" not in run]
+    assert len(languages_pass) == 1
+    assert "--below-normal" in languages_pass[0]
+    assert "tools.ui_lab languages" in languages_pass[0]
+    assert "--jobs 2" in languages_pass[0]
+    assert all(
+        "tools.ci_lock alone" in run and "--below-normal" not in run
+        for run in timed_passes
+    )
 
 
 def test_main_is_the_ui_labs_mandatory_timing_measurement() -> None:

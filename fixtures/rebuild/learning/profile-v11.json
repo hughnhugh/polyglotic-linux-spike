@@ -1,0 +1,192 @@
+{
+  "anki_exports": [],
+  "categories": [
+    {
+      "color": "#2f9e8f",
+      "id": "interesting",
+      "name": "Interesting",
+      "position": 0
+    }
+  ],
+  "coverage": [],
+  "curriculum_words": [],
+  "deck_words": [],
+  "exposures": [
+    [
+      "fixture:en:hello",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:en:tea",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:ja:cha",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:ja:konnichiwa",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:vi:tra",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:vi:xinchao",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:zh:cha",
+      2,
+      0,
+      1,
+      null,
+      0,
+      null
+    ],
+    [
+      "fixture:zh:ni",
+      3,
+      1,
+      0,
+      null,
+      0,
+      null
+    ]
+  ],
+  "level": {
+    "midpoint": 1.5,
+    "scheme": "fixture"
+  },
+  "listening": [],
+  "load_words": [],
+  "lookups": [],
+  "saved_words": [
+    {
+      "category_id": "interesting",
+      "entry_id": "fixture:en:tea",
+      "headword": "tea",
+      "meaning": "a drink",
+      "reading": "tee",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found tea in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    {
+      "category_id": "interesting",
+      "entry_id": "fixture:ja:cha",
+      "headword": "茶",
+      "meaning": "tea",
+      "reading": "cha",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found 茶 in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    {
+      "category_id": "interesting",
+      "entry_id": "fixture:vi:tra",
+      "headword": "trà",
+      "meaning": "tea",
+      "reading": "cha",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found trà in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    },
+    {
+      "category_id": "interesting",
+      "entry_id": "fixture:zh:cha",
+      "headword": "茶",
+      "meaning": "tea",
+      "reading": "chá",
+      "saved_at": "2026-11-24T13:30:00Z",
+      "source_sentence": "I found 茶 in the fixture.",
+      "source_translation": "Synthetic translation.",
+      "traditional": ""
+    }
+  ],
+  "set_words": [],
+  "statuses": [
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:en:hello",
+      "source": "learner",
+      "status": "known"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:en:tea",
+      "source": "learner",
+      "status": "learning"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:ja:cha",
+      "source": "learner",
+      "status": "learning"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:ja:konnichiwa",
+      "source": "learner",
+      "status": "known"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:vi:tra",
+      "source": "learner",
+      "status": "learning"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:vi:xinchao",
+      "source": "learner",
+      "status": "known"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:zh:cha",
+      "source": "learner",
+      "status": "learning"
+    },
+    {
+      "at": "2026-11-24T13:30:00Z",
+      "entry_id": "fixture:zh:ni",
+      "source": "learner",
+      "status": "known"
+    }
+  ]
+}

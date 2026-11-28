@@ -89,6 +89,11 @@ def unpack(build: Path, channel: str, out: Path, expected: str | None) -> Path:
     if expected is not None and sha256(build) != expected:
         raise NotTheBuild(f"{build.name}: SHA-256 {sha256(build)}, recorded {expected}")
     built = json.loads(_read(build, STAMP))
+    flavour = built.get("flavour", "release")
+    if flavour != "release":
+        raise NotTheBuild(
+            f"{build.name} has flavour {flavour!r}; only release builds can be promoted"
+        )
     app = out / "app"
     if app.exists():
         shutil.rmtree(app)
@@ -107,7 +112,8 @@ def unpack(build: Path, channel: str, out: Path, expected: str | None) -> Path:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(z.read(info))
     (app / STAMP).write_text(
-        stamp.stamp(built["version"], channel, built.get("built")), encoding="utf-8"
+        stamp.stamp(built["version"], channel, built.get("built"), flavour=flavour),
+        encoding="utf-8",
     )
     from tools.package.build import write_icon  # Qt, only here
 

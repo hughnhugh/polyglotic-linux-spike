@@ -278,3 +278,20 @@ def test_an_out_folder_not_its_own_is_never_emptied(
     ours = tmp_path / "ours"
     assert publish(monkeypatch, ours, built) == 0
     assert publish(monkeypatch, ours, built) == 0  # an earlier run's: emptied, again
+
+
+def test_pack_keys_are_read_without_qt_imports() -> None:
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; from tools.package.publish_packs import app_keys; app_keys(); assert not any(n.startswith('PySide6') for n in sys.modules)",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

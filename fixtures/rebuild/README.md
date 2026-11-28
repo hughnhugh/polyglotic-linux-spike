@@ -2,7 +2,9 @@
 
 These files freeze the protocol-v1 caption view state produced by the current
 Python app. Run `uv run python -m tools.rebuild_fixtures.record` to record them,
-or add `--check` to detect drift without changing files. The utterances are
+or add `--check` to detect drift without changing files. The same command
+records the learning corpus and the learning store's ladder in `learning/`
+(its README says what each file is). The utterances are
 made-up test material derived from the repository's existing recorded captions;
 they contain no user content.
 

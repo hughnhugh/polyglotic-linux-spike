@@ -26,10 +26,11 @@ The token never appears in an error or a log.
 import ctypes
 from typing import Protocol
 
+from polyglotic_desktop.core.releases.identity import current
 from polyglotic_desktop.platform.macos import cf
 from polyglotic_desktop.ports.credentials import DeviceCredentials
 
-SERVICE = "Polyglotic/device"
+SERVICE = current().credential
 
 _NOT_FOUND = -25300  # errSecItemNotFound
 

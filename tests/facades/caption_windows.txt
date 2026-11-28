@@ -1,0 +1,7 @@
+CaptionWindows	polyglotic_desktop.ui_next.caption_windows	CaptionWindows
+DIALOG_CHECK_MS	polyglotic_desktop.ui_next.caption_windows	DIALOG_CHECK_MS
+ON_TOP_EVERY_SEC	polyglotic_desktop.ui_next.caption_windows	ON_TOP_EVERY_SEC
+SUBTITLES_SAID_SEC	polyglotic_desktop.ui_next.caption_windows	SUBTITLES_SAID_SEC
+SteadyLanguage	polyglotic_desktop.core.listening.spoken	SteadyLanguage
+subtitle_text_size	polyglotic_desktop.ui_next.caption_windows	subtitle_text_size
+undo_line	polyglotic_desktop.ui_next.caption_windows	undo_line

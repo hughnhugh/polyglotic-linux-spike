@@ -1,0 +1,15 @@
+{
+  "applications_offered": true,
+  "apps": ["Sample Player"],
+  "link_words_coloured": false,
+  "mandarin_script": "traditional",
+  "mic_device": "sample-mic-1",
+  "reading_colour": "custom",
+  "reading_custom_color": "#ff99cc",
+  "reading_lines": [],
+  "reading_past": true,
+  "reading_size": "medium",
+  "reading_system": "zhuyin",
+  "speaker_device": "sample-speaker-1",
+  "whole_system": false
+}

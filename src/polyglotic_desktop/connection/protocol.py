@@ -31,7 +31,7 @@ from pydantic import (
     ValidationError,
 )
 
-PROTOCOL = 1
+from polyglotic_desktop.core.releases.identity import PROTOCOL
 
 Channel = Literal[
     "win-x64-alpha",

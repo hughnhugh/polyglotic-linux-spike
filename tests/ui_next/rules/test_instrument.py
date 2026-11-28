@@ -4,6 +4,7 @@ fails on each of its planted faults (polyglotic-hq 982; PLAN.md display-0)."""
 
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -77,6 +78,37 @@ def test_frames_keep_no_text_and_round_trip(qapp: QApplication) -> None:
     kept = frames.to_json(busiest)
     assert frames.from_json(kept) == busiest
     assert kept.isascii() and "boat" not in kept
+
+
+def test_reading_ink_changes_nothing_else_the_replay_sees(qapp: QApplication) -> None:
+    """Photographing each repainted frame (996) paints it once more; the
+    rows and characters read are the same as without it, frame by frame."""
+    stream, setup = streams.load("rules/linked-words"), drive.Setup.named("panel+links")
+    plain = list(drive.play(stream, setup))
+    inked = list(drive.play(stream, setup, ink=True))
+    assert any(row.colours for frame in inked for row in frame.rows)
+    bare = [
+        replace(
+            f, rows=tuple(replace(r, paper=-1, colours=(), bars=()) for r in f.rows)
+        )
+        for f in inked
+    ]
+    assert [frames.body(f) for f in bare] == [frames.body(f) for f in plain]
+
+
+def test_ink_is_kept_and_round_trips(qapp: QApplication) -> None:
+    played = list(
+        drive.play(
+            streams.load("rules/linked-words"),
+            drive.Setup.named("panel+links"),
+            ink=True,
+        )
+    )
+    busiest = max(played, key=lambda frame: sum(len(r.bars) for r in frame.rows))
+    assert any(row.bars for row in busiest.rows), "no word link's underline was read"
+    kept = frames.to_json(busiest)
+    assert frames.from_json(kept) == busiest
+    assert "chat" not in kept
 
 
 def test_every_stream_plays_and_the_two_formats_meet() -> None:
@@ -196,16 +228,62 @@ def test_a_stale_rulebook_fails(book: tuple[Path, Path]) -> None:
     )
 
 
+FIRST_FIVE = {
+    "movement.words-never-fall": "keep",
+    "wrapping.every-row-is-a-single-line": "keep",
+    "movement.no-sideways-slide": "keep",
+    "movement.the-approved-glide": "keep",
+    "movement.a-new-row-waits-then-fades-in": "change",
+}
+"""display-0's five rules and the founder's marks on them (2026-11-27)."""
+
+
+def test_the_founders_marks_on_the_first_five_are_recorded() -> None:
+    """His words, 2026-11-27: "Yes sounds good with display rules" - each
+    recommendation taken. A change is recorded with the new statement it
+    agreed to, and the check holds that statement from then on."""
+    rules = {rule.id: rule for rule in rulebook.load()}
+    for rule_id, mark in FIRST_FIVE.items():
+        rule = rules[rule_id]
+        assert (rule.mark, rule.marked_on) == (mark, "2026-11-27")
+        assert rule.his_words == "Yes sounds good with display rules"
+        assert rule.marked_statement == rule.statement_digest()
+    waits = rules["movement.a-new-row-waits-then-fades-in"]
+    assert waits.statement.startswith("Every new row")  # the change: every row
+    marked = FIRST_FIVE.keys() | INK_SIX.keys()
+    unmarked = [r.id for r in rules.values() if r.mark and r.id not in marked]
+    assert unmarked == []  # no other rule is marked yet
+
+
+INK_SIX = {
+    "ink.own-colours": "keep",
+    "ink.fainter-while-spoken": "keep",
+    "ink.older-captions-step-back": "change",
+    "ink.a-link-is-one-colour": "keep",
+    "ink.links-clear-of-the-text": "keep",
+    "ink.no-links-while-spoken": "keep",
+}
+"""display-0b's ink family and Claude's marks on it (2026-11-28)."""
+
+
+def test_claudes_marks_on_the_ink_family_are_recorded() -> None:
+    """Marked by Claude under the founder's hand-off (2026-11-28 15:48): five
+    kept; the step back changed (visible on every theme, and light). Until the
+    later display unit makes that change, the statement marked is today's."""
+    rules = {rule.id: rule for rule in rulebook.load()}
+    for rule_id, mark in INK_SIX.items():
+        rule = rules[rule_id]
+        assert (rule.mark, rule.marked_on) == (mark, "2026-11-28")
+        assert rule.his_words == (
+            "marked by Claude under the founder's hand-off (2026-11-28 15:48)"
+        )
+        assert rule.marked_statement == rule.statement_digest()
+
+
 def test_a_marked_rule_whose_statement_changed_fails(book: tuple[Path, Path]) -> None:
     rules, written = book
     rule = next(r for r in rulebook.load(rules) if r.id == "movement.no-sideways-slide")
-    _edit(
-        rules / "rules.toml",
-        'title = "No sideways slide"\n',
-        'title = "No sideways slide"\nmark = "keep"\nmarked_on = "2026-11-27"\n'
-        f'marked_statement = "{rule.statement_digest()}"\n',
-    )
-    (written / "RULEBOOK.md").write_text(rulebook.render(rulebook.load(rules)), "utf-8")
+    assert rule.mark == "keep"
     assert list(rulebook.problems(rules, written)) == []  # marked, and unchanged
     _edit(rules / "rules.toml", "Text never slides in from the side.", "Text slides.")
     (written / "RULEBOOK.md").write_text(rulebook.render(rulebook.load(rules)), "utf-8")

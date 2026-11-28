@@ -264,6 +264,37 @@ def test_real_addresses_and_a_server_that_takes_this_app() -> None:
     ]
 
 
+def test_the_addresses_are_read_at_0_1_12_and_in_the_build_identity() -> None:
+    """0.1.12 kept the addresses, keys and protocol in main.py and
+    protocol.py; from 1045 they're literals in `core/releases/identity.py`,
+    and main.py and protocol.py only read them. Both say the same."""
+    from polyglotic_desktop.core.releases import identity
+
+    new_layout = {
+        f"{SHA}:{release_check.APP_IDENTITY}": Path(identity.__file__).read_text(
+            encoding="utf-8"
+        ),
+        f"{SHA}:{release_check.APP_MAIN}": "SERVER = _BUILD_IDENTITY.server\n",
+        f"{SHA}:{release_check.APP_PROTOCOL}": (
+            "from polyglotic_desktop.core.releases.identity import PROTOCOL\n"
+        ),
+    }
+    old_main = (
+        'SERVER = "https://api.polyglotic.io"\n'
+        'UPDATES = "https://updates.polyglotic.io/"\n'
+        f"FEED_KEYS: tuple[str, ...] = {identity.FEED_KEYS!r}\n"
+    )
+    said = [
+        release_check.what_the_app_needs(
+            SHA, "0.1.12", fake_git(files), fake_git(server_files())
+        )
+        for files in (app_files(old_main), new_layout)
+    ]
+    assert all(item.passed for item in said), [item.evidence for item in said]
+    assert said[0].evidence == said[1].evidence
+    assert "main.FEED_KEYS: 1 key(s)" in said[1].evidence
+
+
 @pytest.mark.parametrize(
     ("main", "protocol", "minimum", "says"),
     [

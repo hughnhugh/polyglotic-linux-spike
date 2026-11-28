@@ -3,11 +3,12 @@
 set -euo pipefail
 [[ "$(uname -s)" == Darwin && "${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" == github-hosted ]]
 out="out/${1:?evidence folder name}"
+export POLYGLOTIC_BUILD_FLAVOUR=preview # its own identity throughout (polyglotic-hq 1045)
 mkdir -p "$out"
 uv run --no-sync python -m tools.package.macos_preview_qa "$out"
 uv run --no-sync python -m tools.dictionaries.build
 uv sync --locked --no-default-groups --group package
-uv run --no-sync python -m tools.package.build v0.1.10 --channel macos-arm64-alpha
+uv run --no-sync python -m tools.package.build v0.1.10 --channel macos-arm64-alpha --flavour preview
 cp build/package/{summary,check-install}.json "$out/"
 app="dist/Polyglotic Preview.app"
 mv dist/Polyglotic.app "$app"

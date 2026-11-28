@@ -10,6 +10,7 @@ import contextlib
 import gc
 import itertools
 import json
+import threading
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -30,7 +31,7 @@ from polyglotic_desktop.ui_next import caption_windows as caption_windows_module
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.views.caption_window import StoredWindows
 from polyglotic_desktop.ui_next.words_page import WordsPage
-from tools import busy_pc, start_record, timing_record
+from tools import busy_pc, ci_lock, start_record, timing_record
 
 
 @pytest.fixture(autouse=True)
@@ -665,6 +666,144 @@ def test_the_lab_command_runs_holding_the_shared_qt_lock(
     monkeypatch.setattr(cli.qt_lock, "held", waited_too_long)
     assert cli.locked(["--gate"]) == 2
     assert "gave up after 45 min" in capsys.readouterr().err
+
+
+class _Worker:
+    """A started language process, made up: finished, nothing failed."""
+
+    returncode = 0
+
+    def communicate(self) -> tuple[str, str]:
+        return "", ""
+
+
+def test_language_worker_waits_logs_then_starts_at_memory_floor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Regression for 1023's 0.35 GB incident: the process cannot start on
+    a low reading; each wait is visible, and it starts at the 2.5 GB floor."""
+    readings = iter((1.8, 2.2, 2.5))
+    now = [0.0]
+    started_at: list[float] = []
+
+    def sleep(seconds: float) -> None:
+        now[0] += seconds
+
+    def start(command: list[str], **_kwargs: object) -> _Worker:
+        started_at.append(now[0])
+        return _Worker()
+
+    monkeypatch.setattr(ci_lock, "free_gb", lambda: next(readings))
+    monkeypatch.setattr(ci_lock.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(ci_lock.time, "sleep", sleep)
+    monkeypatch.setattr(cli.subprocess, "Popen", start)
+
+    assert cli.language_worker("es", tmp_path, "normal") == ("es", 0, [])
+    assert started_at == [30.0]
+    said = capsys.readouterr().out
+    assert said.count("ci_lock: waiting for memory") == 2
+    assert "1.80 GB free < 2.5 GB; wait 1" in said
+    assert "memory ok after 2 wait(s)" in said
+
+
+def test_language_worker_times_out_without_starting(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Every worker enforces the full 30-minute gate and plainly fails
+    instead of starting a process while memory remains below its floor."""
+    now = [0.0]
+    monkeypatch.setattr(ci_lock, "free_gb", lambda: 2.49)
+    monkeypatch.setattr(ci_lock.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(
+        ci_lock.time, "sleep", lambda seconds: now.__setitem__(0, now[0] + seconds)
+    )
+    monkeypatch.setattr(
+        cli.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: pytest.fail("worker started without memory"),
+    )
+
+    code, returned, lines = cli.language_worker("de", tmp_path, "normal")
+    message = "this PC stayed under 2.5 GB free; the UI lab waits for live"
+    assert (code, returned) == ("de", 1)
+    assert message in lines[0]
+    assert message in capsys.readouterr().out
+    assert now[0] == 30 * 60
+
+
+def test_two_workers_asking_at_once_start_one_at_a_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """1023: two workers that both read 2.6 GB free would both pass the
+    2.5 GB gate and start about 3 GB at once. One lock covers the check and
+    the start, and is held while the started worker settles, so the second
+    reads 1.1 GB (2.6 less the first worker's 1.5) and waits; it never
+    starts while memory stays down. The barrier lets both readings happen
+    before either start when nothing serialises them, which fails here."""
+    started: list[str] = []
+    now = [0.0]
+    clock = threading.Lock()
+    both_read = threading.Barrier(2, timeout=0.5)
+    settles: list[float] = []
+
+    def free() -> float:
+        with contextlib.suppress(threading.BrokenBarrierError):
+            both_read.wait()
+        return 2.6 - 1.5 * len(started)
+
+    def sleep(seconds: float) -> None:
+        with clock:
+            now[0] += seconds
+        if seconds == ci_lock.WORKER_SETTLE_SECONDS.default:
+            settles.append(seconds)
+
+    def start(command: list[str], **_kwargs: object) -> _Worker:
+        started.append(command[command.index("--language") + 1])
+        return _Worker()
+
+    monkeypatch.setattr(ci_lock, "free_gb", free)
+    monkeypatch.setattr(ci_lock.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(ci_lock.time, "sleep", sleep)
+    monkeypatch.setattr(cli.subprocess, "Popen", start)
+
+    results: dict[str, tuple[str, int, list[str]]] = {}
+
+    def ask(code: str) -> None:
+        results[code] = cli.language_worker(code, tmp_path, "normal")
+
+    workers = [threading.Thread(target=ask, args=(code,)) for code in ("es", "de")]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=30)
+
+    assert len(started) == 1
+    (first,) = started
+    (second,) = {"es", "de"} - {first}
+    assert results[first] == (first, 0, [])
+    assert results[second][1] == 1
+    assert "this PC stayed under 2.5 GB free" in results[second][2][0]
+    assert settles == [20.0]
+
+
+def test_worker_settle_tunable_has_metadata_and_range_check() -> None:
+    tunable = ci_lock.WORKER_SETTLE_SECONDS
+    assert (tunable.name, tunable.default, tunable.unit, tunable.bounds) == (
+        "ui_lab.worker_settle_s",
+        20.0,
+        "s",
+        (5.0, 60.0),
+    )
+    assert tunable.source
+    for valid in (5, 20, 60):
+        assert ci_lock.checked_worker_settle_seconds(valid) == float(valid)
+    for invalid in (4.99, 60.01):
+        with pytest.raises(ValueError):
+            ci_lock.checked_worker_settle_seconds(invalid)
 
 
 def test_timing_states_show_the_default_and_explicit_live_update_intervals(
