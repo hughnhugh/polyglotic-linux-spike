@@ -12,14 +12,13 @@ Not timed: Qt's own, and nothing of the interface's runs in them."""
 from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import (
     QAbstractButton,
-    QApplication,
     QHBoxLayout,
     QLabel,
     QSystemTrayIcon,
-    QToolTip,
     QWidget,
 )
 
+from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.main import problem_report_parts
 from polyglotic_desktop.ui.app import DesktopApp
 from polyglotic_desktop.ui.feedback import FeedbackDialog
@@ -27,6 +26,7 @@ from polyglotic_desktop.ui.icons import TRAY_SIZES, tray_icon
 from polyglotic_desktop.ui.problem_report import Part, ProblemReportDialog
 from polyglotic_desktop.ui.sign_in import sign_out_question
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.strip_tips import tooltip_of
 from tools.ui_lab import caption_window
 from tools.ui_lab.home import MadeUpApps, Memory
 from tools.ui_lab.lab import Lab, State
@@ -68,54 +68,43 @@ def tray_needs_source(lab: Lab) -> QWidget:
 
 
 def caption_tooltip(lab: Lab) -> QWidget:
-    """A caption window's button's tooltip (Qt's: a window of its own, in
-    Qt's tooltip font - the caption window has no stylesheet)."""
+    """A caption window's strip button's help: the strip's own label, in the
+    one help style (1013; a caption window is never active, so Qt never
+    shows a tooltip there)."""
     shown = caption_window.window(lab, captions=3)
     caption_window.hovered(lab, shown)
     button = next(
-        b for b in shown.findChildren(QAbstractButton) if b.toolTip() and b.isVisible()
+        b
+        for b in shown.findChildren(QAbstractButton)
+        if b.isVisible() and tooltip_of(b) and b in shown.tips.texts
     )
-    QToolTip.showText(
-        button.mapToGlobal(QPoint(0, button.height())), button.toolTip(), button
-    )
+    shown.tips.over = button
+    shown.tips._show()
     lab.pump()
-    lab.closing.append(QToolTip.hideText)
+    lab.closing.append(shown.tips.hide)
     lab.closing.append(shown.close)
-    return next(
-        w
-        for w in QApplication.topLevelWidgets()
-        if w.metaObject().className() == "QTipLabel" and w.isVisible()
-    )
+    return shown.tips.label
 
 
 def timing_tooltip(lab: Lab) -> QWidget:
-    """A caption timing's tooltip in the bar's timing dropdown (593; the
-    window's settings had them before): what Whole captions does (F22,
-    249)."""
+    """What Whole captions does, in the box beside the bar's open timing
+    dropdown (F22, 249; 1013: a short name in the row, never cut off, and
+    the whole explanation beside it)."""
     shown = caption_window.window(lab, captions=3)
     caption_window.hovered(lab, shown)
     shown.toggle_timings()
     popover = shown.timings
     assert popover is not None
-    button = next(
-        b
-        for b in popover.findChildren(QAbstractButton)
-        if b.objectName() == "timings.timing.steady"
-    )
-    lab.pump()  # the popover's own events first: one of them hides a tooltip
-    # at the screen's corner: the lab's work area is bigger than its screen,
-    # and Qt shows no tooltip off every screen
-    # Production sets the tooltip font when it sizes the tray. An isolated
-    # timing photograph also needs that font, regardless of the preceding state.
-    QToolTip.setFont(style.at_app_text_size(QApplication.font()))
-    QToolTip.showText(QPoint(10, 10), button.toolTip())
-    lab.closing.append(QToolTip.hideText)
+    lab.pump()
+    rows = {b.objectName(): b for b in popover.findChildren(QAbstractButton)}
+    row = rows[f"timings.timing.{CaptionMode.WHOLE.value}"]  # stored as "steady"
+    held = row.property("described")
+    held.show()
+    lab.pump()
+    box = popover.findChild(QLabel, "MenuDescription")
+    assert box is not None and box.isVisible(), "the description beside the dropdown"
     lab.closing.append(shown.close)
-    return next(
-        w
-        for w in QApplication.topLevelWidgets()
-        if w.metaObject().className() == "QTipLabel" and w.isVisible()
-    )
+    return box
 
 
 def dialog(lab: Lab) -> QWidget:

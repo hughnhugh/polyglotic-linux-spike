@@ -146,7 +146,6 @@ class HotkeyLine(QWidget):
         self.clear = QPushButton(_tr("Clear"))
         self.clear.setObjectName(f"hotkeys.{name}.clear")
         self.clear.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.clear.setToolTip(_tr("No key: the hotkey does nothing"))
         self.clear.setAccessibleName(_tr("Clear {name}'s key").format(name=title))
         grid.addWidget(self.clear, 0, 2)
         self.scope = Segmented(
@@ -257,7 +256,6 @@ class HotkeysCard(Card):
         self.reset = QPushButton(_tr("Reset all"))
         self.reset.setObjectName("hotkeys.reset")
         self.reset.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.reset.setToolTip(_tr("Every hotkey back to its own key"))
         self.reset.clicked.connect(self._reset)
         self.add(right_row(self.reset))
         self._keys: dict[str, DictationKey | None] = {}

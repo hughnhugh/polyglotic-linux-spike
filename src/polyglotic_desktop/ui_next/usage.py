@@ -23,6 +23,7 @@ from polyglotic_desktop.core.shared.open_beta import (
 )
 from polyglotic_desktop.core.shared.tunables import tunable
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.controls import set_help_tip
 from polyglotic_desktop.ui_next.maintenance import clock_time, pc_zone
 
 RING_STROKE = tunable(
@@ -160,7 +161,7 @@ class UsageRing(QWidget):
             return
         self.meter = meter
         text = meter_text(meter) if meter is not None else ""
-        self.setToolTip(text)
+        set_help_tip(self, text)
         self.setAccessibleName(_tr("Listening allowance"))
         self.setAccessibleDescription(text)
         self.setVisible(meter is not None)

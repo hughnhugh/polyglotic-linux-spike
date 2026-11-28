@@ -20,6 +20,7 @@ from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next.caption_set_up import MARGIN, beside_if_short, placed_in
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow, chip_text
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.settings_popover import LANGUAGE_ROWS
 from polyglotic_desktop.ui_next.views.caption_window import (
     STORED_KEY,
@@ -423,5 +424,5 @@ def test_the_set_up_and_the_chip_are_no_part_of_a_window_of_before(
         SourceLabel("Discord", "#4dd0e1"), mic=MIC, areas=areas,
     )  # fmt: skip
     assert window.set_up is None
-    assert window.chip.toolTip() == "Languages: Detect → French"
+    assert help_text(window.chip) == "Languages: Detect → French"
     window.close()

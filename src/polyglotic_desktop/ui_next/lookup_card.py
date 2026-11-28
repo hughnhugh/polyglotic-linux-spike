@@ -908,7 +908,8 @@ class LookupCard(QWidget):
             if any(" · Machine-made" in sense.gloss for sense in senses)
             else ""
         )
-        self.setToolTip(machine_explanation)
+        # no hover on the whole card (1013): "Machine-made" says it where it
+        # shows, and a screen reader hears the explanation (below)
         if any(sense.classes for sense in senses):
             description = "\n".join(
                 line for line in (*map(_sense_text, senses), description) if line

@@ -23,7 +23,13 @@ from polyglotic_desktop.core.releases import flags
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.caption_layout import LINK_PX
 from polyglotic_desktop.ui_next.caption_preview import CaptionPreview
-from polyglotic_desktop.ui_next.controls import INSET, Row, Segmented, SwitchRow, label
+from polyglotic_desktop.ui_next.controls import (
+    INSET,
+    Row,
+    Segmented,
+    SwitchRow,
+    label,
+)
 from polyglotic_desktop.ui_next.panels import Panel
 from polyglotic_desktop.ui_next.views.lab import (
     ARRIVAL_GAP_RANGE,
@@ -372,7 +378,6 @@ class LabPanel(Panel):
 
         self.reset = QPushButton(_tr("Reset the Lab"))
         self.reset.setObjectName("lab.reset")
-        self.reset.setToolTip(_tr("Every Lab setting back to its default."))
         self.reset.clicked.connect(view.reset_lab)
         reset = QHBoxLayout()
         reset.setContentsMargins(INSET - 1, 0, 0, 0)
@@ -438,13 +443,6 @@ class LabPanel(Panel):
             ]
         )
         self.fill.setObjectName("lab.fill")
-        self.fill.setToolTip(
-            _tr(
-                "Line by line: a line of what was said, then the line of its "
-                "translation, both cut where their words match. A long clause that "
-                "can't be cut wraps."
-            )
-        )
         self.fill.changed.connect(lambda v: self._set(fill=Fill(v)))
         self.fill_row = Row(
             _tr("Fill the width"),
@@ -455,6 +453,11 @@ class LabPanel(Panel):
                 "this is on."
             ),
             _left(self.fill),
+            tip=_tr(
+                "Line by line: a line of what was said, then the line of its "
+                "translation, both cut where their words match. A long clause that "
+                "can't be cut wraps."
+            ),
         )
         self.add(self.fill_row)
         self.join = Segmented(

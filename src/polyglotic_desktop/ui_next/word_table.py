@@ -61,7 +61,7 @@ from PySide6.QtWidgets import (
 from polyglotic_desktop.core.learning.saved_words import Category
 from polyglotic_desktop.core.shared import EntryId, WordStatus
 from polyglotic_desktop.ui_next import fonts, style
-from polyglotic_desktop.ui_next.controls import wrapped
+from polyglotic_desktop.ui_next.controls import HELP_ROLE, item_help, wrapped
 from polyglotic_desktop.ui_next.views.words import WordRows, WordText
 
 ROW = 46
@@ -186,7 +186,7 @@ class WordModel(QAbstractTableModel):
             Qt.ItemDataRole.AccessibleTextRole,
         ):
             return self.shown(index)
-        if role == Qt.ItemDataRole.ToolTipRole:
+        if role == HELP_ROLE:  # in the one help style, never Qt's strip (1013)
             return self.tip(index)
         return None
 
@@ -460,6 +460,7 @@ class WordTable(QTableView):
         self.chinese = chinese
         self.words = WordModel(columns, rows)
         self.setModel(self.words)
+        item_help(self)  # a cell's help beside it: what a click does (1013)
         self.setItemDelegate(WordDelegate(self))
         self.horizontalHeader().hide()
         self.verticalHeader().hide()

@@ -23,6 +23,7 @@ from polyglotic_desktop.ui.app import TIP_MAX, DesktopApp, _units
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow, StripLabels
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.maintenance import clock_time
 from polyglotic_desktop.ui_next.usage import meter_text, tray_line
 from polyglotic_desktop.ui_next.views.placement import Rect
@@ -91,13 +92,13 @@ def test_the_bar_has_a_ring_only_while_the_plan_is_capped(
     least = window.strip_least()
     window.set_usage(FREE)
     assert not ring.isHidden()
-    assert ring.toolTip() == meter_text(FREE)
-    assert ring.accessibleDescription() == ring.toolTip()  # a screen reader's
+    assert help_text(ring) == meter_text(FREE)
+    assert ring.accessibleDescription() == help_text(ring)  # a screen reader's
     assert ring.accessibleName() == "Listening allowance"
     assert ring in window.tips.texts  # said on hover: the window is never active
     assert window.strip_least() > least  # the window can't shrink over it
     window.set_usage(UsageMeter("beta_free", 61, MIDNIGHT))
-    assert "61%" in ring.toolTip()
+    assert "61%" in help_text(ring)
     window.set_usage(None)  # upgraded to an unlimited plan
     assert ring.isHidden() and window.strip_least() == least
 

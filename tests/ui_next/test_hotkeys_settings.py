@@ -629,11 +629,11 @@ def test_back_to_live_from_anywhere_and_its_tip_names_the_key(
     window; the pill's tip names it as it is now."""
     desktop, windows = wired
     (window,) = windows.windows.values()
-    assert window.pill.toolTip() == live_tip("Space")
+    assert window.pill.accessibleDescription() == live_tip("Space")
     desktop.set_hotkeys(hotkey_keys({"live": "f9"}))
-    assert window.pill.toolTip() == "Back to the newest captions (F9)"
+    assert window.pill.accessibleDescription() == "Back to the newest captions (F9)"
     desktop.set_hotkeys(hotkey_keys({"live": ""}))
-    assert window.pill.toolTip() == "Back to the newest captions"
+    assert window.pill.accessibleDescription() == "Back to the newest captions"
     window.view.scroll.anchor = Anchor(1, 0.0)  # scrolled back, reading
     assert not window.view.scroll.following
     desktop.go_live.trigger()
@@ -667,7 +667,10 @@ def test_a_window_opened_later_has_back_to_live_s_key_too(qapp: QApplication) ->
     window = window_of(qapp)
     try:
         window.set_live_keys("Ctrl+Alt+J")
-        assert window.pill.toolTip() == "Back to the newest captions (Ctrl+Alt+J)"
+        assert (
+            window.pill.accessibleDescription()
+            == "Back to the newest captions (Ctrl+Alt+J)"
+        )
     finally:
         window.close()
 

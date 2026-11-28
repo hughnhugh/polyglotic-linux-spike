@@ -927,26 +927,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Word by word at the speaker&apos;s pace, a moment behind</source>
-        <translation>Kata demi kata sesuai tempo pembicara, sedikit tertinggal</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Only words the speech model is sure of: later, but they stay put</source>
-        <translation>Hanya kata yang diyakini model pengenal ucapan. Muncul lebih lambat dan tetap di tempatnya</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Each sentence once, finished: nothing moves as you read</source>
-        <translation>Setiap kalimat sekali, sudah jadi: tidak ada yang bergerak saat kamu membaca</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Words as they&apos;re said: the quickest, but they change</source>
-        <translation>Kata-kata saat diucapkan: tercepat, tetapi berubah</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
         <source>Translation a moment later</source>
         <translation>Terjemahan menyusul</translation>
     </message>
@@ -1458,6 +1438,19 @@
         <location filename="../src/polyglotic_desktop/ui/consent.py"/>
         <source>To caption what you hear, Polyglotic sends the speech it detects to our server. Audio and captions are used only to caption it for you - never stored. To run the service we keep your account, the minutes you listen, connection details (app version, the country you connect from, the kind of app you listen to - never its name) and your learning data: the dictionary words you look up, save or mark, and when - never the sentence around them. Your saved words and word statuses follow you to another computer; your lookups show us how people learn and what the dictionaries miss. You can delete your learning data any time. These aren&apos;t optional: without them there&apos;s no service.</source>
         <translation>Untuk memberi subtitle pada yang kamu dengar, Polyglotic mengirim ucapan yang dideteksinya ke server kami. Audio dan subtitle hanya dipakai untuk membuat subtitle untukmu - tidak pernah disimpan. Untuk menjalankan layanan kami menyimpan akunmu, menit yang kamu dengarkan, detail koneksi (versi aplikasi, negara asal koneksi, jenis aplikasi yang kamu dengarkan - tidak pernah namanya) dan data belajarmu: kata kamus yang kamu cari, simpan, atau tandai, dan kapan - tidak pernah kalimat di sekitarnya. Kata yang kamu simpan dan statusnya ikut ke komputer lain; pencarianmu menunjukkan cara orang belajar dan apa yang kurang di kamus. Kamu bisa menghapus data belajarmu kapan saja. Data ini tidak opsional: tanpanya tidak ada layanan.</translation>
+    </message>
+</context>
+<context>
+    <name>Controls</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>About {subject}</source>
+        <translation type="unfinished">Tentang {subject}</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>More information</source>
+        <translation type="unfinished">Info selengkapnya</translation>
     </message>
 </context>
 <context>
@@ -3824,11 +3817,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
-        <source>Rename</source>
-        <translation>Ganti nama</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Translate into</source>
         <translation>Terjemahkan ke</translation>
     </message>
@@ -4477,11 +4465,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>No key: the hotkey does nothing</source>
-        <translation>Tanpa tombol: pintasan tidak melakukan apa-apa</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Clear {name}&apos;s key</source>
         <translation>Hapus tombol {name}</translation>
     </message>
@@ -4514,11 +4497,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Reset all</source>
         <translation>Atur ulang semua</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>Every hotkey back to its own key</source>
-        <translation>Setiap pintasan kembali ke tombolnya sendiri</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
@@ -5100,11 +5078,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Every Lab setting back to its default.</source>
-        <translation>Kembalikan semua pengaturan Lab ke nilai awal.</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Your speech on the right</source>
         <translation>Suaramu di kanan</translation>
     </message>
@@ -5170,11 +5143,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
-        <translation>Tiap baris ucapan langsung diikuti terjemahannya. Keduanya dipotong di tempat kata-katanya berpadanan. Klausa panjang yang tak bisa dipotong akan berlanjut ke baris berikutnya.</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Fill the width</source>
         <translation>Penuhi lebar</translation>
     </message>
@@ -5182,6 +5150,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Off: each clause on a row of its own (the default). Translation below: a caption&apos;s clauses run on in lines as wide as the window, and its translation fills the lines under them. No Arrows while this is on.</source>
         <translation>Mati: tiap klausa punya baris sendiri (default). Terjemahan di bawah: klausa disambung hingga memenuhi lebar jendela, dengan terjemahan pada baris di bawahnya. Panah tidak tampil saat opsi ini aktif.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
+        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
+        <translation>Tiap baris ucapan langsung diikuti terjemahannya. Keduanya dipotong di tempat kata-katanya berpadanan. Klausa panjang yang tak bisa dipotong akan berlanjut ke baris berikutnya.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
@@ -5711,6 +5684,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
+        <source>Recordings</source>
+        <translation type="unfinished">Rekaman</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
         <source>Your level</source>
         <translation>Levelmu</translation>
     </message>
@@ -6192,6 +6170,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Download progress</source>
         <translation>Kemajuan unduhan</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>Credits</source>
+        <translation type="unfinished">Kredit</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
@@ -7179,14 +7162,6 @@
         <location filename="../src/polyglotic_desktop/ui/open_beta.py"/>
         <source>Enter the six-digit code from your email.</source>
         <translation>Masukkan kode enam digit dari emailmu.</translation>
-    </message>
-</context>
-<context>
-    <name>Pages</name>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui/widgets.py"/>
-        <source>Opens in your browser</source>
-        <translation>Terbuka di browser</translation>
     </message>
 </context>
 <context>
@@ -8359,11 +8334,6 @@
         <translation>Sesuaikan prasetel…</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
-        <source>Edit, rename, reset or add presets in Settings</source>
-        <translation>Edit, ganti nama, atur ulang, atau tambah prasetel di Pengaturan</translation>
-    </message>
-    <message>
         <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
         <source>Preset: {name} · {not_saved}</source>
         <translation>Prasetel: {name} · {not_saved}</translation>
@@ -9106,11 +9076,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Match translation size to caption size</source>
         <translation>Samakan ukuran terjemahan dengan ukuran subtitle</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>Set the translation size equal to the caption size</source>
-        <translation>Atur ukuran terjemahan sama dengan ukuran subtitle</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>

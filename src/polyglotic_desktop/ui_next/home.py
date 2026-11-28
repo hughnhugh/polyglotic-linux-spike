@@ -104,12 +104,14 @@ from polyglotic_desktop.ui_next.controls import (
     Card,
     Flow,
     GlyphButton,
+    InfoIcon,
     StatusDot,
     SwitchRow,
     WrapButton,
     WrapRadioButton,
     label,
     page_button,
+    set_help_tip,
     swatch,
 )
 from polyglotic_desktop.ui_next.glyphs import Glyph, paint
@@ -361,24 +363,20 @@ class Page(QScrollArea):
         self._column.setMaximumWidth(style.px(self._width))
 
 
-def _button(text: str, kind: str | None = None, tip: str = "") -> QPushButton:
+def _button(text: str, kind: str | None = None) -> QPushButton:
     button = QPushButton(text)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
     if kind:
         button.setProperty("kind", kind)
-    if tip:
-        button.setToolTip(tip)
     return button
 
 
-def _wrap_button(text: str, kind: str | None = None, tip: str = "") -> WrapButton:
+def _wrap_button(text: str, kind: str | None = None) -> WrapButton:
     """A standard Home button whose translated label may take two lines."""
     button = WrapButton(text)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
     if kind:
         button.setProperty("kind", kind)
-    if tip:
-        button.setToolTip(tip)
     return button
 
 
@@ -446,9 +444,6 @@ class StateCard(Card):
             "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
             "home.system_audio_settings",
         )
-        self.capture_settings.setToolTip(
-            QApplication.translate("Settings", "Open System Settings")
-        )
         self.add(self.capture_problem)
         self.add(self.capture_settings)
         self.capture_problem.hide()
@@ -495,6 +490,7 @@ class StateCard(Card):
         row.add_layout(words, 1)
         self.pause = QToolButton()
         self.pause.setDefaultAction(pause)
+        set_help_tip(self.pause, "")  # its words say it: no native strip (1013)
         self.pause.setProperty("kind", "primary")
         self.pause.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pause.setMinimumWidth(style.px(110))
@@ -1043,7 +1039,7 @@ class AppRowWidget(QFrame):
 
         self.colour = QToolButton()
         self.colour.setObjectName(f"picker.colour.{index}")
-        self.colour.setToolTip(_tr("Colour"))
+        set_help_tip(self.colour, _tr("Colour"))  # a swatch's name (1013)
         self.colour.setProperty("kind", "ghost")
         self.colour.setProperty("chip", True)
         self.colour.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -1062,7 +1058,6 @@ class AppRowWidget(QFrame):
         self.name = WrapButton()
         self.name.setCursor(Qt.CursorShape.PointingHandCursor)
         self.name.setProperty("kind", "name")
-        self.name.setToolTip(_tr("Rename"))
         self.name.setObjectName(f"picker.name.{index}")
         self.name.clicked.connect(self._rename)
         name_size = QSizePolicy(
@@ -1094,7 +1089,7 @@ class AppRowWidget(QFrame):
 
         self.chip = QToolButton()
         self.chip.setObjectName(f"picker.language.{index}")
-        self.chip.setToolTip(_tr("Translate into"))
+        set_help_tip(self.chip, _tr("Translate into"))
         self.chip.setProperty("chip", True)
         self.chip.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.chip.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1155,19 +1150,21 @@ class AppRowWidget(QFrame):
         self.status.setText(row_status(row))
         self.chip.setText(_chip_text(row.translate_into))
         self.mic.setChecked(row.show_mic)
-        self.mic.setToolTip(
+        set_help_tip(
+            self.mic,
             _tr("Your speech shows in this window - click to stop")
             if row.show_mic
-            else _tr("Show my speech in this window")
+            else _tr("Show my speech in this window"),
         )
-        if not hidden:
-            self.captions.setToolTip(_tr("Show its caption window"))
-        elif hide_key:
-            self.captions.setToolTip(hotkeys_here(_tr("Hidden - Ctrl+Alt+H")))
-        else:
-            self.captions.setToolTip(_tr("Hidden - turn off Hide all to show it"))
+        # no hover on the labelled buttons (1013); a screen reader hears more
+        self.captions.setAccessibleDescription(
+            _tr("Show its caption window")
+            if not hidden
+            else hotkeys_here(_tr("Hidden - Ctrl+Alt+H"))
+            if hide_key
+            else _tr("Hidden - turn off Hide all to show it")
+        )
         stop = _tr("Stop captioning {app}").format(app=row.label)
-        self.stop.setToolTip(stop)
         self.stop.setAccessibleName(stop)
         self.colour.setAccessibleName(
             _tr("Colour of {app}'s label").format(app=row.label)
@@ -1269,9 +1266,7 @@ class AddRow(QFrame):
         self.suggestion = label(_tr("Suggested"), "RowTitle", copyable=False)
         line.addWidget(self.suggestion)
         caption = _tr("Caption {app}").format(app=app.title)
-        self.add = _button(
-            _tr("Caption"), "primary" if app.playing else "small", caption
-        )
+        self.add = _button(_tr("Caption"), "primary" if app.playing else "small")
         self.add.setAccessibleName(caption)
         self.add.setObjectName(f"picker.add.{app.name}")
         once = adding or OneClick()
@@ -1280,7 +1275,7 @@ class AddRow(QFrame):
         self.add.clicked.connect(self._add)
         line.addWidget(self.add)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(caption)
+        # no hover on the whole row (1013): its Caption button says it
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         """A click anywhere on the row: the app captioned, as its chip."""
@@ -1366,7 +1361,9 @@ class PickerCard(Card):
         self.add_title.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
         )
-        self.add_title.setToolTip(_tr("apps that can play sound, those playing first"))
+        self.add_title.setAccessibleDescription(  # no hover on a title (1013)
+            _tr("apps that can play sound, those playing first")
+        )
         add_head.addWidget(self.add_title)
         add_head.addStretch(1)
         refresh = _wrap_button(_tr("Refresh"), "ghost")
@@ -1622,7 +1619,6 @@ class PickerCard(Card):
             )
         else:
             note = _tr("instead of apps")
-        self.pick_apps.setToolTip(note if not value.per_app else "")
         self.everything_note.setText(note)
         self.everything_note.setVisible(not value.per_app)
         self.apps_again.setVisible(value.fell_back)
@@ -1913,11 +1909,18 @@ class HomePage(Page):
         self.join = _button(_tr("Join windows"))
         self.join.setObjectName("home.join")
         self.join.clicked.connect(self.join_wanted)
+        self.join_info = InfoIcon("", _tr("Join windows"))
         self.show_joined(False, 0)
         reset = _button(_tr("Reset positions"))
         reset.setObjectName("home.reset_positions")
         reset.clicked.connect(self.reset_positions_wanted)
-        for each in (self.lock, self.hide_all, self.join, reset):
+        join = QWidget()  # Join and its ⓘ, kept together as the row wraps
+        joined = QHBoxLayout(join)
+        joined.setContentsMargins(0, 0, 0, 0)
+        joined.setSpacing(style.px(4))
+        joined.addWidget(self.join)
+        joined.addWidget(self.join_info)
+        for each in (self.lock, self.hide_all, join, reset):
             buttons.addWidget(each)
         windows.add(buttons)
         self.content.addWidget(windows)
@@ -1938,8 +1941,13 @@ class HomePage(Page):
             own_hotkey(action, letter)
             for action, letter in zip(self._hotkeys, "PLH", strict=True)
         )
-        self.lock.setToolTip(hotkeys_here(_tr("Ctrl+Alt+L")) if lock else "")
-        self.hide_all.setToolTip(hotkeys_here(_tr("Ctrl+Alt+H")) if hide else "")
+        # their hotkeys to a screen reader; no hover on labelled buttons (1013)
+        self.lock.setAccessibleDescription(
+            hotkeys_here(_tr("Ctrl+Alt+L")) if lock else ""
+        )
+        self.hide_all.setAccessibleDescription(
+            hotkeys_here(_tr("Ctrl+Alt+H")) if hide else ""
+        )
         self.state.show_pause_key(pause)
         self.picker_card.show_hide_key(hide)
 
@@ -1948,7 +1956,7 @@ class HomePage(Page):
         they're joined, Separate windows (109's 2a)."""
         self.join.setText(_tr("Separate windows") if joined else _tr("Join windows"))
         self.join.setEnabled(joined or windows >= 2)
-        self.join.setToolTip(
+        self.join_info.set_text(  # what Join does, behind an ⓘ beside it (1013)
             _tr("Each caption window back at its own place")
             if joined
             else _tr("The caption windows as one, a column each")
@@ -2179,6 +2187,7 @@ class HomePage(Page):
         for action in actions:
             button = QToolButton()
             button.setDefaultAction(action)
+            set_help_tip(button, "")  # its words say it: no native strip (1013)
             button.setProperty("kind", "ghost")
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             self.feedback.addWidget(button)

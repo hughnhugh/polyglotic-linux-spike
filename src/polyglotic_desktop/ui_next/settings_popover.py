@@ -98,8 +98,14 @@ from polyglotic_desktop.ui_next.controls import (
     INSET,
     SWITCH,
     TICK,
+    InfoIcon,
     SwitchButton,
     TickButton,
+    describe,
+    help_text,
+    item_help,
+    same_words,
+    set_help_tip,
 )
 from polyglotic_desktop.ui_next.languages import (
     in_sentence,
@@ -370,7 +376,10 @@ class _Follows(QObject):
     def follow(self) -> None:
         button, action = self.button, self.action
         button.setText(action.text())
-        button.setToolTip(action.toolTip())
+        # its explanation beside the open dropdown, as a menu's (1013) -
+        # none when it's only the words on the button
+        tip = help_text(action)
+        describe(button, "" if same_words(tip, action.text()) else tip)
         button.setEnabled(action.isEnabled())
         button.setCheckable(action.isCheckable())
         button.setChecked(action.isChecked())
@@ -616,8 +625,10 @@ class SettingsPopover(QWidget):
         row, column, self.language = self._value_row(
             _tr("Translate into"), "language_button", self._toggle_languages
         )
-        self.language.setToolTip(
-            _tr("The language this window's captions are translated into")
+        column.addWidget(
+            self._note(
+                _tr("The language this window's captions are translated into"), row
+            )
         )
         self.languages = QListWidget(row)
         self.languages.setObjectName("settings_popover.languages")
@@ -673,12 +684,15 @@ class SettingsPopover(QWidget):
         row, column, self.spoken = self._value_row(
             _tr("Spoken language"), "spoken_button", self._toggle_spoken
         )
-        self.spoken.setToolTip(
-            _tr(
-                "What this app's speech is in. Detect finds the language each "
-                "time someone speaks, and handles mixed talk. Name it and every "
-                "caption is heard as that language: short or mumbled speech is "
-                "never taken for another."
+        column.addWidget(
+            self._note(
+                _tr(
+                    "What this app's speech is in. Detect finds the language each "
+                    "time someone speaks, and handles mixed talk. Name it and every "
+                    "caption is heard as that language: short or mumbled speech is "
+                    "never taken for another."
+                ),
+                row,
             )
         )
         self.spoken_choices = SpokenLanguageList(
@@ -695,13 +709,17 @@ class SettingsPopover(QWidget):
             row,
         )
         self.spoken_fallback.setObjectName("settings_popover.spoken_fallback")
-        self.spoken_fallback.setToolTip(
+        self.spoken_fallback_help = self._note(
             _tr(
                 "This server takes one spoken language for every window, so "
                 "while the windows name different ones, every app is detected. "
                 "Your choice is kept."
-            )
+            ),
+            row,
         )
+        self.spoken_fallback_help.setObjectName("settings_popover.spoken_fallback_help")
+        self.spoken_fallback_help.hide()
+        column.addWidget(self.spoken_fallback_help)
         self.spoken_fallback.hide()
         column.addWidget(self.spoken_fallback)
         return row
@@ -745,6 +763,8 @@ class SettingsPopover(QWidget):
         self.second.setProperty("segment", True)
         self.second.clicked.connect(self._toggle_second)
         line.addWidget(self.second)
+        self.second_info = InfoIcon("", parent=row)
+        line.addWidget(self.second_info)
         line.addStretch(1)
         column.addLayout(line)
         self.second_line = line
@@ -795,8 +815,12 @@ class SettingsPopover(QWidget):
         row, column, self.app = self._value_row(
             _tr("Source"), "app_button", self._toggle_apps
         )
-        self.app.setToolTip(_tr("The app this window captions - pick another here"))
+        # no hover help: "Source" and the app's name say it (1013)
+        self.app.setAccessibleDescription(
+            _tr("The app this window captions - pick another here")
+        )
         self.apps = QListWidget(row)
+        item_help(self.apps)  # an app not playing yet says why, beside it
         self.apps.setObjectName("settings_popover.apps")
         self.apps.setAccessibleName(_tr("Source"))
         self.apps.setMaximumHeight(style.px(LIST_HEIGHT))
@@ -824,7 +848,7 @@ class SettingsPopover(QWidget):
         for choice in self._window.app_choices():
             item = QListWidgetItem(app_choice_text(choice))
             item.setData(Qt.ItemDataRole.UserRole, choice.name)
-            item.setToolTip(app_choice_tip(choice))
+            set_help_tip(item, app_choice_tip(choice))
             self.apps.addItem(item)
             item.setSelected(choice.name == current)
 
@@ -1074,9 +1098,8 @@ class SettingsPopover(QWidget):
             mic_row.setText(style.button_text(_tr("Show my speech here")))
             mic_row.setChecked(on)
             mic_row.setAccessibleName(_tr("Show my speech here"))
-            tip = self._window.mic_button.toolTip()
-            mic_row.setToolTip(tip)
-            mic_row.setAccessibleDescription(tip)
+            tip = help_text(self._window.mic_button)
+            describe(mic_row, tip)
             mic_row.setVisible(self._window.mic_offered())
         self._fit()
 
@@ -1086,6 +1109,7 @@ class SettingsPopover(QWidget):
         self.spoken.setText(_chip_text(value, self.spoken_choices.isVisible()))
         self.spoken_choices.set_current(spoken)
         self.spoken_fallback.setVisible(self._window.spoken_fallback)
+        self.spoken_fallback_help.setVisible(self._window.spoken_fallback)
 
     def _show_second(self) -> None:
         target = self._window.choices.target
@@ -1097,7 +1121,8 @@ class SettingsPopover(QWidget):
             return
         name = language_name(target)
         self.second_title.setText(second_title(name))
-        self.second.setToolTip(second_tip(name))
+        self.second_info.set_text(second_tip(name))
+        self.second_info.set_about(second_title(name))
         second = self._window.second_languages.get(target)
         value = second_text(second)
         self.second.setText(_chip_text(value, self.second_choices.isVisible()))

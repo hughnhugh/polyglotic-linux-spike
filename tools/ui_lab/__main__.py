@@ -43,6 +43,7 @@ from tools.ui_lab import (
     design,
     first_run,
     goldens,
+    help_popups,
     home,
     joined_window,
     judge,
@@ -77,7 +78,7 @@ def new_states() -> list[lab.State]:
     new += home.STATES + pages.STATES + qt_parts.STATES + first_run.STATES
     new += open_beta.STATES
     new += use_presets.STATES + bar_timing.STATES + learner_captions.STATES
-    new += typing_holds.STATES
+    new += typing_holds.STATES + help_popups.STATES
     return new + sidebar.STATES + text_sizes.STATES
 
 

@@ -26,6 +26,7 @@ from polyglotic_desktop.platform.windows.categories import COMMON_APPS, known_na
 from polyglotic_desktop.ports.capture import CommonApp
 from polyglotic_desktop.ui.app import DesktopApp
 from polyglotic_desktop.ui.settings import AppSettings
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.settings_popover import COLUMN_ROWS, ROWS
 from polyglotic_desktop.ui_next.views.app_choices import (
     AppChoice,
@@ -143,7 +144,7 @@ def test_the_window_s_settings_list_the_apps_and_say_what_to_do(
     ]
     assert popover.no_app.isVisibleTo(popover)
     assert popover.no_app.text() == ("Don't see your app? Play some sound in it.")
-    assert "starts when Google Chrome plays" in popover.apps.item(2).toolTip()
+    assert "starts when Google Chrome plays" in help_text(popover.apps.item(2))
     place = window.geometry()
     popover._app_chosen(popover.apps.item(2))  # Google Chrome
     qapp.processEvents()

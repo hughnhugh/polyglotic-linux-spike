@@ -89,7 +89,7 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.perf import spans
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.controls import label
+from polyglotic_desktop.ui_next.controls import label, set_help_tip
 from polyglotic_desktop.ui_next.glyphs import Glyph
 from polyglotic_desktop.ui_next.glyphs import paint as paint_glyph
 from polyglotic_desktop.ui_next.home import COLUMN
@@ -408,6 +408,7 @@ class MainWindow(QMainWindow):
         self.quit_button = SidebarQuitButton()
         self.quit_button.setObjectName("SidebarQuitButton")
         self.quit_button.setDefaultAction(quit_action)
+        set_help_tip(self.quit_button, "")  # its words say it: no native strip (1013)
         self.quit_button.setProperty("kind", "ghost")
         self.quit_button.setCursor(Qt.CursorShape.PointingHandCursor)
         side.addWidget(self.quit_button)

@@ -33,6 +33,7 @@ from polyglotic_desktop.core.lexicon.pack_download import (
     Step,
 )
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.controls import InfoIcon
 from polyglotic_desktop.ui_next.copying import Text
 from polyglotic_desktop.ui_next.languages import in_sentence, learned_name
 from polyglotic_desktop.ui_next.os_words import on_linux, pc_or_mac
@@ -273,6 +274,10 @@ class PackRow(QWidget):
         self.said.setObjectName(f"learning.{code}.pack_said")
         self.said.setWordWrap(True)
         line.addWidget(self.said, 1)
+        # who made the pack's recordings, behind an ⓘ beside its line (1013)
+        self.credits = InfoIcon("", _tr("Credits"), self)
+        self.credits.hide()
+        line.addWidget(self.credits, 0, Qt.AlignmentFlag.AlignTop)
         self.buttons: dict[str, QPushButton] = {}
         for key, text in ACTIONS.items():
             button = QPushButton(_tr(str(text)), self)
@@ -297,7 +302,8 @@ class PackRow(QWidget):
         self.line = line
         said, actions, share = shown(self.code, line)
         self.said.setText(said)
-        self.said.setToolTip(line.credits)
+        self.credits.set_text(line.credits)
+        self.credits.setHidden(not line.credits)
         for key, button in self.buttons.items():
             button.setVisible(key in actions)
         self.bar.setVisible(share is not None)

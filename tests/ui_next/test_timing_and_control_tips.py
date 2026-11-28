@@ -3,7 +3,7 @@ say enough, explains itself on hover, in plain words (the user's rehearsal
 feedback F22, polyglotic-hq 249, 2026-11-08: "there should be tooltips for
 each of timings")."""
 
-from PySide6.QtWidgets import QApplication, QPushButton, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QWidget
 from tests.ui_next.test_caption_window import window_of
 from tests.ui_next.test_transcript_window import DISCORD, made_up
 
@@ -14,6 +14,7 @@ from polyglotic_desktop.core.listening.timing import (
 )
 from polyglotic_desktop.ui_next import help_page, style
 from polyglotic_desktop.ui_next.caption_window import timing_name, timing_tip
+from polyglotic_desktop.ui_next.controls import DescribedMenu, help_text
 from polyglotic_desktop.ui_next.panels import TimingPanel
 from polyglotic_desktop.ui_next.transcript_window import TranscriptWindow
 from polyglotic_desktop.ui_next.views.panels import Timing, TimingView
@@ -36,39 +37,54 @@ def test_the_windows_controls_say_what_they_do(qapp: QApplication) -> None:
     window = window_of(qapp)
     try:
         for mode in OFFERED_MODES:
-            assert window.controls[mode.value].toolTip() == timing_tip(mode)
+            assert help_text(window.controls[mode.value]) == timing_tip(mode)
         assert CaptionMode.PREVIEW.value not in window.controls
         for name in ("settings", "all_settings", "transcript"):
             control = window.controls[name]
-            assert control.toolTip() and control.toolTip() != control.text(), name
-        assert window.pill.toolTip()
+            assert help_text(control) and help_text(control) != control.text(), name
+        assert window.pill.accessibleDescription()
         window.hovered = True
         window._show_band(True)
         window.toggle_settings()
         popover = window.popover
         assert popover is not None
-        assert popover.translation_match.toolTip()
+        assert help_text(popover.translation_match)
         popover.close()
         window.toggle_languages()
         assert window.languages is not None
-        assert window.languages.language.toolTip()
+        assert not help_text(window.languages.language)
+        language_help = window.languages.findChild(
+            QLabel, "settings_popover.language_button"
+        )
+        assert language_help is None  # help is a visible note, not button metadata
+        assert any(
+            "translated into" in label.text()
+            for label in window.languages.findChildren(QLabel)
+        )
         window.languages.close()
         # the timings are the bar's timing chip's now (593), each with its tip
-        assert window.timing_chip.toolTip()
+        assert help_text(window.timing_chip)
         window.timing_chip.click()
         timings = window.timings
         assert timings is not None
-        whole = timings.findChild(QPushButton, "timings.timing.steady")
-        assert whole is not None and whole.toolTip() == timing_tip(CaptionMode.WHOLE)
+        # a short name in the row, and what it does in full in the box
+        # beside the open dropdown, never cut off (1013)
+        whole = timings.findChild(  # Whole captions' stored value is "steady"
+            QPushButton, f"timings.timing.{CaptionMode.WHOLE.value}"
+        )
+        assert whole is not None
+        assert help_text(whole).endswith(timing_tip(CaptionMode.WHOLE))
+        assert [label.text() for label in whole.findChildren(QLabel)] == [
+            timing_name(CaptionMode.WHOLE)
+        ]
     finally:
         window.close()
 
 
 def test_the_timing_panel_s_choices_say_what_they_do(qapp: QApplication) -> None:
     panel = TimingPanel(TimingView(Timing(CaptionMode.STEADY, 1.5)))
-    assert [b.toolTip() for b in panel.mode.buttons] == [
-        timing_tip(mode) for mode in OFFERED_MODES
-    ]
+    assert all(not help_text(button) for button in panel.mode.buttons)
+    assert panel.sentence.text() == timing_tip(CaptionMode.STEADY)
 
 
 def test_timing_choices_stay_visible_when_narrow(
@@ -169,9 +185,13 @@ def test_a_transcript_s_timing_menu_says_what_each_does(qapp: QApplication) -> N
     window = TranscriptWindow("Discord.exe", made_up(), DISCORD, TranscriptChoices())
     try:
         for mode, action in window.timing_actions.items():
-            assert action.toolTip() == timing_tip(mode)
+            assert help_text(action) == timing_tip(mode)
         menu = window.buttons["timing"].menu()
-        assert menu is not None and menu.toolTipsVisible()
+        assert isinstance(menu, DescribedMenu) and not menu.toolTipsVisible()
+        assert all(
+            action.property("description") == timing_tip(mode)
+            for mode, action in window.timing_actions.items()
+        )
     finally:
         window.close()
 
@@ -226,11 +246,7 @@ def test_settings_timing_marks_the_presets_recommendation_and_moves_at_once(
             for m in OFFERED_MODES
             if m is not CaptionMode.INSTANT
         )
-        assert (
-            buttons[CaptionMode.INSTANT]
-            .toolTip()
-            .startswith("Recommended for Everyday: ")
-        )
+        assert not help_text(buttons[CaptionMode.INSTANT])
         assert (
             "Recommended for Everyday: "
             in buttons[CaptionMode.INSTANT].accessibleName()
@@ -244,7 +260,8 @@ def test_settings_timing_marks_the_presets_recommendation_and_moves_at_once(
         instant, delayed = panel.mode.buttons
         assert instant.property("recommended") is True
         assert not delayed.property("recommended")
-        assert instant.toolTip().startswith("Recommended for Video, film & TV: ")
+        assert not help_text(instant)
+        assert instant.accessibleName().startswith("Instant. Recommended for Video")
         assert "Recommended for Video, film & TV: " in instant.accessibleName()
         panel.mode.choose(CaptionMode.SCROLLING)
         assert view.value.mode is CaptionMode.SCROLLING
@@ -252,7 +269,8 @@ def test_settings_timing_marks_the_presets_recommendation_and_moves_at_once(
         presets.follow(PresetMenu(items, "own1"))
         instant = panel.mode.buttons[0]
         assert instant.property("recommended") is True
-        assert instant.toolTip().startswith("Recommended for Anime: ")
+        assert not help_text(instant)
+        assert "Recommended for Anime: " in instant.accessibleName()
 
         # Saved preset with no parent shows none
         presets.follow(PresetMenu(items, "own2"))

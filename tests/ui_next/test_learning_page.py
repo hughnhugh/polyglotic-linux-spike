@@ -18,6 +18,7 @@ from polyglotic_desktop.core.learning.levels import (
     LanguageChoices,
     LinkChoice,
 )
+from polyglotic_desktop.ui_next.controls import InfoIcon, help_text
 from polyglotic_desktop.ui_next.learning_page import (
     LearningPage,
     introductions_line,
@@ -579,7 +580,11 @@ def test_a_full_dictionarys_recorded_words_are_said_on_its_card(
     said = shown["zh"].recorded
     assert said is not None
     assert said.text() == "Its commonest words are recorded (30.5 MB)."
-    assert "Chatterbox" in said.toolTip()
+    assert not help_text(said)  # its credits are behind the ⓘ beside it (1013)
+    holder = said.parentWidget()
+    assert holder is not None
+    (info,) = holder.findChildren(InfoIcon)
+    assert "Chatterbox" in help_text(info)
     assert shown["en"].recorded is None and shown["ja"].recorded is None
 
 

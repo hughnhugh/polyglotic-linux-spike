@@ -43,7 +43,15 @@ from PySide6.QtWidgets import (
 )
 
 from polyglotic_desktop.ui_next import caption_faces, fonts, style
-from polyglotic_desktop.ui_next.controls import ColourChoice, Measured, Segmented, label
+from polyglotic_desktop.ui_next.controls import (
+    ColourChoice,
+    Measured,
+    Segmented,
+    describe,
+    label,
+    set_help_tip,
+    with_info,
+)
 from polyglotic_desktop.ui_next.views.caption_window import TextEdge
 from polyglotic_desktop.ui_next.views.presets import (
     BY_KEY,
@@ -182,8 +190,7 @@ class RecommendedTile(QPushButton):
         self.setProperty("tile", True)
         self.setText(preset_name(look.key))
         self.setAccessibleName(preset_name(look.key))
-        self.setToolTip(look_tip(look.key))
-        self.setAccessibleDescription(look_tip(look.key))
+        describe(self, look_tip(look.key), group=True)  # beside the looks (1013)
 
     def sizeHint(self) -> QSize:
         return QSize(style.px(LOOK_TILE[0]), style.px(LOOK_TILE[1]))
@@ -398,7 +405,7 @@ class PresetTiles(QWidget):
         for preset in (*PRESETS, None):
             key = preset.key if preset is not None else CUSTOM
             tile = PresetTile(key, self)
-            tile.setToolTip(preset_tip(key) if preset is not None else "")
+            describe(tile, preset_tip(key) if preset is not None else "", group=True)
             tile.clicked.connect(lambda _=False, k=key: self._clicked(k))
             self.tiles[key] = tile
         self.columns = 0
@@ -457,10 +464,12 @@ class PresetTiles(QWidget):
         if preset is None:
             custom.show_colours(colours)
             name = preset_name(started_from) if started_from else None
-            custom.setToolTip(
+            describe(
+                custom,
                 _tr("Your own colours, from {preset}.").format(preset=name)
                 if name
-                else _tr("Your own colours.")
+                else _tr("Your own colours."),
+                group=True,
             )
 
 
@@ -618,7 +627,6 @@ class CaptionTextSliders(QWidget):
         self.thickness.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.thickness.setTickInterval(1)
         self.thickness.setValue(THICKNESSES.index(THICKNESS))
-        self._thickness_tip = self.thickness.toolTip()
         self._name_thickness(THICKNESS)
         self.edge = Segmented(
             [
@@ -629,14 +637,21 @@ class CaptionTextSliders(QWidget):
             TextEdge.NONE.value,
         )
         self.edge.setObjectName("look.edge")
-        self.edge.setToolTip(
-            _tr(
-                "What's drawn around captions' letters, to read over a busy "
-                "video. The panel behind them has its own slider, below."
-            )
+        edge_help = _tr(
+            "What's drawn around captions' letters, to read over a busy "
+            "video. The panel behind them has its own slider, below."
         )
+        self.edge.setAccessibleDescription(edge_help)
         self.edge.changed.connect(lambda v: self.edge_chosen.emit(str(v)))
-        grid.addWidget(label(_tr("Around the letters")), 6, 0, 1, 3)
+        grid.addWidget(  # its explanation behind an ⓘ beside its title (1013)
+            with_info(
+                label(_tr("Around the letters")), edge_help, _tr("Around the letters")
+            ),
+            6,
+            0,
+            1,
+            3,
+        )
         grid.addWidget(self.edge, 7, 0, 1, 3, Qt.AlignmentFlag.AlignLeft)
         grid.setColumnStretch(1, 1)
         self.contrast.valueChanged.connect(self.contrast_moved)
@@ -652,8 +667,9 @@ class CaptionTextSliders(QWidget):
         """The step by name - in its tip and to a screen reader - rather
         than beside it, where a narrow Look (the rail's) cut it off."""
         name = thickness_name(weight)
-        self.thickness.setToolTip(f"{name}. {self._thickness_tip}")
-        self.thickness.setAccessibleDescription(name)
+        # the step's name on the slider; what thickness is, behind the ⓘ
+        # beside its title (1013)
+        set_help_tip(self.thickness, name)
 
     def offer(self, steps: tuple[int, ...]) -> None:
         """Only `steps` on the thickness slider (`views.tone.offered`;
@@ -685,13 +701,12 @@ class CaptionTextSliders(QWidget):
         slider.setObjectName(name)
         slider.setAccessibleName(title)
         slider.setAccessibleDescription(tip)
-        slider.setToolTip(tip)
         slider.setRange(*bounds)
         slider.setSingleStep(5)
         slider.setPageStep(25)
         slider.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         slider.setMinimumWidth(style.px(100))
-        grid.addWidget(label(title), 2 * at, 0, 1, 3)
+        grid.addWidget(with_info(label(title), tip, title), 2 * at, 0, 1, 3)  # 1013
         low, high = (label(end, "Dim") for end in ends)
         self.ends[name] = (low, high)
         grid.addWidget(low, 2 * at + 1, 0, Qt.AlignmentFlag.AlignRight)

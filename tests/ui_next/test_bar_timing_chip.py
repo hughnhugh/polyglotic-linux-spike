@@ -18,6 +18,7 @@ from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.ui.recorded_captions import MIC
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow, StripLabels
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.settings_popover import (
     BAR_ROWS,
     COLUMN_ROWS,
@@ -85,7 +86,7 @@ def test_window_and_preset_controls_show_literal_ampersands(
     window.set_labels({window.source: SourceLabel("Arts & News", "#4dd0e1")}, "You")
     window.set_presets(PresetMenu(ITEMS, "video", restorable=True))
     assert window.controls["stop"].text() == "Stop captioning Arts && News"
-    assert window.controls["stop"].toolTip() == "Stop captioning Arts & News"
+    assert help_text(window.controls["stop"]) == "Stop captioning Arts & News"
     window.toggle_presets()
     assert window.presets is not None
     restore = window.presets.findChild(QPushButton, "presets.step.restore")
@@ -108,7 +109,7 @@ def test_the_timing_chip_sits_after_the_preset_chip(window: CaptionWindow) -> No
         on_window(window, chip).right()
         < on_window(window, window.buttons["lock"]).left()
     )
-    assert chip.toolTip() == "Timing: Steady"
+    assert help_text(chip) == "Timing: Steady"
 
 
 @pytest.mark.parametrize(
@@ -136,7 +137,7 @@ def test_the_chip_offers_only_the_presets_timings(
     assert window.timing_chip.text().endswith("▴")  # its arrow turned while open
     timings = window.timings
     assert timings is not None
-    for name in rows:  # each with its line of what it does
+    for name in rows:  # each says what it does
         row = timings.body.findChild(QPushButton, f"timings.{name}")
         assert row is not None
         if name.startswith("show."):
@@ -147,8 +148,11 @@ def test_the_chip_offers_only_the_presets_timings(
             for label in row.findChildren(QLabel)
             if not label.property("recommended")
         ]
-        assert len(lines) == 2 and all(lines), name
         assert "experimental" not in lines[0].casefold(), name
+        if name.startswith("timing."):  # a short name; in full beside it (1013)
+            assert len(lines) == 1 and lines[0] and help_text(row), name
+        else:
+            assert len(lines) == 2 and all(lines), name
     assert timings.findChild(QLabel, "timings.not_offered") is None
     timings.close()
 
@@ -392,7 +396,7 @@ def test_keyboard_reaches_and_changes_every_chip(
     for chip, name in zip(
         (window.timing_chip, window.chip, window.preset_chip), names, strict=True
     ):
-        assert chip.toolTip() == name
+        assert help_text(chip) == name
         assert chip.accessibleName() == name
 
     timings: list[str] = []
@@ -551,7 +555,7 @@ def test_bar_mic_toggles_own_speech_without_taking_focus(
     assert mic.isVisible() and mic.isCheckable() and not mic.isChecked()
     assert mic.focusPolicy() == Qt.FocusPolicy.NoFocus
     assert window.testAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-    assert mic.toolTip() == "Show my speech here: off"
+    assert help_text(mic) == "Show my speech here: off"
     assert mic.accessibleName() == "Show my speech here"
     iface = QAccessible.queryAccessibleInterface(mic)
     assert iface.text(QAccessible.Text.Name) == "Show my speech here"
@@ -564,7 +568,7 @@ def test_bar_mic_toggles_own_speech_without_taking_focus(
     mic.click()
     assert window.choices.show_mic and mic.isChecked()
     assert changed == [True]
-    assert mic.toolTip() == "Show my speech here: on"
+    assert help_text(mic) == "Show my speech here: on"
     assert iface.state().checked
     window.set_mic_level(0.6)
     assert mic.level == 0.6
@@ -575,7 +579,7 @@ def test_bar_mic_toggles_own_speech_without_taking_focus(
     assert not window.choices.show_mic and not mic.isChecked()
     assert changed == [True, False]
     assert mic.level is None
-    assert mic.toolTip() == "Show my speech here: off"
+    assert help_text(mic) == "Show my speech here: off"
     assert not iface.state().checked
 
 
@@ -664,7 +668,7 @@ def test_timing_menu_marks_the_presets_recommendation_and_moves_with_preset(
     assert _recommended_badges(timings.body) == ["timings.recommended.live"]
     instant = timings.body.findChild(QPushButton, "timings.timing.live")
     assert instant is not None
-    assert instant.toolTip().startswith("Recommended for Everyday: ")
+    assert help_text(instant).startswith("Recommended for Everyday: ")
     assert "Recommended for Everyday: " in instant.accessibleName()
     assert instant.accessibleDescription().startswith("Recommended for Everyday: ")
 
@@ -674,14 +678,14 @@ def test_timing_menu_marks_the_presets_recommendation_and_moves_with_preset(
     assert _recommended_badges(timings.body) == ["timings.recommended.live"]
     instant = timings.body.findChild(QPushButton, "timings.timing.live")
     assert instant is not None
-    assert instant.toolTip().startswith("Recommended for Video, film & TV: ")
+    assert help_text(instant).startswith("Recommended for Video, film & TV: ")
     assert "Recommended for Video, film & TV: " in instant.accessibleName()
     # Choosing Scrolling is allowed and never nagged
     asked: list[str] = []
     window.timing_wanted.connect(asked.append)
     delayed = timings.body.findChild(QPushButton, "timings.timing.scrolling")
     assert delayed is not None
-    assert "Recommended for" not in delayed.toolTip()
+    assert "Recommended for" not in help_text(delayed)
     delayed.click()
     assert asked == ["scrolling"]
     assert window.notices.showing(0.0)[1] is None
@@ -705,7 +709,7 @@ def test_timing_menu_inherits_saved_preset_parent_and_shows_none_without_parent(
     assert _recommended_badges(timings.body) == ["timings.recommended.live"]
     instant = timings.body.findChild(QPushButton, "timings.timing.live")
     assert instant is not None
-    assert instant.toolTip().startswith("Recommended for Anime: ")
+    assert help_text(instant).startswith("Recommended for Anime: ")
     assert "Recommended for Anime: " in instant.accessibleName()
 
     window.set_presets(PresetMenu(with_saved, "own2"))
@@ -736,6 +740,6 @@ def test_folded_timing_menu_shows_the_recommended_tag(
     assert _recommended_badges(timings.body) == ["timings.recommended.live"]
     instant = timings.body.findChild(QPushButton, "timings.timing.live")
     assert instant is not None
-    assert instant.toolTip().startswith("Recommended for Video, film & TV: ")
+    assert help_text(instant).startswith("Recommended for Video, film & TV: ")
     assert "Recommended for Video, film & TV: " in instant.accessibleName()
     timings.close()

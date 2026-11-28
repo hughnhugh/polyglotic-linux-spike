@@ -928,26 +928,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Word by word at the speaker&apos;s pace, a moment behind</source>
-        <translation>Woord voor woord in het tempo van de spreker, een moment erachter</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Only words the speech model is sure of: later, but they stay put</source>
-        <translation>Alleen woorden waar het spraakmodel zeker van is. Ze verschijnen later en blijven staan</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Each sentence once, finished: nothing moves as you read</source>
-        <translation>Elke zin één keer, af: niets beweegt terwijl je leest</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Words as they&apos;re said: the quickest, but they change</source>
-        <translation>Woorden zoals ze gezegd worden: het snelst, maar ze veranderen</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
         <source>Translation a moment later</source>
         <translation>Vertaling iets later</translation>
     </message>
@@ -1459,6 +1439,19 @@
         <location filename="../src/polyglotic_desktop/ui/consent.py"/>
         <source>To caption what you hear, Polyglotic sends the speech it detects to our server. Audio and captions are used only to caption it for you - never stored. To run the service we keep your account, the minutes you listen, connection details (app version, the country you connect from, the kind of app you listen to - never its name) and your learning data: the dictionary words you look up, save or mark, and when - never the sentence around them. Your saved words and word statuses follow you to another computer; your lookups show us how people learn and what the dictionaries miss. You can delete your learning data any time. These aren&apos;t optional: without them there&apos;s no service.</source>
         <translation>Om te ondertitelen wat je hoort, stuurt Polyglotic de spraak die het detecteert naar onze server. Audio en ondertitels worden alleen gebruikt om het voor jou te ondertitelen – nooit opgeslagen. Voor de dienst bewaren we je account, de minuten die je luistert, verbindingsgegevens (appversie, het land waaruit je verbindt, het soort app waar je naar luistert – nooit de naam) en je leergegevens: de woordenboekwoorden die je opzoekt, opslaat of markeert, en wanneer – nooit de zin eromheen. Je opgeslagen woorden en woordstatussen gaan mee naar een andere computer; je opzoekingen laten ons zien hoe mensen leren en wat woordenboeken missen. Je kunt je leergegevens altijd verwijderen. Ze zijn niet optioneel: zonder deze gegevens is er geen dienst.</translation>
+    </message>
+</context>
+<context>
+    <name>Controls</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>About {subject}</source>
+        <translation type="unfinished">Over {subject}</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>More information</source>
+        <translation type="unfinished">Meer informatie</translation>
     </message>
 </context>
 <context>
@@ -3842,11 +3835,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
-        <source>Rename</source>
-        <translation>Naam wijzigen</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Translate into</source>
         <translation>Vertalen naar</translation>
     </message>
@@ -4495,11 +4483,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>No key: the hotkey does nothing</source>
-        <translation>Geen toets: de sneltoets doet niets</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Clear {name}&apos;s key</source>
         <translation>Toets van {name} wissen</translation>
     </message>
@@ -4532,11 +4515,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Reset all</source>
         <translation>Alles herstellen</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>Every hotkey back to its own key</source>
-        <translation>Elke sneltoets terug naar zijn eigen toets</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
@@ -5125,11 +5103,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Every Lab setting back to its default.</source>
-        <translation>Zet alle Lab-instellingen terug op hun standaardwaarde.</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Your speech on the right</source>
         <translation>Jouw spraak rechts</translation>
     </message>
@@ -5195,11 +5168,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
-        <translation>Bij Regel voor regel staat onder elke gesproken regel de bijbehorende vertaalde regel. Regels breken af waar de woorden overeenkomen. Een lang zinsdeel zonder passend afbreekpunt loopt door op de volgende regel.</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Fill the width</source>
         <translation>Breedte vullen</translation>
     </message>
@@ -5207,6 +5175,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Off: each clause on a row of its own (the default). Translation below: a caption&apos;s clauses run on in lines as wide as the window, and its translation fills the lines under them. No Arrows while this is on.</source>
         <translation>Bij Uit krijgt elk zinsdeel een eigen rij (standaard). Bij Vertaling eronder lopen zinsdelen door over de volle breedte, met de vertaling op de regels eronder. Pijlen zijn dan uit.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
+        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
+        <translation>Bij Regel voor regel staat onder elke gesproken regel de bijbehorende vertaalde regel. Regels breken af waar de woorden overeenkomen. Een lang zinsdeel zonder passend afbreekpunt loopt door op de volgende regel.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
@@ -5740,6 +5713,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
+        <source>Recordings</source>
+        <translation type="unfinished">Opnamen</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
         <source>Your level</source>
         <translation>Je niveau</translation>
     </message>
@@ -6223,6 +6201,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Download progress</source>
         <translation>Voortgang van de download</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>Credits</source>
+        <translation type="unfinished">Credits</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
@@ -7217,14 +7200,6 @@
         <location filename="../src/polyglotic_desktop/ui/open_beta.py"/>
         <source>Enter the six-digit code from your email.</source>
         <translation>Voer de zescijferige code uit je e-mail in.</translation>
-    </message>
-</context>
-<context>
-    <name>Pages</name>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui/widgets.py"/>
-        <source>Opens in your browser</source>
-        <translation>Opent in je browser</translation>
     </message>
 </context>
 <context>
@@ -8399,11 +8374,6 @@
         <translation>Voorinstellingen aanpassen…</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
-        <source>Edit, rename, reset or add presets in Settings</source>
-        <translation>Voorinstellingen bewerken, hernoemen, herstellen of toevoegen in Instellingen</translation>
-    </message>
-    <message>
         <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
         <source>Preset: {name} · {not_saved}</source>
         <translation>Voorinstelling: {name} · {not_saved}</translation>
@@ -9149,11 +9119,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Match translation size to caption size</source>
         <translation>Grootte van de vertaling gelijk maken aan de ondertitelgrootte</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>Set the translation size equal to the caption size</source>
-        <translation>Maak de grootte van de vertaling gelijk aan de ondertitelgrootte</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>

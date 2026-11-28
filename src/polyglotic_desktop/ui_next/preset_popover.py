@@ -42,7 +42,7 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.core.listening.preset_reading import VIDEO_LINE_CHOICES
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.controls import INSET, TICK, TickButton
+from polyglotic_desktop.ui_next.controls import INSET, TICK, TickButton, describe
 from polyglotic_desktop.ui_next.settings_popover import (
     INK,
     LINE,
@@ -267,10 +267,11 @@ class PresetPopover(SettingsPopover):
             lambda on: window.quiet_wanted.emit(on, window.readings())
         )
         readings = self._tick(_tr("Readings"), menu.readings, "readings")
-        readings.setToolTip(_tr("Pinyin, Jyutping or a respelling over the words"))
         readings.clicked.connect(
             lambda on: window.readings_wanted.emit(on, window.readings())
         )
+        # what Readings are, in the box beside the open dropdown (1013)
+        describe(readings, _tr("Pinyin, Jyutping or a respelling over the words"))
         for tick in (links, quiet, readings):
             self.column.addWidget(tick)
         self._rule()
@@ -282,7 +283,6 @@ class PresetPopover(SettingsPopover):
         customise = QPushButton(_tr("Customise presets…"), self.body)
         customise.setObjectName("presets.customise")
         customise.setCursor(Qt.CursorShape.PointingHandCursor)
-        customise.setToolTip(_tr("Edit, rename, reset or add presets in Settings"))
         customise.clicked.connect(self._customise)
         self.column.addWidget(customise)
         for child in self.body.findChildren(QWidget):

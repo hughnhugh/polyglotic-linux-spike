@@ -18,6 +18,7 @@ from polyglotic_desktop.core.listening.display import WordLinks
 from polyglotic_desktop.core.listening.sources import SourceLabel
 from polyglotic_desktop.ui_next.caption_window import STRIP, CaptionWindow
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.glyphs import Glyph
 from polyglotic_desktop.ui_next.panels import WordLinksPanel
 from polyglotic_desktop.ui_next.settings_popover import COLUMN_ROWS, ROWS
@@ -47,7 +48,7 @@ def test_the_button_shows_and_asks_for_word_links(qapp: QApplication) -> None:
         assert window.glyphs["links"] is Glyph.LINKS
         assert not button.icon().isNull()
         assert button.text() == "Word links"
-        assert button.toolTip()  # what they are, in plain words
+        assert help_text(button)  # what they are, in plain words
         assert not button.isChecked()  # off by default
         asked: list[bool] = []
         window.links_wanted.connect(lambda on, _: asked.append(on))
@@ -85,12 +86,12 @@ def test_with_what_was_said_hidden_the_button_says_why_it_does_nothing(
     window = window_of(qapp)
     try:
         button = window.controls["links"]
-        on = button.toolTip()
+        on = help_text(button)
         asked: list[bool] = []
         window.links_wanted.connect(lambda on, _: asked.append(on))
         window.set_look(replace(window.look, show_original=False))
         assert not button.isEnabled()
-        assert button.toolTip() == (
+        assert help_text(button) == (
             "Word links need what was said: turn on “Show the original above the "
             "translation” in Settings"
         )
@@ -105,7 +106,7 @@ def test_with_what_was_said_hidden_the_button_says_why_it_does_nothing(
         )
         assert button.isChecked() and not button.isEnabled()  # still says it's on
         window.set_look(replace(window.look, show_original=True))
-        assert button.isEnabled() and button.toolTip() == on
+        assert button.isEnabled() and help_text(button) == on
         button.trigger()
         assert asked == [False]
     finally:

@@ -928,26 +928,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Word by word at the speaker&apos;s pace, a moment behind</source>
-        <translation>शब्द-दर-शब्द, बोलने वाले की रफ़्तार से, थोड़ा पीछे</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Only words the speech model is sure of: later, but they stay put</source>
-        <translation>मॉडल जिन शब्दों को पहचानने में आश्वस्त है, सिर्फ़ वे दिखते हैं। देर से आते हैं, पर बदलते नहीं</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Each sentence once, finished: nothing moves as you read</source>
-        <translation>हर वाक्य एक बार, पूरा: पढ़ते समय कुछ नहीं हिलता</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Words as they&apos;re said: the quickest, but they change</source>
-        <translation>शब्द जैसे बोले जाते हैं: सबसे तेज़, पर बदलते रहते हैं</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
         <source>Translation a moment later</source>
         <translation>अनुवाद थोड़ी देर बाद</translation>
     </message>
@@ -1459,6 +1439,19 @@
         <location filename="../src/polyglotic_desktop/ui/consent.py"/>
         <source>To caption what you hear, Polyglotic sends the speech it detects to our server. Audio and captions are used only to caption it for you - never stored. To run the service we keep your account, the minutes you listen, connection details (app version, the country you connect from, the kind of app you listen to - never its name) and your learning data: the dictionary words you look up, save or mark, and when - never the sentence around them. Your saved words and word statuses follow you to another computer; your lookups show us how people learn and what the dictionaries miss. You can delete your learning data any time. These aren&apos;t optional: without them there&apos;s no service.</source>
         <translation>आप जो सुनते हैं उसका कैप्शन बनाने के लिए Polyglotic पहचानी गई बोली हमारे सर्वर पर भेजता है। आवाज़ और कैप्शन सिर्फ़ आपके लिए कैप्शन बनाने में इस्तेमाल होते हैं - कभी सहेजे नहीं जाते। सेवा चलाने के लिए हम रखते हैं: आपका खाता, आप कितने मिनट सुनते हैं, कनेक्शन की जानकारी (ऐप का वर्शन, जिस देश से आप जुड़ते हैं, आप किस तरह का ऐप सुनते हैं - उसका नाम कभी नहीं) और आपका सीखने का डेटा: शब्दकोश के जो शब्द आप खोजते, सहेजते या चिह्नित करते हैं, और कब - उनके आसपास का वाक्य कभी नहीं। आपके सहेजे शब्द और शब्दों की स्थिति दूसरे कंप्यूटर पर भी आपके साथ जाते हैं; आपकी शब्द खोजों से हमें पता चलता है कि लोग कैसे सीखते हैं और शब्दकोशों में क्या छूटा है। आप अपना सीखने का डेटा कभी भी मिटा सकते हैं। ये वैकल्पिक नहीं हैं: इनके बिना सेवा नहीं चल सकती।</translation>
+    </message>
+</context>
+<context>
+    <name>Controls</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>About {subject}</source>
+        <translation type="unfinished">{subject} के बारे में</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>More information</source>
+        <translation type="unfinished">अधिक जानकारी</translation>
     </message>
 </context>
 <context>
@@ -3842,11 +3835,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
-        <source>Rename</source>
-        <translation>नाम बदलें</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Translate into</source>
         <translation>इसमें अनुवाद करें</translation>
     </message>
@@ -4495,11 +4483,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>No key: the hotkey does nothing</source>
-        <translation>कोई कुंजी नहीं: हॉटकी कुछ नहीं करती</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Clear {name}&apos;s key</source>
         <translation>{name} की कुंजी हटाएँ</translation>
     </message>
@@ -4532,11 +4515,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Reset all</source>
         <translation>सब रीसेट करें</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>Every hotkey back to its own key</source>
-        <translation>हर हॉटकी अपनी कुंजी पर वापस</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
@@ -5125,11 +5103,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Every Lab setting back to its default.</source>
-        <translation>लैब की सभी सेटिंग फिर से डिफ़ॉल्ट पर आ जाएँगी।</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Your speech on the right</source>
         <translation>आपकी बोली दाईं ओर</translation>
     </message>
@@ -5195,11 +5168,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
-        <translation>पंक्ति दर पंक्ति: पहले मूल पंक्ति, फिर उसका अनुवाद। दोनों पंक्तियाँ वहाँ बाँटी जाती हैं जहाँ उनके शब्द मेल खाते हैं। जो लंबा हिस्सा बाँटा नहीं जा सकता, वह अगली पंक्ति में जारी रहता है।</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Fill the width</source>
         <translation>चौड़ाई भरें</translation>
     </message>
@@ -5207,6 +5175,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Off: each clause on a row of its own (the default). Translation below: a caption&apos;s clauses run on in lines as wide as the window, and its translation fills the lines under them. No Arrows while this is on.</source>
         <translation>बंद: बोली का हर हिस्सा अपनी पंक्ति में (डिफ़ॉल्ट)। अनुवाद नीचे: मूल कैप्शन विंडो की पूरी चौड़ाई में चलता है और उसका अनुवाद नीचे की पंक्तियों में दिखता है। इस मोड में तीर नहीं दिखते।</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
+        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
+        <translation>पंक्ति दर पंक्ति: पहले मूल पंक्ति, फिर उसका अनुवाद। दोनों पंक्तियाँ वहाँ बाँटी जाती हैं जहाँ उनके शब्द मेल खाते हैं। जो लंबा हिस्सा बाँटा नहीं जा सकता, वह अगली पंक्ति में जारी रहता है।</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
@@ -5740,6 +5713,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
+        <source>Recordings</source>
+        <translation type="unfinished">रिकॉर्डिंग</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
         <source>Your level</source>
         <translation>आपका स्तर</translation>
     </message>
@@ -6223,6 +6201,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Download progress</source>
         <translation>डाउनलोड की प्रगति</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>Credits</source>
+        <translation type="unfinished">श्रेय</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
@@ -7217,14 +7200,6 @@
         <location filename="../src/polyglotic_desktop/ui/open_beta.py"/>
         <source>Enter the six-digit code from your email.</source>
         <translation>ईमेल में आया छह अंकों का कोड डालें।</translation>
-    </message>
-</context>
-<context>
-    <name>Pages</name>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui/widgets.py"/>
-        <source>Opens in your browser</source>
-        <translation>आपके ब्राउज़र में खुलता है</translation>
     </message>
 </context>
 <context>
@@ -8399,11 +8374,6 @@
         <translation>प्रीसेट कस्टमाइज़ करें…</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
-        <source>Edit, rename, reset or add presets in Settings</source>
-        <translation>सेटिंग में प्रीसेट संपादित करें, नाम बदलें, रीसेट करें या जोड़ें</translation>
-    </message>
-    <message>
         <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
         <source>Preset: {name} · {not_saved}</source>
         <translation>प्रीसेट: {name} · {not_saved}</translation>
@@ -9149,11 +9119,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Match translation size to caption size</source>
         <translation>अनुवाद का आकार कैप्शन के आकार से मिलाएँ</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>Set the translation size equal to the caption size</source>
-        <translation>अनुवाद का आकार कैप्शन के आकार के बराबर करें</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>

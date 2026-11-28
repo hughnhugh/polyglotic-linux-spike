@@ -6,7 +6,7 @@ examples, niche slang that's pop culture or homophones")."""
 
 from PySide6.QtWidgets import QApplication
 
-from polyglotic_desktop.ui_next.controls import Row
+from polyglotic_desktop.ui_next.controls import Row, help_text
 from polyglotic_desktop.ui_next.panels import LanguagesPanel
 from polyglotic_desktop.ui_next.views.panels import (
     LanguagesView,
@@ -21,10 +21,11 @@ def test_the_examples_are_slang_memes_and_names(qapp: QApplication) -> None:
     for example in ("rizz", "yyds", "鸡你太美", "原神"):
         assert example in shown
     assert "Caleb" not in shown and "HSK" not in shown
-    said = panel.hints.toolTip()
+    (row,) = [r for r in panel.findChildren(Row) if r.control is panel.hints]
+    assert row.info is not None  # behind an ⓘ beside the title (1013)
+    said = help_text(row.info)
     for example in ("no cap", "永远的神", "streamer"):
         assert example in said
-    (row,) = [r for r in panel.findChildren(Row) if r.control is panel.hints]
     assert "the server doesn't keep them" in row.detail.text()  # still said
 
 

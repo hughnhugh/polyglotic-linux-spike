@@ -17,6 +17,7 @@ from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next.caption_window import STRIP, CaptionWindow
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text, set_help_tip
 from polyglotic_desktop.ui_next.os_words import hotkeys_here as keys
 from polyglotic_desktop.ui_next.strip_tips import (
     OVER_CAPTIONS_MS,
@@ -95,8 +96,8 @@ def test_every_strip_button_says_what_it_does_on_hover(window: CaptionWindow) ->
         said[name] = labels_shown()
         leave(button)
         assert labels_shown() == []
-    expected = {name: [window.controls[name].toolTip()] for name in STRIP}
-    expected["links"] = [legend_html(window.look, window.controls["links"].toolTip())]
+    expected = {name: [help_text(window.controls[name])] for name in STRIP}
+    expected["links"] = [legend_html(window.look, help_text(window.controls["links"]))]
     assert said == expected
     assert "Noun" in said["links"][0] and "Class unavailable" in said["links"][0]
     assert said["stop"] == ["Stop captioning Discord"]
@@ -114,7 +115,7 @@ def test_moving_to_the_next_button_says_it_at_once_and_a_press_hides_it(
     enter(window.buttons["stop"])
     assert labels_shown() == []  # the last one went as the mouse left
     rest(window)
-    assert labels_shown() == [window.controls["stop"].toolTip()]
+    assert labels_shown() == [help_text(window.controls["stop"])]
     press = QMouseEvent(
         QEvent.Type.MouseButtonPress, QPointF(4, 4), QPointF(4, 4),
         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
@@ -150,7 +151,7 @@ def test_from_one_button_to_the_next_while_one_shows(window: CaptionWindow) -> N
     enter(window.buttons["lock"])
     rest(window)
     enter(window.buttons["settings"])  # its enter before the last one's leave
-    assert labels_shown() == [window.controls["settings"].toolTip()]
+    assert labels_shown() == [help_text(window.controls["settings"])]
     leave(window.buttons["settings"])
 
 
@@ -158,7 +159,7 @@ def test_a_changed_tip_is_the_one_said(window: CaptionWindow) -> None:
     """A button's tip as it is when it's said, changed since it was made
     (Word links with what was said hidden said why they were off, until
     their strip button went into the presets' dropdown: polyglotic-hq 556)."""
-    window.controls["stop"].setToolTip("Stop captioning it, said afresh")
+    set_help_tip(window.controls["stop"], "Stop captioning it, said afresh")
     enter(window.buttons["stop"])
     rest(window)
     assert labels_shown() == ["Stop captioning it, said afresh"]
@@ -270,7 +271,7 @@ def test_a_joined_windows_lock_and_settings_say_what_they_do(
             button = joined.buttons[name]
             enter(button)
             joined.tips._rest.timeout.emit()
-            assert labels_shown() == [joined.controls[name].toolTip()]
+            assert labels_shown() == [help_text(joined.controls[name])]
             leave(button)
     finally:
         windows.close()

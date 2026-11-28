@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.core.listening.display import LongLines
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.controls import label
+from polyglotic_desktop.ui_next.controls import InfoIcon, label
 from polyglotic_desktop.ui_next.panels import Panel
 from polyglotic_desktop.ui_next.preset_popover import (
     discard,
@@ -125,9 +125,12 @@ class PresetLine(QFrame):
         )
         self.cancel.setText(_tr("Cancel"))
         self.cancel.setProperty("kind", "ghost")
+        # why Save as new is off, behind an ⓘ beside it (1013)
+        self.save_as_info = InfoIcon("", save_as_new())
         for button in (
             self.save,
             self.save_as,
+            self.save_as_info,
             self.discard,
             self.undo,
             self.done,
@@ -166,9 +169,9 @@ class PresetLine(QFrame):
         self.discard.setVisible(edited)
         self.save_as.setVisible(not naming and not undo)
         self.save_as.setEnabled(menu.can_add)
-        self.save_as.setToolTip(
-            "" if menu.can_add else _tr("Five of your own at most: delete one first")
-        )
+        full = "" if menu.can_add else _tr("Five of your own at most: delete one first")
+        self.save_as_info.set_text(full)
+        self.save_as_info.setVisible(bool(full) and self.save_as.isVisibleTo(self))
 
     def _naming(self) -> None:
         """Save as new preset… asked: the name field, suggested and chosen,
@@ -324,12 +327,15 @@ class PresetsPanel(Panel):
         self.add(self.rows)
         self.new = QPushButton(_tr("New preset"))
         self.new.setObjectName("presets.new")
-        self.new.setToolTip(
-            _tr("The captions as they are now, as a preset of your own")
-        )
         self.new.clicked.connect(lambda: self.view.naming.change(True))
         line = QHBoxLayout()
         line.addWidget(self.new)
+        line.addWidget(
+            InfoIcon(
+                _tr("The captions as they are now, as a preset of your own"),
+                _tr("New preset"),
+            )
+        )
         line.addStretch(1)
         self.add(line)
         self.bind(view)
@@ -427,7 +433,8 @@ class PresetPanel(Panel):
         self.reset.setText(style.button_text(restore_defaults(menu.name)))
         self.reset.setVisible(not menu.chosen_own)
         self.reset.setEnabled(menu.restorable)
-        self.reset.setToolTip(
+        # "Restore ...'s defaults" says it; a screen reader hears the rest (1013)
+        self.reset.setAccessibleDescription(
             _tr("Back to the app's defaults")
             if everyday
             else _tr("Your changes to it go; its built-in settings stay")

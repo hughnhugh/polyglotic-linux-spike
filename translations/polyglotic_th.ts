@@ -927,26 +927,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Word by word at the speaker&apos;s pace, a moment behind</source>
-        <translation>ทีละคำตามจังหวะผู้พูด ช้ากว่าเล็กน้อย</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Only words the speech model is sure of: later, but they stay put</source>
-        <translation>แสดงเฉพาะคำที่ระบบมั่นใจ จึงขึ้นช้ากว่า แต่ข้อความจะไม่เปลี่ยน</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Each sentence once, finished: nothing moves as you read</source>
-        <translation>แต่ละประโยคครั้งเดียว ครบแล้ว: ไม่มีอะไรขยับขณะอ่าน</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Words as they&apos;re said: the quickest, but they change</source>
-        <translation>คำตามที่พูด: เร็วที่สุด แต่จะเปลี่ยน</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
         <source>Translation a moment later</source>
         <translation>แสดงคำแปลตามมาทีหลังเล็กน้อย</translation>
     </message>
@@ -1458,6 +1438,19 @@
         <location filename="../src/polyglotic_desktop/ui/consent.py"/>
         <source>To caption what you hear, Polyglotic sends the speech it detects to our server. Audio and captions are used only to caption it for you - never stored. To run the service we keep your account, the minutes you listen, connection details (app version, the country you connect from, the kind of app you listen to - never its name) and your learning data: the dictionary words you look up, save or mark, and when - never the sentence around them. Your saved words and word statuses follow you to another computer; your lookups show us how people learn and what the dictionaries miss. You can delete your learning data any time. These aren&apos;t optional: without them there&apos;s no service.</source>
         <translation>เพื่อทำคำบรรยายสิ่งที่คุณได้ยิน Polyglotic ส่งเสียงพูดที่ตรวจพบไปยังเซิร์ฟเวอร์ของเรา เสียงและคำบรรยายใช้เพื่อทำคำบรรยายให้คุณเท่านั้น - ไม่เคยเก็บไว้ เพื่อให้บริการ เราเก็บบัญชีของคุณ จำนวนนาทีที่ฟัง ข้อมูลการเชื่อมต่อ (เวอร์ชันแอป ประเทศที่เชื่อมต่อ ประเภทแอปที่ฟัง - ไม่มีชื่อแอป) และข้อมูลการเรียน: คำในพจนานุกรมที่คุณค้น บันทึก หรือทำเครื่องหมาย และเวลา - ไม่มีประโยครอบข้าง คำที่บันทึกและสถานะคำจะตามคุณไปคอมพิวเตอร์เครื่องอื่น การค้นคำช่วยให้เราเห็นว่าคนเรียนอย่างไรและพจนานุกรมขาดอะไร ลบข้อมูลการเรียนได้ทุกเมื่อ ข้อมูลเหล่านี้ไม่ใช่ตัวเลือก: ถ้าไม่มีก็ให้บริการไม่ได้</translation>
+    </message>
+</context>
+<context>
+    <name>Controls</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>About {subject}</source>
+        <translation type="unfinished">เกี่ยวกับ {subject}</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>More information</source>
+        <translation type="unfinished">ข้อมูลเพิ่มเติม</translation>
     </message>
 </context>
 <context>
@@ -3824,11 +3817,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
-        <source>Rename</source>
-        <translation>เปลี่ยนชื่อ</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Translate into</source>
         <translation>แปลเป็น</translation>
     </message>
@@ -4477,11 +4465,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>No key: the hotkey does nothing</source>
-        <translation>ไม่มีปุ่ม: ปุ่มลัดนี้ไม่ทำอะไร</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Clear {name}&apos;s key</source>
         <translation>ล้างปุ่มของ {name}</translation>
     </message>
@@ -4514,11 +4497,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Reset all</source>
         <translation>รีเซ็ตทั้งหมด</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>Every hotkey back to its own key</source>
-        <translation>ปุ่มลัดทุกปุ่มกลับเป็นปุ่มเดิม</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
@@ -5100,11 +5078,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Every Lab setting back to its default.</source>
-        <translation>คืนค่าเริ่มต้นให้การตั้งค่าทั้งหมดในแล็บ</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Your speech on the right</source>
         <translation>เสียงพูดของคุณอยู่ด้านขวา</translation>
     </message>
@@ -5170,11 +5143,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
-        <translation>ทีละบรรทัด: แสดงต้นฉบับหนึ่งบรรทัดแล้วตามด้วยคำแปล ตัดทั้งสองบรรทัดตรงคำที่จับคู่กัน หากแบ่งช่วงข้อความยาวไม่ได้ จะขึ้นบรรทัดใหม่</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Fill the width</source>
         <translation>เต็มความกว้าง</translation>
     </message>
@@ -5182,6 +5150,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Off: each clause on a row of its own (the default). Translation below: a caption&apos;s clauses run on in lines as wide as the window, and its translation fills the lines under them. No Arrows while this is on.</source>
         <translation>ปิด: แยกแต่ละช่วงเป็นคนละแถว (ค่าเริ่มต้น) คำแปลอยู่ด้านล่าง: ช่วงข้อความต่อกันเต็มความกว้างของหน้าต่าง โดยคำแปลอยู่ใต้ต้นฉบับ โหมดนี้ไม่แสดงลูกศร</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
+        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
+        <translation>ทีละบรรทัด: แสดงต้นฉบับหนึ่งบรรทัดแล้วตามด้วยคำแปล ตัดทั้งสองบรรทัดตรงคำที่จับคู่กัน หากแบ่งช่วงข้อความยาวไม่ได้ จะขึ้นบรรทัดใหม่</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
@@ -5711,6 +5684,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
+        <source>Recordings</source>
+        <translation type="unfinished">การบันทึกเสียง</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
         <source>Your level</source>
         <translation>ระดับของคุณ</translation>
     </message>
@@ -6192,6 +6170,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Download progress</source>
         <translation>ความคืบหน้าการดาวน์โหลด</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>Credits</source>
+        <translation type="unfinished">เครดิต</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
@@ -7179,14 +7162,6 @@
         <location filename="../src/polyglotic_desktop/ui/open_beta.py"/>
         <source>Enter the six-digit code from your email.</source>
         <translation>กรอกรหัส 6 หลักจากอีเมลของคุณ</translation>
-    </message>
-</context>
-<context>
-    <name>Pages</name>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui/widgets.py"/>
-        <source>Opens in your browser</source>
-        <translation>เปิดในเบราว์เซอร์</translation>
     </message>
 </context>
 <context>
@@ -8359,11 +8334,6 @@
         <translation>ปรับแต่งพรีเซ็ต…</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
-        <source>Edit, rename, reset or add presets in Settings</source>
-        <translation>แก้ไข เปลี่ยนชื่อ รีเซ็ต หรือเพิ่มพรีเซ็ตได้ใน การตั้งค่า</translation>
-    </message>
-    <message>
         <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
         <source>Preset: {name} · {not_saved}</source>
         <translation>พรีเซ็ต: {name} · {not_saved}</translation>
@@ -9106,11 +9076,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Match translation size to caption size</source>
         <translation>ปรับขนาดคำแปลให้เท่ากับขนาดคำบรรยาย</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>Set the translation size equal to the caption size</source>
-        <translation>ตั้งขนาดคำแปลให้เท่ากับขนาดคำบรรยาย</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>

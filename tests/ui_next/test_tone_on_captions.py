@@ -48,6 +48,7 @@ from polyglotic_desktop.ui_next.caption_marks import (
 )
 from polyglotic_desktop.ui_next.caption_window import look_ink, marks_panel
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.panels import LookPanel
 from polyglotic_desktop.ui_next.transcript_window import TranscriptWindow
 from polyglotic_desktop.ui_next.views.arrivals import (
@@ -544,7 +545,7 @@ def test_the_thickness_slider_steps_through_the_weights_by_name(
     assert thickness.accessibleDescription() == "Medium"
     QTest.keyClick(thickness, Qt.Key.Key_Right)
     assert (view.value.thickness, now()) == (600, "Semibold")
-    assert thickness.toolTip().startswith("Semibold. ")
+    assert help_text(thickness) == "Semibold"  # its explanation: the ⓘ's (1013)
     QTest.keyClick(thickness, Qt.Key.Key_Home)
     # the app's faces have nothing lighter: Medium is the light end (532)
     assert (view.value.thickness, now()) == (500, "Medium")

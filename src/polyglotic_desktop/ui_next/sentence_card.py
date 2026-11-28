@@ -55,6 +55,7 @@ from PySide6.QtWidgets import (
 from polyglotic_desktop.core.learning.saved_words import Category, CategoryId
 from polyglotic_desktop.ui_next import style
 from polyglotic_desktop.ui_next.above_all import ABOVE_ALL
+from polyglotic_desktop.ui_next.controls import InfoIcon
 from polyglotic_desktop.ui_next.languages import (
     an_before,
     in_sentence,
@@ -223,6 +224,8 @@ class SentenceCard(QWidget):
         self._say_row.addStretch(1)
         self.sides: list[tuple[QPushButton, SideAloud]] = []
         """The Say it row's buttons, a side each (polyglotic-hq 495)."""
+        self.side_info: dict[QPushButton, InfoIcon] = {}
+        """Each side's ⓘ: how to get a voice, for a side with none (1013)."""
         self.look_up = QPushButton(self)
         """Looks the selected phrase up (533): shown when `offer` has one."""
         self.look_up.setObjectName("sentence_card.look_up")
@@ -312,7 +315,11 @@ class SentenceCard(QWidget):
         for button, _ in self.sides:
             self._say_row.removeWidget(button)
             button.deleteLater()
+        for info in self.side_info.values():
+            self._say_row.removeWidget(info)
+            info.deleteLater()
         self.sides = []
+        self.side_info = {}
         reading = self.reading
         self.say_label.setVisible(reading is not None and bool(sides))
         if reading is None or not sides:
@@ -329,6 +336,12 @@ class SentenceCard(QWidget):
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.clicked.connect(lambda _=False, s=side: self._say(s))
             self._say_row.insertWidget(self._say_row.count() - 1, button)
+            # how to get a voice, behind an ⓘ beside a side that has none (1013)
+            info = InfoIcon("", parent=self)
+            info.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # as the buttons
+            info.hide()
+            self._say_row.insertWidget(self._say_row.count() - 1, info)
+            self.side_info[button] = info
             self.sides.append((button, side))
         self._show_sides()
 
@@ -346,9 +359,12 @@ class SentenceCard(QWidget):
                 tip = f"{stop_text()} (Esc)"
             else:
                 tip = say_in_text(side.language)
-            button.setToolTip(tip)
             button.setAccessibleName(button.text().lstrip("▶■+ "))
             button.setAccessibleDescription(tip)
+            info = self.side_info[button]
+            info.set_text(tip if state is Say.NO_VOICE else "")
+            info.set_about(button.accessibleName())
+            info.setHidden(state is not Say.NO_VOICE)
         self._show_better(reading.notice_for(self._owner))
         if self.isVisible():
             self._fit()

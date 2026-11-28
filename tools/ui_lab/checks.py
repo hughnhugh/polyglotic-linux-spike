@@ -101,7 +101,9 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.core.lexicon.chinese import has_han, is_han
 from polyglotic_desktop.ui_next.caption_surface import CaptionSurface
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.lookup_card import LookupCard
+from tools.ui_lab.tooltips import state_tooltip_faults
 
 CONTENT = (CaptionSurface, LookupCard)
 """What shows the learner's captions, or words from them: never written down."""
@@ -117,6 +119,7 @@ CHECKS = (
     "keyboard",
     "horizontal_scrollbar",
     "minimum_size",
+    "tooltip",
 )
 SMALLEST_PX = 12.0
 CONTRAST = 4.5
@@ -312,6 +315,14 @@ def inspect(
         found.notes += order
         found.findings += _scrollbars(window)
         found.findings += _squashed(window)
+        found.findings += [
+            Finding(
+                "tooltip",
+                faulty.objectName() or type(faulty).__name__,
+                detail,
+            )
+            for faulty, detail in state_tooltip_faults(window)
+        ]
         found.words += [w for w in _words(window) if w not in found.words]
     found.findings = [_waive(state, f) for f in _unique(found.findings)]
     return found
@@ -1239,7 +1250,7 @@ def _words(widget: QWidget) -> list[str]:
 
 def _texts_of(widget: QWidget) -> Iterable[str]:
     """`widget`'s own words: its title, text, placeholder, current choice,
-    tooltip, accessible name and actions' words."""
+    tooltip or help, accessible name and actions' words."""
     if widget.isWindow():
         yield widget.windowTitle()
     own = _own_text(widget)
@@ -1252,10 +1263,12 @@ def _texts_of(widget: QWidget) -> Iterable[str]:
             if isinstance(value, str):
                 yield value
     yield widget.toolTip()
+    yield help_text(widget)  # its help in the one style (1013)
     yield widget.accessibleName()
     for action in widget.actions():
         yield action.text()
         yield action.toolTip()
+        yield help_text(action)
 
 
 def count(findings: Iterable[Finding]) -> Counter[str]:

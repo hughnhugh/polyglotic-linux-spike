@@ -15,6 +15,7 @@ from polyglotic_desktop.core.listening.timing import OFFERED_MODES, CaptionMode
 from polyglotic_desktop.perf import budgets
 from polyglotic_desktop.ui_next.caption_window import timing_tip
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import InfoIcon, help_text
 from polyglotic_desktop.ui_next.panels import (
     BehaviourPanel,
     LanguagesPanel,
@@ -274,7 +275,8 @@ def test_reset_from_its_card(qapp: QApplication) -> None:
     reset.reset.click()
     assert view.value.opacity == CaptionLook().opacity
     assert panel.background.value() == round(CaptionLook().opacity * 100)
-    assert "Reset positions" in reset.reset.toolTip()  # the places: Home's
+    (info,) = reset.findChildren(InfoIcon)  # behind an ⓘ beside it (1013)
+    assert "Reset positions" in help_text(info)  # the places: Home's
     panel.deleteLater()
     reset.deleteLater()
 
@@ -419,7 +421,8 @@ def test_one_sentence_at_most_under_a_control_in_a_rail_the_rest_on_hover(
         rows += [*panel.findChildren(Row), *panel.findChildren(SwitchRow)]
     shown = [row.detail.text() for row in rows if row.detail.isVisible()]
     assert shown == []
-    assert all(row.toolTip() for row in rows)
+    assert all(row.info is not None and help_text(row.info) for row in rows)
+    assert not any(help_text(row) for row in rows)  # never on the whole row
     assert look.background.accessibleDescription().startswith("0 % is no box")
     assert look.source.accessibleDescription().startswith("The app's name")
     for panel in panels:
@@ -449,7 +452,8 @@ def test_in_settings_every_setting_has_its_line_under_its_name(
         assert rows
         for row in rows:
             assert row.detail.isVisible() and row.detail.text(), row
-            assert row.toolTip() == row.detail.text()
+            assert row.info is None  # no ⓘ saying the line again (1013)
+            assert not help_text(row)
         panel.close()
 
 
@@ -464,8 +468,10 @@ def test_live_updates_every_says_the_first_waits_for_a_second(
 
     panel = TimingPanel(TimingView(Timing()))
     try:
-        assert "first update waits for a second of speech" in panel.live.toolTip()
-        assert panel.interval.accessibleDescription() == panel.live.toolTip()
+        assert panel.live.info is not None  # behind an ⓘ beside the title (1013)
+        said = help_text(panel.live.info)
+        assert "first update waits for a second of speech" in said
+        assert panel.interval.accessibleDescription() == said
     finally:
         panel.deleteLater()
         QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

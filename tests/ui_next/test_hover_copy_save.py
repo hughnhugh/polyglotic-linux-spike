@@ -31,6 +31,7 @@ from tests.ui_next.test_transcript_lookup import find as transcript_find
 
 from polyglotic_desktop.core.shared.tunables import declarations
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.toast import (
     Toast,
     current_toast,
@@ -98,8 +99,8 @@ def test_hover_tints_only_that_caption_and_shows_save_and_copy_without_layout_sh
     assert shown.line_actions.isVisible()
     assert shown.line_save_button.isVisible()
     assert shown.line_copy_button.isVisible()
-    assert shown.line_save_button.toolTip() == "Save caption"
-    assert shown.line_copy_button.toolTip() == "Copy caption"
+    assert help_text(shown.line_save_button) == "Save caption"
+    assert help_text(shown.line_copy_button) == "Copy caption"
     assert shown.line_save_button.accessibleName() == "Save caption"
     assert shown.line_copy_button.accessibleName() == "Copy caption"
     # Zero layout shift: canvas width and placed caption geometry stay identical.

@@ -241,6 +241,7 @@ from polyglotic_desktop.ui_next.caption_selection import (
 )
 from polyglotic_desktop.ui_next.caption_set_up import CaptionSetUp
 from polyglotic_desktop.ui_next.caption_surface import PAD, CaptionSurface
+from polyglotic_desktop.ui_next.controls import help_text, set_help_tip
 from polyglotic_desktop.ui_next.copying import (
     copied_to_clipboard,
     copy_key_is_ours,
@@ -3607,7 +3608,7 @@ class SourceTag(QWidget):
         if (label, mic, note) == (self.label, self.mic, self.note):
             return
         self.label, self.mic, self.note = label, mic, note
-        self.setToolTip(f"{label.name} - {note}" if note else label.name)
+        set_help_tip(self, f"{label.name} - {note}" if note else label.name)
         self.setAccessibleName(label.name)
         self.updateGeometry()
         self.update()
@@ -3644,7 +3645,7 @@ class SourceTag(QWidget):
                 "Your speech is shown here: your mic is sent for your captions "
                 "only while this is on"
             )
-        return self.toolTip()
+        return help_text(self)
 
     def _note_width(self) -> int:
         if not self.note:
@@ -3833,8 +3834,8 @@ class PaceRow(QWidget):
         self._text = text
         if self.accessibleName() != accessible:
             self.setAccessibleName(accessible)
-        if self.toolTip() != accessible:
-            self.setToolTip(accessible)
+        if help_text(self) != accessible:  # "wpm" in full, on hover (1013)
+            set_help_tip(self, accessible)
         if changed:
             self.updateGeometry()
             self.update()
@@ -3979,8 +3980,7 @@ class PaceLabel(QLabel):
             combined = them_text
             accessible = them_accessible
         super().setText(combined)
-        self.setAccessibleName(accessible)
-        self.setToolTip(accessible)
+        self.setAccessibleName(accessible)  # no hover: the caption is shown (1013)
         self._rows_layout.activate()
 
     def set_ink(self, foreground: QColor, edge: TextEdge) -> None:
@@ -4677,7 +4677,7 @@ class CaptionWindow(CaptionTopLevel):
         self.pill.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pill.setStyleSheet(pill_style())
         self.pill.clicked.connect(self.go_live)
-        self.pill.setToolTip(live_tip(""))
+        self.pill.setAccessibleDescription(live_tip(""))  # it says it (1013)
         self.pill.hide()
         self.scroll_bar = _OverlayScrollBar(self.bar, self)
         """Overlay scroll bar in the theme's colours: reveals on scroll or
@@ -7561,7 +7561,7 @@ class CaptionWindow(CaptionTopLevel):
         """The hotkey that unlocks now ("" if it doesn't work here)."""
         if keys != self.unlock_keys:
             self.unlock_keys = keys
-            self.controls["lock"].setToolTip(lock_tip(keys))
+            set_help_tip(self.controls["lock"], lock_tip(keys))
             self.canvas.update()
 
     def _lock_spot(self) -> QRect | None:
@@ -7669,7 +7669,7 @@ class CaptionWindow(CaptionTopLevel):
     def set_live_keys(self, keys: str) -> None:
         """Back to live's hotkey as the OS writes it ("" none), on its tip
         (polyglotic-hq 567)."""
-        self.pill.setToolTip(live_tip(keys))
+        self.pill.setAccessibleDescription(live_tip(keys))  # it says it (1013)
 
     # -- in a joined window -------------------------------------------------------------
 
@@ -7749,7 +7749,7 @@ class CaptionWindow(CaptionTopLevel):
         action.setObjectName(f"caption_window.{name}")
         if glyph is not None:
             self.glyphs[name] = glyph  # the strip's button; the popover shows the text
-        action.setToolTip(tip or text)
+        set_help_tip(action, tip or text)
         action.setCheckable(checkable)
         if slot is not None:
             action.triggered.connect(slot)
@@ -8030,6 +8030,7 @@ class CaptionWindow(CaptionTopLevel):
             button = QToolButton(band)
             button.setObjectName(f"caption_window.band.{name}")
             button.setDefaultAction(action)
+            set_help_tip(button, help_text(action))  # its name: it shows a glyph
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setMouseTracking(True)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -8043,9 +8044,9 @@ class CaptionWindow(CaptionTopLevel):
                 self.tips.watch(
                     button,
                     lambda _: (
-                        legend_html(self.look, self.controls["links"].toolTip())
+                        legend_html(self.look, help_text(self.controls["links"]))
                         if self.look.colour_links_by_word_class
-                        else self.controls["links"].toolTip()
+                        else help_text(self.controls["links"])
                     ),
                 )
             else:
@@ -8109,8 +8110,8 @@ class CaptionWindow(CaptionTopLevel):
         save_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         save_button.setMouseTracking(True)
-        save_button.setToolTip(_tr("Save caption"))
         save_button.setAccessibleName(_tr("Save caption"))
+        set_help_tip(save_button, _tr("Save caption"))  # an icon's name
         save_button.clicked.connect(self._save_hovered_line)
         row.addWidget(save_button)
         copy_button = self.line_copy_button = QToolButton(box)
@@ -8118,8 +8119,8 @@ class CaptionWindow(CaptionTopLevel):
         copy_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         copy_button.setCursor(Qt.CursorShape.PointingHandCursor)
         copy_button.setMouseTracking(True)
-        copy_button.setToolTip(_tr("Copy caption"))
         copy_button.setAccessibleName(_tr("Copy caption"))
+        set_help_tip(copy_button, _tr("Copy caption"))  # an icon's name
         copy_button.clicked.connect(self._copy_hovered_line)
         row.addWidget(copy_button)
         self.tips.watch(save_button, near=True)
@@ -8174,7 +8175,7 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
         self.controls["show_mic"].setChecked(on)
         self.mic_button.setChecked(on)
         tip = mic_button_tip(on)
-        self.mic_button.setToolTip(tip)
+        set_help_tip(self.mic_button, tip)
         self.mic_button.setAccessibleName(_tr("Show my speech here"))
         self.mic_button.setAccessibleDescription(tip)
         if not on:
@@ -8183,7 +8184,7 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
         self._show_fill()
         stop = _tr("Stop captioning {app}").format(app=self.label.name)
         self.controls["stop"].setText(style.button_text(stop))
-        self.controls["stop"].setToolTip(stop)
+        set_help_tip(self.controls["stop"], stop)
         self._name_buttons()
         self._fit_band()
         self._refresh_popovers()
@@ -8203,7 +8204,8 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
         links.setChecked(self.look.word_links is not WordLinks.OFF)
         self.controls["quiet"].setChecked(self.look.quiet)
         links.setEnabled(self.look.show_original)
-        links.setToolTip(
+        set_help_tip(
+            links,
             (
                 _tr("Word links on or off. Colours show word class.")
                 if self.look.colour_links_by_word_class
@@ -8213,7 +8215,7 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
             else _tr(
                 "Word links need what was said: turn on “Show the original above "
                 "the translation” in Settings"
-            )
+            ),
         )
 
     def _show_fill(self) -> None:
@@ -8322,7 +8324,7 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
         ):
             if chip.accessibleName() != name:
                 chip.setAccessibleName(name)
-                chip.setToolTip(name)
+                set_help_tip(chip, name)
             chip.setToolButtonStyle(
                 Qt.ToolButtonStyle.ToolButtonIconOnly
                 if icons
@@ -8683,10 +8685,11 @@ QToolButton:pressed {{ background: rgba({ink.shade},0.28); }}
 
     def _tip_text_size(self) -> None:
         few = self.canvas.rows_that_fit() <= FEW_ROWS
-        self.controls["bigger"].setToolTip(
+        set_help_tip(
+            self.controls["bigger"],
             _tr("Drag the top edge for more lines")
             if few
-            else hotkeys_here(_tr("Bigger captions (Ctrl+wheel)"))
+            else hotkeys_here(_tr("Bigger captions (Ctrl+wheel)")),
         )
 
     def showEvent(self, event: QShowEvent) -> None:

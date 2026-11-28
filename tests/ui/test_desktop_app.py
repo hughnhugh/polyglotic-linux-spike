@@ -173,6 +173,32 @@ def test_the_tray_menu_has_the_named_commands(qapp: QApplication) -> None:
     assert texts["windows.hide"] == "Hide all caption windows"
     assert not app.install_update.isVisible()
     assert not app.usage.isVisible()  # nothing to say without a meter
+    assert app.lock_windows.property("description") == (
+        "Clicks pass through to the windows underneath"
+    )
+    assert app.show_delay.property("description").startswith("Above each caption:")
+    assert app.quit.property("description").startswith("Quit Polyglotic -")
+    app.tray_menu.popup(QPoint(100, 100))
+    app.tray_menu._show_description(app.lock_windows)
+    assert app.tray_menu.description.isVisible()
+    assert app.tray_menu.description.text() == app.lock_windows.property("description")
+    app.tray_menu.close()
+    app.close()
+
+
+def test_a_dark_tray_menus_description_is_dark_too(qapp: QApplication) -> None:
+    """Beside the dark tray menu the box takes the menu's colours: a style
+    sheet leaves the palette light, which drew a white box (polyglotic-hq 1077)."""
+    app = make_app()
+    app._style_tray_menu(light=False)
+    app.tray_menu.popup(QPoint(100, 100))
+    app.tray_menu._show_description(app.quit)
+    sheet = app.tray_menu.description.styleSheet()
+    assert "background: #2c2c2c" in sheet and "color: #ffffff" in sheet
+    app._style_tray_menu(light=True)
+    app.tray_menu._show_description(app.quit)
+    assert "#2c2c2c" not in app.tray_menu.description.styleSheet()
+    app.tray_menu.close()
     app.close()
 
 

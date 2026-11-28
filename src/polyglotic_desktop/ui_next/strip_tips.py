@@ -24,7 +24,7 @@ from PySide6.QtCore import QEvent, QObject, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QEnterEvent, QGuiApplication, QMouseEvent
 from PySide6.QtWidgets import QLabel, QToolButton, QWidget
 
-from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.controls import dress_help, help_text, help_width_limit
 
 REST_MS = 500
 """How long the mouse rests on a button before its label shows (Qt's own
@@ -35,11 +35,7 @@ longest (Fill the width's)."""
 OVER_CAPTIONS_MS = 3000
 """The longest a label stays over the captions (a window at the top of
 its screen has no room above it)."""
-TEXT = "#e9ecf2"
-"""The caption windows' words (`caption_window.TEXT`): on its own dark panel."""
 GAP = 4
-WIDEST = 360
-"""A label wider than this, in pixels at 100 % text size, wraps."""
 """Pixels between the label and the window (or the strip)."""
 TipText = Callable[[QPoint], str]
 """A widget's label at a point in it (a button's is the same everywhere)."""
@@ -68,15 +64,6 @@ def tip_place(
         return QRect(x, above, width, height), near_button
     below = min(button.bottom() + 1 + GAP, area.bottom() + 1 - height)
     return QRect(x, below, width, height), True
-
-
-def label_style() -> str:
-    """The label's look, at the text size now: the caption windows' notice
-    colours, opaque, so it reads over any game or video."""
-    return (
-        f"background: rgb(25,29,36); color: {TEXT}; border: 1px solid #3a4150;"
-        f" border-radius: 6px; padding: 4px 8px; font-size: {style.px(12)}px;"
-    )
 
 
 class HoverLabel(QLabel):
@@ -124,6 +111,7 @@ class StripTips(QObject):
         (a strip button's) or its own, read each time, so a changed tip
         (Stop captioning's app, word links turned off) is the one said."""
         self.texts[widget] = text or partial(_tooltip_at, widget)
+        widget.setProperty("helpShownBy", "strip")  # not its own popup too
         if near:
             self._near.add(widget)
         widget.installEventFilter(self)
@@ -161,9 +149,9 @@ class StripTips(QObject):
             self.hide()
             return
         label = self.label
-        label.setStyleSheet(label_style())
+        dress_help(label, widget)  # the one help style (1013)
         label.setText(text)
-        fit(label, style.px(WIDEST))
+        fit(label, help_width_limit(label))
         button = QRect(widget.mapToGlobal(QPoint(0, 0)), widget.size())
         window = widget.window().frameGeometry()
         screen = widget.screen() or QGuiApplication.primaryScreen()
@@ -204,7 +192,7 @@ def _tooltip_at(widget: QWidget, _at: QPoint) -> str:
 
 
 def tooltip_of(widget: QWidget) -> str:
-    """A strip button's tooltip: its action's, or its own."""
-    if isinstance(widget, QToolButton) and widget.defaultAction() is not None:
-        return widget.defaultAction().toolTip()
-    return widget.toolTip()
+    """A strip button's help: its action's, or its own (`help_text`) - never
+    a native tooltip (1013)."""
+    action = widget.defaultAction() if isinstance(widget, QToolButton) else None
+    return help_text(action if action is not None else widget)

@@ -8,7 +8,6 @@ from collections.abc import Sequence
 from PySide6.QtCore import QEvent, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
-    QApplication,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -127,12 +126,12 @@ class TextDialog(QDialog):
 def page_button(text: str, url: str, name: str) -> QPushButton:
     """A button that opens `url` - a page of our website, such as the privacy
     notice - in the learner's browser. Never shown inside the app, so the
-    app and the site can't say different things (polyglotic-hq 185)."""
+    app and the site can't say different things (polyglotic-hq 185). No
+    tooltip: its words say what it opens (polyglotic-hq 1013)."""
     button = QPushButton(text)
     button.setObjectName(name)
     button.setProperty("url", url)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
-    button.setToolTip(QApplication.translate("Pages", "Opens in your browser"))
     # in a dialog, a focused button takes Enter: the first screen opened with
     # the focus here, and Enter - "go on" - opened the browser instead
     # (polyglotic-hq 203). Space or a click still opens the page.

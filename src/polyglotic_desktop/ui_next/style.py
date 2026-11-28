@@ -498,6 +498,7 @@ QWidget {{ color: {TEXT}; font-size: {px(13)}px; font-family: {_UI_FAMILY_CSS}; 
 QMainWindow, QDialog, QTabWidget {{ background: {BG}; }}
 #Page, #Content {{ background: {content}; }}
 QToolTip {{ background: {SURFACE_2}; color: {TEXT}; border: 1px solid {BORDER}; padding: 4px 6px; }}
+#MenuDescription, #HelpPopup {{ background: {SURFACE_2}; color: {TEXT}; border: 1px solid {BORDER}; border-radius: 6px; }}
 #Card {{ background: transparent; border: none; }}
 #CaptionIdle {{
     color: {readable_on(BG, WARNING)}; background: {WARNING};

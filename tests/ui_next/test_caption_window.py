@@ -90,6 +90,7 @@ from polyglotic_desktop.ui_next.caption_window import (
     notice_text,
 )
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.glyphs import Glyph
 from polyglotic_desktop.ui_next.languages import not_offered_note
 from polyglotic_desktop.ui_next.os_words import pc_mac_or_linux
@@ -305,9 +306,9 @@ def test_speaking_pace_reserves_its_row_and_uses_caption_ink(
     assert (
         window.pace.them_row.accessibleName() == "Them: 165 words a minute, average 187"
     )
-    assert window.pace.them_row.toolTip() == "Them: 165 words a minute, average 187"
+    assert help_text(window.pace.them_row) == "Them: 165 words a minute, average 187"
     assert window.pace.you_row.accessibleName() == "You: 120 words a minute, average 98"
-    assert window.pace.you_row.toolTip() == "You: 120 words a minute, average 98"
+    assert help_text(window.pace.you_row) == "You: 120 words a minute, average 98"
     them_iface = QAccessible.queryAccessibleInterface(window.pace.them_row)
     you_iface = QAccessible.queryAccessibleInterface(window.pace.you_row)
     assert them_iface is not None
@@ -1570,7 +1571,7 @@ def test_a_hint_on_bigger_text_when_few_lines_fit(window: CaptionWindow) -> None
     window.resize(960, 180)
     window.set_text_size(2.0)
     window.set_translation_size(2.0)
-    assert window.controls["bigger"].toolTip() == "Drag the top edge for more lines"
+    assert help_text(window.controls["bigger"]) == "Drag the top edge for more lines"
 
 
 def test_original_only_shows_no_translation(window: CaptionWindow) -> None:
@@ -2306,7 +2307,7 @@ def _release_after(window: CaptionWindow, snapped: Preset) -> QMouseEvent:
 def test_a_renamed_app_is_renamed_on_its_window(window: CaptionWindow) -> None:
     window.set_labels({APP: SourceLabel("Mei's call", "#4dd0e1")}, "You")
     assert window.windowTitle() == "Mei's call captions"
-    assert window.buttons["stop"].toolTip() == "Stop captioning Mei's call"
+    assert help_text(window.buttons["stop"]) == "Stop captioning Mei's call"
 
 
 # -- W1's first polish (project 113) ----------------------------------------------------
@@ -2335,7 +2336,7 @@ def test_original_only_says_so_on_the_strip(window: CaptionWindow) -> None:
     assert window.tag.note == ""  # the chip says it
     window.resize(window._minimum().width, 180)
     assert not window.chip.isHidden()
-    assert "Original only" in window.chip.toolTip()
+    assert "Original only" in help_text(window.chip)
     window.set_language("en")
     assert window.tag.note == ""
 

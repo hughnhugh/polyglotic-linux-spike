@@ -10,13 +10,17 @@ and the dot paint themselves in the theme's colours at paint time.
 """
 
 import math
+import re
 import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 
 from PySide6.QtCore import (
     QEvent,
+    QModelIndex,
+    QObject,
     QPoint,
+    QPointF,
     QRect,
     QRectF,
     QSize,
@@ -26,15 +30,19 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtGui import (
+    QAction,
     QColor,
     QDesktopServices,
+    QFocusEvent,
     QFont,
     QFontMetrics,
     QFontMetricsF,
+    QHelpEvent,
     QIcon,
     QPainter,
     QPaintEvent,
     QPalette,
+    QPen,
     QPixmap,
     QResizeEvent,
     QShowEvent,
@@ -43,13 +51,16 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QAbstractItemView,
     QApplication,
     QCheckBox,
     QComboBox,
     QFrame,
     QHBoxLayout,
+    QLabel,
     QLayout,
     QLayoutItem,
+    QListWidgetItem,
     QMenu,
     QPushButton,
     QRadioButton,
@@ -58,25 +69,489 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyleOptionButton,
     QStylePainter,
+    QTableWidgetItem,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
+from polyglotic_desktop.described_menu import DescribedMenu as _DescribedMenu
 from polyglotic_desktop.ui_next import glyphs, style
 from polyglotic_desktop.ui_next.copying import Measured, Text
+
+
+def _tr(text: str) -> str:
+    return QApplication.translate("Controls", text)
+
+
+# -- The one help style (polyglotic-hq 1013) --------------------------------------
+#
+# Help is never Qt's native tooltip, which Windows paints as one long strip
+# across the window, repeating what the control already says. It's one
+# themed, wrapped popup beside what it's about, in three places only:
+#
+# - an ⓘ (`InfoIcon`) beside a label, for an explanation the label needs;
+# - a control that shows no words of its own - an icon, a code ("A+",
+#   "EN ▾") or a chip showing its value - for its name (`set_help_tip`);
+# - a box beside an open menu or dropdown, for the highlighted choice's
+#   description (`DescribedMenu`, `describe`).
+#
+# The UI lab's tooltip check (`tools/ui_lab/tooltips.py`) fails a state with
+# a native tooltip anywhere - a widget's, a list or table item's, a tab's, a
+# menu that shows its choices' - and help that repeats visible words, is
+# wider than the limit, is cut off or hangs on a labelled control or a row.
+
+HELP_POPUP_CHARACTERS = 40
+"""About how many characters a line of help holds before it wraps (24-60):
+that many of the popup font's average character. Forty keeps a sentence
+readable at a glance; Chinese and Japanese, whose characters are twice as
+wide, wrap at about twenty."""
+
+HELP_DELAY_MS = 400
+"""How long the pointer rests on an ⓘ or a word-less control before its
+help shows (200-1000 ms): sooner than Qt's own tooltip (700 ms), for a
+learner reaching for it, and long enough that passing over the strip shows
+nothing. Keyboard focus and a click show it at once."""
+
+HELP_GAP = 8
+"""Between what the help is about and its popup, at 100 % text size (4-16
+px): beside it, never over it."""
+
+HELP_EDGE = 4
+"""Kept free inside a screen's edge for the popup window's frame and shadow
+(0-8 px, at 100 % text size)."""
+
+HELP_ROLE = int(Qt.ItemDataRole.UserRole) + 1013
+"""The item-data role a list or table item keeps its help in: never Qt's
+ToolTipRole, which Qt paints as its native strip."""
+
+INFO_ICON = 14
+"""The ⓘ's circle at 100 % text size (12-20 px)."""
+
+INFO_TARGET = 24
+"""The ⓘ's button, square, at 100 % text size (24-32 px): the least target
+WCAG 2.5.8 accepts beside another control (the lab's `target_size`)."""
+
+_KEYBOARD = (
+    Qt.FocusReason.TabFocusReason,
+    Qt.FocusReason.BacktabFocusReason,
+    Qt.FocusReason.ShortcutFocusReason,
+)
+"""Focus that came from the keyboard: it shows the help at once, as resting
+the pointer does (a click's focus doesn't: the click itself is enough)."""
+
+
+class _Popup(QLabel):
+    """The help's window: a tooltip-kind window, so it never takes the focus
+    or a place on the taskbar, on top of every window (a caption window
+    stays on top) and letting the mouse through, as the strip's label does
+    (`strip_tips.HoverLabel`). `anchor`: what it's showing help for."""
+
+    def __init__(self, name: str, parent: QWidget | None = None) -> None:
+        super().__init__(  # above a caption window too, and never in the way
+            parent,
+            Qt.WindowType.ToolTip
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | Qt.WindowType.WindowTransparentForInput,
+        )
+        self.setObjectName(name)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setWordWrap(True)
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.anchor: QWidget | None = None
+        self.described: QWidget | None = None
+        """The dropdown row whose description it shows (`describe`)."""
+        self.hide()
+
+
+_shared: list[_Popup] = []
+"""The one help popup every ⓘ and word-less control shares: one at a time."""
+
+
+def _help_popup() -> _Popup:
+    if not _shared or not isValid(_shared[0]):
+        _shared[:] = [_Popup("HelpPopup")]
+    return _shared[0]
+
+
+def dress_help(box: QLabel, anchor: QWidget) -> None:
+    """The one help style on `box`: the theme's raised surface and hairline
+    border, the app's text size (a caption window's own font is its
+    captions'), written in `anchor`'s direction."""
+    theme = style.current()
+    box.setStyleSheet(
+        f"QLabel {{ background: {theme['SURFACE_2']}; color: {theme['TEXT']};"
+        f" border: 1px solid {theme['BORDER']}; border-radius: 6px; }}"
+    )
+    box.setFont(style.at_app_text_size(QApplication.font()))
+    box.setLayoutDirection(anchor.layoutDirection())
+    box.setMargin(style.px(8))
+
+
+def help_width_limit(box: QLabel) -> int:
+    """The widest a line of help in `box` may be: `HELP_POPUP_CHARACTERS`
+    of its font's average character, with its margins and border."""
+    words = QFontMetrics(box.font()).averageCharWidth() * HELP_POPUP_CHARACTERS
+    return words + 2 * box.margin() + 2
+
+
+def _screen_of(widget: QWidget) -> QRect:
+    screen = widget.screen() or QApplication.primaryScreen()
+    return screen.availableGeometry()
+
+
+def place_beside(area: QRect, size: QSize, screen: QRect, rtl: bool) -> QPoint:
+    """Where a popup of `size` goes beside `area` (both on the screen):
+    after it in the reading direction, else before it, level with its top;
+    under it (else over it) when neither side has room - never on it. Kept
+    inside `screen`, `HELP_EDGE` from its edges."""
+    gap, edge = style.px(HELP_GAP), style.px(HELP_EDGE)
+    low_x, high_x = screen.left() + edge, screen.right() + 1 - edge - size.width()
+    low_y, high_y = screen.top() + edge, screen.bottom() + 1 - edge - size.height()
+    after, before = area.right() + 1 + gap, area.left() - gap - size.width()
+    first, second = (before, after) if rtl else (after, before)
+    for x in (first, second):
+        if low_x <= x <= high_x:
+            return QPoint(x, max(low_y, min(area.top(), high_y)))
+    x = max(low_x, min(area.left(), high_x))
+    under, over = area.bottom() + 1 + gap, area.top() - gap - size.height()
+    return QPoint(x, under if under <= high_y else max(low_y, over))
+
+
+def show_help(
+    anchor: QWidget, text: str, area: QRect | None = None, box: QLabel | None = None
+) -> QLabel:
+    """`text` in the one help style beside `area` (on the screen; `anchor`
+    itself if not given), in `box` or the shared popup. Wrapped at
+    `HELP_POPUP_CHARACTERS`; as narrow as a short name needs."""
+    popup = box if box is not None else _help_popup()
+    dress_help(popup, anchor)
+    popup.setText(text)
+    popup.ensurePolished()  # a dropdown's own stylesheet first: then measured
+    screen = _screen_of(anchor)
+    natural = QFontMetrics(popup.font()).horizontalAdvance(text)
+    width = min(  # its border, and 2 px so a short name never wraps on rounding
+        natural + 2 * popup.margin() + 4,
+        help_width_limit(popup),
+        screen.width() - 2 * style.px(HELP_EDGE),
+    )
+    popup.setFixedWidth(width)
+    popup.setFixedHeight(popup.heightForWidth(width))
+    if area is None:
+        area = QRect(anchor.mapToGlobal(QPoint(0, 0)), anchor.size())
+    rtl = anchor.layoutDirection() == Qt.LayoutDirection.RightToLeft
+    popup.move(place_beside(area, popup.size(), screen, rtl))
+    if isinstance(popup, _Popup):
+        popup.anchor = anchor
+    popup.show()
+    popup.raise_()
+    return popup
+
+
+def hide_help(anchor: QWidget | None = None) -> None:
+    """The shared popup hidden - only if it's `anchor`'s, when given."""
+    if _shared and isValid(_shared[0]):
+        popup = _shared[0]
+        if anchor is None or popup.anchor is anchor:
+            popup.hide()
+            popup.anchor = None
+
+
+class _HelpHover(QObject):
+    """Shows its host's help in the one style: after the pointer rests on it
+    (`HELP_DELAY_MS`), at once on keyboard focus; hidden as the pointer
+    leaves, a click or key acts, the focus goes or the host hides. Qt's own
+    tooltip event is swallowed, and a native tooltip Qt copies onto the
+    host (a tool button's, from its action) is cleared as it comes."""
+
+    def __init__(self, host: QWidget, text: str) -> None:
+        super().__init__(host)
+        self.host = host
+        self.text = text
+        self.rest = QTimer(self)
+        self.rest.setSingleShot(True)
+        self.rest.setInterval(HELP_DELAY_MS)
+        self.rest.timeout.connect(self._rested)
+        host.installEventFilter(self)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        host = getattr(self, "host", None)  # a wrapper mid-teardown has none
+        if host is None or not isValid(host):  # going: its last events
+            return False
+        kind = event.type()
+        if kind == QEvent.Type.ToolTip:
+            self.show()
+            return True  # never Qt's native strip
+        if kind == QEvent.Type.ToolTipChange and self.host.toolTip():
+            self.host.setToolTip("")
+        elif kind == QEvent.Type.Enter:
+            self.rest.start()
+        elif kind == QEvent.Type.FocusIn:
+            if isinstance(event, QFocusEvent) and event.reason() in _KEYBOARD:
+                self.show()
+        elif kind in (
+            QEvent.Type.Leave,
+            QEvent.Type.FocusOut,
+            QEvent.Type.Hide,
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.KeyPress,
+            QEvent.Type.Wheel,
+        ):
+            self.rest.stop()
+            hide_help(self.host)
+        return False
+
+    def _rested(self) -> None:
+        if isValid(self.host) and self.host.underMouse():
+            self.show()
+
+    def show(self) -> None:
+        if self.host.property("helpShownBy"):
+            return  # a caption window's strip says it (`strip_tips`)
+        if self.text and self.host.isVisible():
+            show_help(self.host, self.text)
+        else:
+            hide_help(self.host)
+
+
+HelpTarget = QWidget | QAction | QListWidgetItem | QTableWidgetItem
+"""What can have help: a control, an action (its buttons have it) or an
+item in a list or table (`item_help` shows it)."""
+
+
+def set_help_tip(target: HelpTarget, text: str) -> None:
+    """The name of a control that shows no words of its own - an icon, a
+    code ("A+", "EN ▾") or a chip showing its value - in the one help style
+    on resting hover and keyboard focus, and to a screen reader. Never Qt's
+    native tooltip. An explanation a labelled control needs goes behind an
+    ⓘ beside its label (`InfoIcon`); a menu choice's, in the box beside the
+    menu (`DescribedMenu`, `describe`). "" clears it - and keeps a native
+    tooltip off a tool button whose action would copy one onto it."""
+    if isinstance(target, QAction):
+        target.setProperty("helpText", text)
+        for each in target.associatedObjects():
+            if isinstance(each, QToolButton) and each.defaultAction() is target:
+                set_help_tip(each, text)
+        return
+    if isinstance(target, (QListWidgetItem, QTableWidgetItem)):
+        target.setData(HELP_ROLE, text or None)
+        return
+    target.setProperty("helpText", text)
+    target.setAccessibleDescription(text)
+    if target.toolTip():
+        target.setToolTip("")
+    held = target.property("helpHover")
+    if isinstance(held, _HelpHover):
+        held.text = text
+        if not text:
+            hide_help(target)
+    else:
+        target.setProperty("helpHover", _HelpHover(target, text))
+
+
+def help_text(target: HelpTarget) -> str:
+    """The help `target` has in the one style ("" none): its name, its ⓘ's
+    explanation or its description as a menu choice."""
+    if isinstance(target, (QListWidgetItem, QTableWidgetItem)):
+        value = target.data(HELP_ROLE)
+    else:
+        value = target.property("helpText")
+        if not value:
+            value = target.property("description")
+    return value if isinstance(value, str) else ""
+
+
+_WORD = re.compile(r"[^\W\d_]{3,}")
+"""A word, as opposed to a code ("A+", "EN"), a glyph or a number."""
+
+
+def shows_words(text: str) -> bool:
+    """Whether `text` on a control is words (its name, for one) rather than a
+    code, a glyph or a number - a control showing words takes no hover
+    name (polyglotic-hq 1013)."""
+    return _WORD.search(text.replace(DROP, "")) is not None
+
+
+def same_words(help_words: str, shown: str) -> bool:
+    """Whether help would only say what's `shown` already: the same words,
+    whatever their case, spacing, accelerator mark, dropdown mark or
+    trailing ellipsis."""
+
+    def bare(text: str) -> str:
+        text = text.replace("&", "").replace(DROP, "").rstrip("…").rstrip(".")
+        return " ".join(text.split()).casefold()
+
+    return bare(help_words) == bare(shown)
+
+
+class InfoIcon(QToolButton):
+    """ⓘ beside a label: an explanation the label needs, in the one help
+    style - on resting hover, keyboard focus (a Tab stop) or a click - and
+    to a screen reader as its description. `about`: what it explains, for
+    its accessible name ("About Live updates every")."""
+
+    def __init__(
+        self, text: str, about: str = "", parent: QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("InfoIcon")
+        self.setAutoRaise(True)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.setCursor(Qt.CursorShape.WhatsThisCursor)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.set_about(about)
+        self.hover = _HelpHover(self, "")
+        self.setProperty("helpHover", self.hover)
+        self.set_text(text)
+        self.clicked.connect(self.hover.show)
+
+    def set_about(self, subject: str) -> None:
+        """What it explains, for its accessible name ("" says only that it's
+        more information)."""
+        self.setAccessibleName(
+            _tr("About {subject}").format(subject=subject)
+            if subject
+            else _tr("More information")
+        )
+
+    def set_text(self, text: str) -> None:
+        self.hover.text = text
+        self.setProperty("helpText", text)
+        self.setAccessibleDescription(text)
+
+    def sizeHint(self) -> QSize:
+        side = style.px(INFO_TARGET)
+        return QSize(side, side)
+
+    def minimumSizeHint(self) -> QSize:
+        return self.sizeHint()
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        lit = self.underMouse() or self.hasFocus()
+        accent, dim = _ink(None, ("ACCENT", "TEXT_DIM"))
+        ink = accent if lit else dim
+        side = style.px(INFO_ICON)
+        box = QRectF(0, 0, side, side)
+        box.moveCenter(QRectF(self.rect()).center())
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        if self.hasFocus():  # where the keyboard is
+            ring = QPen(accent)
+            ring.setWidthF(1.5)
+            painter.setPen(ring)
+            painter.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 6, 6)
+        pen = QPen(ink)
+        pen.setWidthF(max(1.0, side / 12))
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(box.adjusted(0.5, 0.5, -0.5, -0.5))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(ink)
+        stem = side * 0.14
+        centre = box.center()
+        painter.drawEllipse(
+            QPointF(centre.x(), box.top() + side * 0.29), stem * 0.62, stem * 0.62
+        )
+        painter.drawRect(  # the i's stem
+            QRectF(centre.x() - stem / 2, box.top() + side * 0.42, stem, side * 0.34)
+        )
+        painter.end()
+
+
+def with_info(
+    labelled: QWidget, text: str, about: str = "", fill: bool = False
+) -> QWidget:
+    """`labelled` (a label, a title, a switch) with an ⓘ beside it holding
+    `text`, in a row of its own to put where `labelled` went; `fill`: it
+    takes the row's width (a row-wide switch), else only its own. Nothing
+    beside it when `text` is ""."""
+    holder = QWidget()
+    line = QHBoxLayout(holder)
+    line.setContentsMargins(0, 0, 0, 0)
+    line.setSpacing(style.px(4))
+    line.addWidget(labelled, 1 if fill else 0)
+    if text:
+        icon = InfoIcon(text, about, holder)
+        beside = (
+            Qt.AlignmentFlag.AlignVCenter
+            if isinstance(labelled, QAbstractButton)
+            else Qt.AlignmentFlag.AlignTop
+        )
+        line.addWidget(icon, 0, beside)
+    if not fill:
+        line.addStretch(1)
+    return holder
+
+
+class _ItemHelp(QObject):
+    """A list's or table's items' help (`HELP_ROLE`) in the one style, beside
+    the item: on resting hover (Qt's tooltip event on its viewport, which
+    never becomes Qt's strip) and as the keyboard moves to an item. Help
+    that's the item's own words shows only while they're cut off."""
+
+    def __init__(self, view: QAbstractItemView) -> None:
+        super().__init__(view)
+        self.view = view
+        self.viewport = view.viewport()
+        self.viewport.installEventFilter(self)
+        view.installEventFilter(self)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        view = getattr(self, "view", None)  # a wrapper mid-teardown has none
+        if view is None or not isValid(view):  # going: its viewport's last events
+            return False
+        kind = event.type()
+        if watched is self.viewport and kind == QEvent.Type.ToolTip:
+            assert isinstance(event, QHelpEvent)
+            self.show(self.view.indexAt(event.pos()))
+            return True
+        if watched is self.view and kind == QEvent.Type.KeyRelease:
+            QTimer.singleShot(0, self._show_current)
+        elif kind in (QEvent.Type.Leave, QEvent.Type.FocusOut, QEvent.Type.Hide):
+            hide_help(self.view)
+        return False
+
+    def _show_current(self) -> None:
+        if isValid(self.view):
+            self.show(self.view.currentIndex())
+
+    def show(self, index: QModelIndex) -> None:
+        if not isValid(self.view) or not index.isValid():
+            hide_help(self.view)
+            return
+        text = index.data(HELP_ROLE)
+        cell = self.view.visualRect(index)
+        if isinstance(text, str) and text == index.data():
+            words = self.view.fontMetrics().horizontalAdvance(text)
+            if words <= cell.width() - 2 * style.px(6):
+                text = ""  # it's all there to read already
+        if not isinstance(text, str) or not text:
+            hide_help(self.view)
+            return
+        area = QRect(self.viewport.mapToGlobal(cell.topLeft()), cell.size())
+        show_help(self.view, text, area)
+
+
+def item_help(view: QAbstractItemView) -> None:
+    """`view`'s items show their help (`set_help_tip` on an item, or a model's
+    `HELP_ROLE`) in the one style. Once per view."""
+    if not isinstance(view.property("itemHelp"), _ItemHelp):
+        view.setProperty("itemHelp", _ItemHelp(view))
 
 
 def page_button(text: str, url: str, name: str) -> QPushButton:
     """A button that opens `url` - a page of our website, such as the privacy
     notice - in the learner's browser; never shown inside the app, so the
     app and the site can't say different things (polyglotic-hq 185). Today's
-    dialogs have the same, `ui.widgets.page_button`."""
+    dialogs have the same, `ui.widgets.page_button`. No help: it says what
+    it opens (its native "Opens in your browser" strip went in 1013)."""
     button = QPushButton(text)
     button.setObjectName(name)
     button.setProperty("url", url)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
-    button.setToolTip(QApplication.translate("Pages", "Opens in your browser"))
     button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
     return button
 
@@ -649,8 +1124,9 @@ class Row(QWidget):
     """One setting: its title and what it does, with its control under them
     (`beside`: at their right), so the row fits any width. Its words start
     at INSET, as a `SwitchRow`'s do. `tip`: what it does when the title
-    says enough to use it - on hover and to a screen reader, not under it
-    (151's P2, 176: one sentence at most under a control)."""
+    says enough to use it - behind an ⓘ beside the title (`InfoIcon`), not
+    under it (151's P2, 176: one sentence at most under a control), and
+    none when it's the `detail` already shown (1013)."""
 
     def __init__(
         self,
@@ -662,13 +1138,19 @@ class Row(QWidget):
     ) -> None:
         super().__init__()
         self.control = control
-        if tip:
-            tipped(self, control, tip)
         words = QVBoxLayout()
         words.setContentsMargins(1, 0, 0, 0)  # with the control's border: INSET
         words.setSpacing(2)
         self.title = label(title, "RowTitle", wrap=True)
-        words.addWidget(self.title)
+        self.info = _info_for(tip, detail, title, control)
+        if self.info is None:
+            words.addWidget(self.title)
+        else:
+            heading = QHBoxLayout()
+            heading.setSpacing(style.px(4))
+            heading.addWidget(self.title, 1)
+            heading.addWidget(self.info, 0, Qt.AlignmentFlag.AlignTop)
+            words.addLayout(heading)
         self.detail = label(detail, "Faint", wrap=True)
         if not detail:  # hidden, never shown: shown before it has a parent, a
             self.detail.hide()  # label is a window of its own for a moment
@@ -907,6 +1389,98 @@ class FittingCombo(Combo):
         return QSize(hint.width() + max(0, needed - held), hint.height())
 
 
+def _describe_beside(window: QWidget, row: QRect, text: str, box: QLabel) -> None:
+    """`text` in `box`, in the one help style, beside the open `window` (a
+    menu or a dropdown) level with its highlighted `row` (on the screen)."""
+    frame = window.frameGeometry()
+    area = QRect(frame.left(), row.top(), frame.width(), row.height())
+    show_help(window, text, area, box)
+    if box.geometry().intersects(frame):  # no room either side: under it all
+        show_help(window, text, frame, box)
+
+
+class DescribedMenu(_DescribedMenu):
+    """A choice menu whose choices have short names, and the highlighted
+    one's description in a box beside the open menu (polyglotic-hq 1013):
+    wrapped at `HELP_POPUP_CHARACTERS`, never cut off, never over the menu.
+    It follows the pointer and the keyboard alike. A choice with no
+    description shows no box."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(_describe_beside, parent, _Popup("MenuDescription"))
+
+
+class _Described(QObject):
+    """A dropdown row's description (`describe`) in the box beside its
+    dropdown: shown as the pointer comes onto the row or the keyboard
+    reaches it, as a menu's highlight is; hidden as it leaves."""
+
+    def __init__(self, row: QWidget, text: str, group: bool) -> None:
+        super().__init__(row)
+        self.row = row
+        self.text = text
+        self.group = group
+        row.installEventFilter(self)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        row = getattr(self, "row", None)  # a wrapper mid-teardown has none
+        if row is None or not isValid(row):  # going: its last events
+            return False
+        kind = event.type()
+        if kind == QEvent.Type.ToolTip:
+            return True  # never Qt's native strip
+        if kind in (QEvent.Type.Enter, QEvent.Type.FocusIn):
+            self.show()
+        elif kind in (QEvent.Type.Leave, QEvent.Type.FocusOut, QEvent.Type.Hide):
+            box = _description_box(self.row.window(), make=False)
+            if box is not None and box.described is self.row:  # not the next row's
+                box.hide()
+                box.described = None
+        return False
+
+    def show(self) -> None:
+        window = self.row.window()
+        box = _description_box(window)
+        if not self.text or not self.row.isVisible() or box is None:
+            if box is not None:
+                box.hide()
+            return
+        row = QRect(self.row.mapToGlobal(QPoint(0, 0)), self.row.size())
+        box.described = self.row
+        group = self.row.parentWidget() if self.group else None
+        if group is not None:  # beside the tiles, level with this one
+            frame = QRect(group.mapToGlobal(QPoint(0, 0)), group.size())
+            show_help(
+                group,
+                self.text,
+                QRect(frame.left(), row.top(), frame.width(), row.height()),
+                box,
+            )
+            return
+        _describe_beside(window, row, self.text, box)
+
+
+def _description_box(window: QWidget, make: bool = True) -> _Popup | None:
+    """The description box beside `window` - one per dropdown, closed with it."""
+    box = window.findChild(_Popup, "MenuDescription")
+    if box is None and make:
+        box = _Popup("MenuDescription", window)
+    return box
+
+
+def describe(row: QWidget, text: str, group: bool = False) -> None:
+    """A choice `row` described in the box beside the open dropdown it's in,
+    as `DescribedMenu`'s choices are - or, `group`, beside the choices it's
+    one of (a grid of tiles), level with it. "" none."""
+    row.setProperty("description", text)
+    row.setAccessibleDescription(text)
+    held = row.property("described")
+    if isinstance(held, _Described):
+        held.text = text
+    else:
+        row.setProperty("described", _Described(row, text, group))
+
+
 class GlyphButton(QToolButton):
     """A small button whose face is one of the interface's own drawn icons
     (`glyphs`), in the theme's colours at paint time: dim, the accent while
@@ -998,27 +1572,30 @@ class SwitchButton(WrapButton):
         painter.end()
 
 
-def tipped(row: QWidget, control: QWidget, tip: str) -> None:
-    """`tip` on `row` and its control - or, when the control holds others
-    (a slider and its value), each of them that takes the focus: on hover,
-    and to a screen reader."""
-    row.setToolTip(tip)
+def _info_for(tip: str, shown: str, about: str, control: QWidget) -> "InfoIcon | None":
+    """The ⓘ a row's `tip` goes behind - none without one, or when it's the
+    words `shown` under the row already (they'd say it twice). `control`,
+    and each of its parts that takes the focus (a slider and its value),
+    says `tip` to a screen reader either way."""
+    if not tip:
+        return None
     held = [  # a selectable label takes it from a click only: not one of them
         w
         for w in control.findChildren(QWidget)
         if w.focusPolicy() & Qt.FocusPolicy.TabFocus
     ]
     for each in [control, *held]:
-        if not each.toolTip():
-            each.setToolTip(tip)
         if not each.accessibleDescription():
             each.setAccessibleDescription(tip)
+    if same_words(tip, shown):
+        return None
+    return InfoIcon(tip, about)
 
 
 class SwitchRow(QWidget):
     """A setting that is on or off: its title on a row-wide switch
-    (`SwitchButton`), and what it does under it - or, with `tip`, on hover
-    (as `Row`'s)."""
+    (`SwitchButton`), and what it does under it - or, with `tip`, behind an
+    ⓘ beside the switch (as `Row`'s)."""
 
     def __init__(self, title: str, detail: str, name: str, tip: str = "") -> None:
         super().__init__()
@@ -1028,9 +1605,15 @@ class SwitchRow(QWidget):
         self.switch = SwitchButton(self)
         self.switch.setObjectName(name)
         self.switch.setText(title)
-        if tip:
-            tipped(self, self.switch, tip)
-        column.addWidget(self.switch)
+        self.info = _info_for(tip, detail, title, self.switch)
+        if self.info is None:
+            column.addWidget(self.switch)
+        else:
+            line = QHBoxLayout()
+            line.setSpacing(style.px(4))
+            line.addWidget(self.switch, 1)
+            line.addWidget(self.info, 0, Qt.AlignmentFlag.AlignVCenter)
+            column.addLayout(line)
         self.detail = label(detail, "Faint", wrap=True)
         self.detail.setContentsMargins(INSET, 0, SWITCH[0] + INSET, 0)
         if not detail:  # hidden, never shown: shown before it has a parent, a

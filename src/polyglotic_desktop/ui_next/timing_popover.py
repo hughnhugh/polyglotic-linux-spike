@@ -36,7 +36,7 @@ from polyglotic_desktop.core.listening.playout import ReadingPath
 from polyglotic_desktop.core.listening.preset_reading import recommendation_for
 from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.controls import INSET, TICK, Flow, TickButton
+from polyglotic_desktop.ui_next.controls import INSET, TICK, Flow, TickButton, describe
 from polyglotic_desktop.ui_next.settings_popover import INK, SettingsPopover
 from polyglotic_desktop.ui_next.views.preset_menu import PresetMenu, Show
 
@@ -72,8 +72,8 @@ def timing_name(mode: CaptionMode) -> str:
 
 
 def timing_tip(mode: CaptionMode, *, video: bool = False) -> str:
-    """What a caption timing does, in plain words, on hover - wherever it's
-    chosen (the user's rehearsal feedback F22, 249), with what project 145
+    """What a caption timing does, in plain words, in the box beside the
+    open dropdown or menu - wherever it's chosen (the user's rehearsal feedback F22, 249), with what project 145
     measured on the real models (as the Timing panel's sentence)."""
     if video and mode is CaptionMode.INSTANT:
         return _tr("Words fill each line and continue on the next.")
@@ -96,24 +96,6 @@ def timing_tip(mode: CaptionMode, *, video: bool = False) -> str:
         CaptionMode.INSTANT: _tr(
             "Words appear as they're said and rewrite themselves until the "
             "sentence ends - the quickest, but the words move."
-        ),
-    }[mode]
-
-
-def timing_line(mode: CaptionMode) -> str:
-    """The one line under a timing's name in the dropdown."""
-    return {
-        CaptionMode.SCROLLING: _tr("Words scroll sideways as the line fills."),
-        CaptionMode.STEADY: _tr("Word by word at the speaker's pace, a moment behind"),
-        CaptionMode.PREVIEW: _tr("Word by word at the speaker's pace, a moment behind"),
-        CaptionMode.CALM: _tr(
-            "Only words the speech model is sure of: later, but they stay put"
-        ),
-        CaptionMode.WHOLE: _tr(
-            "Each sentence once, finished: nothing moves as you read"
-        ),
-        CaptionMode.INSTANT: _tr(
-            "Words as they're said: the quickest, but they change"
         ),
     }[mode]
 
@@ -280,17 +262,19 @@ class TimingPopover(SettingsPopover):
         for mode in offer.timings:
             rec_note = rec[1] if rec is not None and rec[0] is mode else ""
             video = use is Use.WATCHING
-            line = timing_tip(mode, video=True) if video else timing_line(mode)
+            # its short name; what it does in full in the box beside the
+            # open dropdown, never cut off (1013: "Each sentence once,
+            # finished: nothing" was cut short in the row)
             row = self._row(
                 timing_name(mode),
-                line,
+                "",
                 mode is window.timing,
                 recommended=rec_note,
                 badge_name=f"timings.recommended.{mode.value}",
             )
+            full = timing_tip(mode, video=video)
+            describe(row, f"{rec_note}\n{full}" if rec_note else full)
             row.setObjectName(f"timings.timing.{mode.value}")
-            tip = line if video else timing_tip(mode)
-            row.setToolTip(f"{rec_note}\n{tip}" if rec_note else tip)
             row.clicked.connect(lambda _=False, m=mode: self._chose_timing(m))
             self.column.addWidget(row)
         if use is Use.WATCHING:
@@ -341,7 +325,7 @@ class TimingPopover(SettingsPopover):
         button.setChecked(on)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setAccessibleName(
-            f"{name}. {recommended}. {line}" if recommended else f"{name}. {line}"
+            ". ".join(words for words in (name, recommended, line) if words)
         )
         if recommended:
             button.setAccessibleDescription(recommended)
@@ -382,14 +366,15 @@ class TimingPopover(SettingsPopover):
             tall += title.heightForWidth(wide)
             button.name_bottom = tall  # the tick beside the name
             lines.addWidget(title)
-        detail = QLabel(line, button)
-        detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        detail.setProperty("note", True)  # the popover's dim notes, on its scale
-        detail.setStyleSheet("padding-left: 0px;")
-        detail.setWordWrap(True)
-        detail.ensurePolished()
-        tall += detail.heightForWidth(wide)
-        lines.addWidget(detail)
+        if line:  # a timing's is in the box beside the dropdown instead (1013)
+            detail = QLabel(line, button)
+            detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            detail.setProperty("note", True)  # the popover's dim notes, on its scale
+            detail.setStyleSheet("padding-left: 0px;")
+            detail.setWordWrap(True)
+            detail.ensurePolished()
+            tall += detail.heightForWidth(wide)
+            lines.addWidget(detail)
         button.setMinimumHeight(tall)
         return button
 

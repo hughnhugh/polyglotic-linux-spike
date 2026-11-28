@@ -172,7 +172,7 @@ class UnlockSpot(QObject):
             button.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)  # a pill
             button.setObjectName("caption_window.unlock")
             button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.setToolTip(_tr("Unlock every caption window"))
+            button.setAccessibleDescription(_tr("Unlock every caption window"))
             button.clicked.connect(self._clicked)
             button.installEventFilter(self)  # the mouse on it, while catching
             button.setMouseTracking(True)  # its moves too, no button held

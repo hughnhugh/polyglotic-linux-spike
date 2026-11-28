@@ -927,26 +927,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Word by word at the speaker&apos;s pace, a moment behind</source>
-        <translation>Từng từ theo nhịp người nói, chậm hơn một chút</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Only words the speech model is sure of: later, but they stay put</source>
-        <translation>Chỉ hiện những từ mô hình đã nhận dạng chắc chắn. Chữ hiện muộn hơn và giữ nguyên</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Each sentence once, finished: nothing moves as you read</source>
-        <translation>Mỗi câu một lần, trọn vẹn: không có gì xê dịch khi bạn đọc</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
-        <source>Words as they&apos;re said: the quickest, but they change</source>
-        <translation>Từ ngữ ngay khi được nói: nhanh nhất, nhưng sẽ thay đổi</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/timing_popover.py"/>
         <source>Translation a moment later</source>
         <translation>Hiện bản dịch sau một chút</translation>
     </message>
@@ -1458,6 +1438,19 @@
         <location filename="../src/polyglotic_desktop/ui/consent.py"/>
         <source>To caption what you hear, Polyglotic sends the speech it detects to our server. Audio and captions are used only to caption it for you - never stored. To run the service we keep your account, the minutes you listen, connection details (app version, the country you connect from, the kind of app you listen to - never its name) and your learning data: the dictionary words you look up, save or mark, and when - never the sentence around them. Your saved words and word statuses follow you to another computer; your lookups show us how people learn and what the dictionaries miss. You can delete your learning data any time. These aren&apos;t optional: without them there&apos;s no service.</source>
         <translation>Để tạo phụ đề cho những gì bạn nghe, Polyglotic gửi giọng nói nó phát hiện tới máy chủ của chúng tôi. Âm thanh và phụ đề chỉ dùng để tạo phụ đề cho bạn - không bao giờ được lưu. Để vận hành dịch vụ, chúng tôi giữ tài khoản, số phút bạn nghe, thông tin kết nối (phiên bản ứng dụng, quốc gia bạn kết nối, loại ứng dụng bạn nghe - không bao giờ có tên) và dữ liệu học: các từ trong từ điển bạn tra, lưu hoặc đánh dấu, và thời điểm - không bao giờ có câu xung quanh. Từ đã lưu và trạng thái từ theo bạn sang máy khác; việc tra từ cho chúng tôi biết mọi người học thế nào và từ điển còn thiếu gì. Bạn có thể xóa dữ liệu học bất cứ lúc nào. Những dữ liệu này không tùy chọn: thiếu chúng thì không có dịch vụ.</translation>
+    </message>
+</context>
+<context>
+    <name>Controls</name>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>About {subject}</source>
+        <translation type="unfinished">Về {subject}</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/controls.py"/>
+        <source>More information</source>
+        <translation type="unfinished">Thêm thông tin</translation>
     </message>
 </context>
 <context>
@@ -3824,11 +3817,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
-        <source>Rename</source>
-        <translation>Đổi tên</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/home.py"/>
         <source>Translate into</source>
         <translation>Dịch sang</translation>
     </message>
@@ -4477,11 +4465,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>No key: the hotkey does nothing</source>
-        <translation>Không có phím: phím tắt không làm gì</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Clear {name}&apos;s key</source>
         <translation>Xóa phím của {name}</translation>
     </message>
@@ -4514,11 +4497,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
         <source>Reset all</source>
         <translation>Đặt lại tất cả</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
-        <source>Every hotkey back to its own key</source>
-        <translation>Mọi phím tắt về lại phím của nó</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/hotkeys_card.py"/>
@@ -5100,11 +5078,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Every Lab setting back to its default.</source>
-        <translation>Khôi phục mặc định cho mọi cài đặt trong Phòng thử.</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Your speech on the right</source>
         <translation>Giọng nói của bạn bên phải</translation>
     </message>
@@ -5170,11 +5143,6 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
-        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
-        <translation>Từng dòng một: sau mỗi dòng lời nói là dòng dịch. Ngắt hai dòng ở chỗ các từ tương ứng; mệnh đề dài không ngắt được sẽ tự xuống dòng.</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Fill the width</source>
         <translation>Lấp đầy chiều rộng</translation>
     </message>
@@ -5182,6 +5150,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
         <source>Off: each clause on a row of its own (the default). Translation below: a caption&apos;s clauses run on in lines as wide as the window, and its translation fills the lines under them. No Arrows while this is on.</source>
         <translation>Tắt: mỗi mệnh đề một hàng (mặc định). Bản dịch ở dưới: các mệnh đề nối tiếp nhau hết chiều rộng cửa sổ, bản dịch trải ở các dòng bên dưới. Chế độ này không có Mũi tên.</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
+        <source>Line by line: a line of what was said, then the line of its translation, both cut where their words match. A long clause that can&apos;t be cut wraps.</source>
+        <translation>Từng dòng một: sau mỗi dòng lời nói là dòng dịch. Ngắt hai dòng ở chỗ các từ tương ứng; mệnh đề dài không ngắt được sẽ tự xuống dòng.</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/lab_panel.py"/>
@@ -5711,6 +5684,11 @@
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
+        <source>Recordings</source>
+        <translation type="unfinished">Bản ghi âm</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/learning_page.py"/>
         <source>Your level</source>
         <translation>Trình độ của bạn</translation>
     </message>
@@ -6192,6 +6170,11 @@
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
         <source>Download progress</source>
         <translation>Tiến độ tải</translation>
+    </message>
+    <message>
+        <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
+        <source>Credits</source>
+        <translation type="unfinished">Ghi công</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/pack_row.py"/>
@@ -7179,14 +7162,6 @@
         <location filename="../src/polyglotic_desktop/ui/open_beta.py"/>
         <source>Enter the six-digit code from your email.</source>
         <translation>Nhập mã 6 chữ số trong email.</translation>
-    </message>
-</context>
-<context>
-    <name>Pages</name>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui/widgets.py"/>
-        <source>Opens in your browser</source>
-        <translation>Mở trong trình duyệt</translation>
     </message>
 </context>
 <context>
@@ -8359,11 +8334,6 @@
         <translation>Tùy chỉnh thiết lập sẵn…</translation>
     </message>
     <message>
-        <location filename="../src/polyglotic_desktop/ui_next/preset_popover.py"/>
-        <source>Edit, rename, reset or add presets in Settings</source>
-        <translation>Sửa, đổi tên, đặt lại hoặc thêm thiết lập sẵn trong Cài đặt</translation>
-    </message>
-    <message>
         <location filename="../src/polyglotic_desktop/ui_next/presets_card.py"/>
         <source>Preset: {name} · {not_saved}</source>
         <translation>Thiết lập sẵn: {name} · {not_saved}</translation>
@@ -9106,11 +9076,6 @@
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
         <source>Match translation size to caption size</source>
         <translation>Đặt cỡ bản dịch khớp với cỡ phụ đề</translation>
-    </message>
-    <message>
-        <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>
-        <source>Set the translation size equal to the caption size</source>
-        <translation>Đặt cỡ bản dịch bằng cỡ phụ đề</translation>
     </message>
     <message>
         <location filename="../src/polyglotic_desktop/ui_next/settings_page.py"/>

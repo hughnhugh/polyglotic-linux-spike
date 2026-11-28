@@ -20,6 +20,7 @@ from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui.settings import AppSettings
 from polyglotic_desktop.ui_next.caption_layout import CaptionLayout, Ink
 from polyglotic_desktop.ui_next.caption_window import look_ink
+from polyglotic_desktop.ui_next.controls import InfoIcon, help_text
 from polyglotic_desktop.ui_next.panels import LookPanel
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook, TextEdge
 from polyglotic_desktop.ui_next.views.captions import CaptionLines, Line
@@ -125,7 +126,11 @@ def test_visibility_sits_with_the_caption_text_and_points_to_the_panel(
     MADE.append(panel)
     edge = panel.text.edge
     assert edge.objectName() == "look.edge" and edge.value() == "none"
-    assert "panel" in edge.toolTip()  # how solid the panel is: Look's own slider
+    assert "panel" in edge.accessibleDescription()  # the panel: Look's own slider
+    text = edge.parentWidget()
+    assert text is not None
+    info = text.findChildren(InfoIcon)
+    assert any("panel" in help_text(icon) for icon in info)  # behind its ⓘ (1013)
     edge.choose("outline")
     assert view.value.edge is TextEdge.OUTLINE
     view.reset()

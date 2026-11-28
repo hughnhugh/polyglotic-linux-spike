@@ -83,7 +83,7 @@ from PySide6.QtCore import (
     Slot,
 )
 from PySide6.QtGui import QAction, QCursor, QGuiApplication, QIcon, QKeySequence
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QLabel, QMenu, QSystemTrayIcon, QWidget
 
 from polyglotic_desktop.core.learning.curriculum import chosen_from
 from polyglotic_desktop.core.listening.captions import CaptionUpdate
@@ -110,6 +110,7 @@ from polyglotic_desktop.core.listening.warm_up import (
     TRANSLATOR_WARMING_UP,
     warm_up_over,
 )
+from polyglotic_desktop.described_menu import DescribedMenu, show_description
 from polyglotic_desktop.ports.capture import AppList
 from polyglotic_desktop.ports.settings import SettingsStore
 from polyglotic_desktop.ui import theme
@@ -150,6 +151,16 @@ QMenu::separator { height: 1px; background: #454545; margin: 3px 0; }
 """
 """The tray menu on a dark taskbar: Windows 11's dark menu colours (on a
 light one, Qt's Windows 11 style draws Windows' light menu as it is)."""
+
+DARK_TRAY_DESCRIPTION = ("#2c2c2c", "#ffffff", "#454545")
+"""A tray choice's description box beside `DARK_TRAY_MENU`, in its colours
+(background, text, border): the palette stays light under a style sheet."""
+
+
+def _describe_tray_choice(window: QWidget, row: QRect, text: str, box: QLabel) -> None:
+    """A tray choice's description beside the menu, dark beside a dark one."""
+    dark = window.styleSheet() == DARK_TRAY_MENU
+    show_description(window, row, text, box, DARK_TRAY_DESCRIPTION if dark else None)
 
 
 class ConnectionState(StrEnum):
@@ -402,8 +413,8 @@ class DesktopApp(QObject):
         self.lock_windows = self._action(
             "windows.lock", self.tr("Lock all caption windows"), checkable=True
         )
-        self.lock_windows.setToolTip(
-            self.tr("Clicks pass through to the windows underneath")
+        self.lock_windows_description = self.tr(
+            "Clicks pass through to the windows underneath"
         )
         self.lock_windows.setChecked(value.locked)
         self.hide_windows = self._action(
@@ -412,11 +423,9 @@ class DesktopApp(QObject):
         self.show_delay = self._action(
             "captions.delay", self.tr("Show each caption's delay"), checkable=True
         )
-        self.show_delay.setToolTip(
-            self.tr(
-                "Above each caption: how long after the speech started and"
-                " ended it showed, and the server's share"
-            )
+        self.show_delay_description = self.tr(
+            "Above each caption: how long after the speech started and"
+            " ended it showed, and the server's share"
         )
         self.show_delay.setChecked(value.show_delay)
         self.quit = self._action("app.quit", self.tr("Quit"))
@@ -453,15 +462,11 @@ class DesktopApp(QObject):
         self.work_with_us.triggered.connect(
             lambda: self.feedback_wanted.emit("work_with_us")
         )
-        self.quit.setToolTip(
-            pc_mac_or_linux(
-                self.tr("Quit Polyglotic - closing the window keeps it in the tray"),
-                self.tr(
-                    "Quit Polyglotic - closing the window keeps it in the menu bar"
-                ),
-                # Linux: true with a tray or without one (GNOME's own: 571)
-                self.tr("Quit Polyglotic - closing the window keeps it running"),
-            )
+        self.quit_description = pc_mac_or_linux(
+            self.tr("Quit Polyglotic - closing the window keeps it in the tray"),
+            self.tr("Quit Polyglotic - closing the window keeps it in the menu bar"),
+            # Linux: true with a tray or without one (GNOME's own: 571)
+            self.tr("Quit Polyglotic - closing the window keeps it running"),
         )
         self.pause.toggled.connect(
             lambda on: self.pause.setText(
@@ -703,8 +708,8 @@ class DesktopApp(QObject):
         menu.addSeparator()
         menu.addAction(self.more_dictation_languages)
 
-    def _tray_menu(self) -> QMenu:
-        menu = QMenu()
+    def _tray_menu(self) -> DescribedMenu:
+        menu = DescribedMenu(_describe_tray_choice)
         menu.addAction(self.open_window)
         menu.setDefaultAction(self.open_window)
         menu.addAction(self.install_update)  # hidden until one is ready
@@ -727,6 +732,9 @@ class DesktopApp(QObject):
         menu.addAction(self.suggest)
         menu.addSeparator()
         menu.addAction(self.quit)
+        menu.describe(self.lock_windows, self.lock_windows_description)
+        menu.describe(self.show_delay, self.show_delay_description)
+        menu.describe(self.quit, self.quit_description)
         return menu
 
     def show_update_ready(self, version: str | None) -> None:
@@ -765,11 +773,10 @@ class DesktopApp(QObject):
         """Dictation's key, in words ("Right Ctrl"), at the right of its
         line in the tray menu, as a hotkey is (polyglotic-hq 289)."""
         self.dictation.setText(f"{self.tr('Dictation (preview)')}\t{key}")
-        self.dictation.setToolTip(
-            self.tr(
-                "Hold {key} and speak: your words are typed where your cursor is"
-            ).format(key=key)
-        )
+        description = self.tr(
+            "Hold {key} and speak: your words are typed where your cursor is"
+        ).format(key=key)
+        self.tray_menu.describe(self.dictation, description)
 
     def set_hotkeys(self, keys: Mapping[Hotkey, DictationKey | None]) -> None:
         """Each hotkey's key now, shown on its command: Ctrl+Alt+L; on a Mac

@@ -88,6 +88,7 @@ from polyglotic_desktop.ui_next.caption_window import (
     to_rect,
     work_areas,
 )
+from polyglotic_desktop.ui_next.controls import help_text, set_help_tip
 from polyglotic_desktop.ui_next.glyphs import Glyph, icon
 from polyglotic_desktop.ui_next.resize_handle import CURSORS, GRIP, PanelResizeCursor
 from polyglotic_desktop.ui_next.settings_popover import (
@@ -249,7 +250,7 @@ class JoinedWindow(CaptionTopLevel):
     ) -> QAction:
         action = QAction(text, self)
         action.setObjectName(f"joined_window.{name}")
-        action.setToolTip(tip or text)
+        set_help_tip(action, tip or text)
         action.setCheckable(checkable)
         if slot is not None:
             action.triggered.connect(slot)
@@ -303,6 +304,7 @@ class JoinedWindow(CaptionTopLevel):
             button = QToolButton(bar)
             button.setObjectName(f"joined_window.band.{name}")
             button.setDefaultAction(self.controls[name])
+            set_help_tip(button, help_text(self.controls[name]))  # a glyph's name
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setMouseTracking(True)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -574,7 +576,7 @@ class JoinedWindow(CaptionTopLevel):
     def set_unlock_keys(self, keys: str) -> None:
         """The hotkey that unlocks now ("" if it doesn't work here): the
         lock button's tip says it, or how else to unlock (398)."""
-        self.controls["lock"].setToolTip(lock_tip(keys))
+        set_help_tip(self.controls["lock"], lock_tip(keys))
 
     def set_locked(self, locked: bool) -> None:
         """Locked: clicks pass through the whole window; no band."""

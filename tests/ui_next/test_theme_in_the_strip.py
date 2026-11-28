@@ -17,6 +17,7 @@ from polyglotic_desktop.core.learning.theme import Said
 from polyglotic_desktop.core.shared import EntryFacts, EntryId
 from polyglotic_desktop.ui.recorded_captions import APP, MIC, clause, finished
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook
 from polyglotic_desktop.ui_next.views.placement import Rect
 
@@ -61,7 +62,7 @@ def test_the_quiet_views_strip_names_what_its_source_is_talking_about(
     qapp.processEvents()
     assert asked and asked[-1] == APP
     assert window.tag.note == "业主 · 小区 · 物业"
-    assert "业主 · 小区 · 物业" in window.tag.toolTip()
+    assert "业主 · 小区 · 物业" in help_text(window.tag)
     window._show_band(False)
 
 

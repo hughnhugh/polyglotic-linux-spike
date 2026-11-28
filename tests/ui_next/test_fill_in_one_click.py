@@ -16,6 +16,7 @@ from tests.ui_next.test_joined_window import THREE
 
 from polyglotic_desktop.core.listening.sources import SourceLabel
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.glyphs import Glyph
 from polyglotic_desktop.ui_next.lab_panel import LabPanel
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook
@@ -96,7 +97,7 @@ def test_the_button_shows_and_asks(qapp: QApplication) -> None:
     assert window.glyphs["fill"] is Glyph.FILL
     assert not button.icon().isNull()
     assert button.text() == "Fill the width"
-    assert "every window" in button.toolTip()
+    assert "every window" in help_text(button)
     assert not button.isChecked()
     asked: list[bool] = []
     window.fill_wanted.connect(asked.append)

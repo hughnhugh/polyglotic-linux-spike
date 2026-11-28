@@ -27,6 +27,7 @@ from polyglotic_desktop.core.listening.display import RowKind
 from polyglotic_desktop.ports.speaker import Ended, Quality, Sounding, Spoken, Voice
 from polyglotic_desktop.ui_next.caption_window import CaptionWindow
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.os_words import pc_or_mac
 from polyglotic_desktop.ui_next.selection_reading import SelectionReading
 from polyglotic_desktop.ui_next.sentence_card import SentenceCard
@@ -144,10 +145,11 @@ def test_the_card_offers_each_side_by_its_languages_own_name(
     card = offered(windows, say_it)
     assert card.say_label.isVisible() and card.say_label.text() == "Say it"
     assert [b.text() for b in buttons(card)] == ["▶ 中文", "▶ English"]
-    assert [b.toolTip() for b in buttons(card)] == [
+    assert [b.accessibleDescription() for b in buttons(card)] == [
         "Say it in Chinese",
         "Say it in English",
     ]
+    assert not any(help_text(b) for b in buttons(card))  # no hover on words (1013)
     assert not card.isActiveWindow()  # never takes the keyboard
     card.hide()
 
@@ -280,7 +282,9 @@ def test_with_no_voice_the_button_says_how_to_add_one(
     card = offered(windows, say_it)
     said = buttons(card)[0]
     assert said.text() == "+ Add a Chinese voice"
-    assert pc_or_mac("Add voices", "Manage Voices") in said.toolTip()
+    info = card.side_info[said]  # how to add one, behind the ⓘ beside it (1013)
+    assert not info.isHidden() and not help_text(said)
+    assert pc_or_mac("Add voices", "Manage Voices") in help_text(info)
     said.click()
     opened = pc_or_mac(SPEECH_SETTINGS, MAC_SPEECH_SETTINGS)
     assert settings.opened == [opened] and reader.read_ == []
@@ -316,7 +320,8 @@ def test_on_linux_no_voice_says_why_and_opens_nothing(
     card = offered(windows, say_it)
     said = buttons(card)[0]
     assert said.text() == "+ Add a Chinese voice"
-    assert why in said.toolTip() and "Windows" not in said.toolTip()
+    steps = help_text(card.side_info[said])  # behind the ⓘ beside it (1013)
+    assert why in steps and "Windows" not in steps
     said.click()
     assert settings.opened == [] and reader.read_ == []
     card.hide()

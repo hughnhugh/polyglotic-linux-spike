@@ -27,7 +27,14 @@ from PySide6.QtWidgets import (
 
 from polyglotic_desktop.ports.capture import SoundDevice
 from polyglotic_desktop.ui_next import style
-from polyglotic_desktop.ui_next.controls import Card, Combo, Row, SwitchRow, label
+from polyglotic_desktop.ui_next.controls import (
+    Card,
+    Combo,
+    Row,
+    SwitchRow,
+    label,
+    set_help_tip,
+)
 from polyglotic_desktop.ui_next.os_words import pc_or_mac
 from polyglotic_desktop.ui_next.views.sound import Sound, SoundView
 
@@ -213,10 +220,11 @@ class SoundCard(Card):
         self.my_speech.switch.set_quietly(value.my_speech)
         self.meter.show_level(value.level if value.my_speech else None)
         self._read_levels()
-        self.meter.setToolTip(
+        set_help_tip(
+            self.meter,
             _tr("Your microphone's level now")
             if value.my_speech
-            else _tr("Your mic's level, shown while your speech is captioned")
+            else _tr("Your mic's level, shown while your speech is captioned"),
         )
 
 

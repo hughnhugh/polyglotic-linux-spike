@@ -124,11 +124,13 @@ from polyglotic_desktop.ui_next.controls import (
     Combo,
     FittingCombo,
     Flow,
+    InfoIcon,
     Row,
     Segmented,
     SwitchRow,
     label,
     right_row,
+    set_help_tip,
 )
 from polyglotic_desktop.ui_next.dictation_key import KeyBox, key_words, refusal_words
 from polyglotic_desktop.ui_next.face_rows import FacesPanel
@@ -349,7 +351,6 @@ class TranslationSizeCard(Card):
         self.same = QPushButton(_tr("Match"))
         self.same.setObjectName("settings.translation_same")
         self.same.setAccessibleName(_tr("Match translation size to caption size"))
-        self.same.setToolTip(_tr("Set the translation size equal to the caption size"))
         self.same.setCursor(Qt.CursorShape.PointingHandCursor)
         trans_header.addWidget(self.same)
         self.add(trans_header)
@@ -779,6 +780,7 @@ class SettingsPage(Page):
         row.addWidget(label(_tr("Want to help build Polyglotic?"), "Faint"))
         tell_us = QToolButton()
         tell_us.setDefaultAction(work_with_us)
+        set_help_tip(tell_us, "")  # its words say it: no native strip (1013)
         tell_us.setObjectName("settings.tell_us")
         tell_us.setProperty("kind", "ghost")
         tell_us.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -922,7 +924,7 @@ class SettingsPage(Page):
         self.dictation_key.pressed_key.connect(self._dictation_key_pressed)
         self.dictation_key.listening_changed.connect(self.dictation_key_listening)
         self.dictation_key_reset = _button(_tr("Reset"), "settings.dictation_key_reset")
-        self.dictation_key_reset.setToolTip(
+        self.dictation_key_reset.setAccessibleDescription(
             _tr("Back to {key}").format(key=key_words(DEFAULT_KEY))
         )
         self.dictation_key_reset.clicked.connect(
@@ -1335,12 +1337,6 @@ class SettingsPage(Page):
         self.language_picker = Combo()
         self.language_picker.setObjectName("settings.language_picker")
         self.language_picker.setAccessibleName(_tr("The app's language"))
-        self.language_picker.setToolTip(
-            _tr(
-                "Menus, buttons and help - not your captions. It changes the "
-                "next time Polyglotic starts."
-            )
-        )
         for code, name in [
             ("", pc_or_mac(_tr("Like this PC"), _tr("Like this Mac"))),
             *languages,
@@ -1349,6 +1345,16 @@ class SettingsPage(Page):
         # connected once filled: adding the first item would pick it
         self.language_picker.currentIndexChanged.connect(self._language_picked)
         line.addWidget(self.language_picker)
+        language_help = label(
+            _tr(
+                "Menus, buttons and help - not your captions. It changes the "
+                "next time Polyglotic starts."
+            ),
+            "Faint",
+            wrap=True,
+        )
+        language_help.setObjectName("settings.language_help")
+        line.addWidget(language_help)
         self.language_later = label(_tr("From the next start"), "Faint")
         self.language_later.setObjectName("settings.language_later")
         self.language_later.setHidden(True)
@@ -1370,10 +1376,12 @@ class SettingsPage(Page):
         draft = Flow()
         self.language_draft = label(_tr("Machine draft"), "Faint")
         self.language_draft.setObjectName("settings.language_draft")
-        self.language_draft.setToolTip(
-            _tr("No native speaker has checked the app's text in this language yet.")
-        )
         draft.addWidget(self.language_draft)
+        self.language_draft_info = InfoIcon(  # what a draft is, beside it (1013)
+            _tr("No native speaker has checked the app's text in this language yet."),
+            _tr("Machine draft"),
+        )
+        draft.addWidget(self.language_draft_info)
         self.language_wrong = QToolButton()
         self.language_wrong.setObjectName("settings.language_wrong")
         self.language_wrong.setText(_tr("Tell us what reads wrong"))
@@ -1389,6 +1397,7 @@ class SettingsPage(Page):
         in now (`ui.interface_language.DRAFTS`): if so, the line under the
         title says so, with "Tell us what reads wrong"."""
         self.language_draft.setHidden(not draft)
+        self.language_draft_info.setHidden(not draft)
         self.language_wrong.setHidden(not draft)
 
     def show_running_language(self, running: str, system_language: str) -> None:

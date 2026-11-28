@@ -153,6 +153,12 @@ from polyglotic_desktop.ui_next.caption_window import (
     timing_name,
     timing_tip,
 )
+from polyglotic_desktop.ui_next.controls import (
+    DescribedMenu,
+    same_words,
+    set_help_tip,
+    shows_words,
+)
 from polyglotic_desktop.ui_next.copying import (
     COPIED_MS,
     TYPING,
@@ -1102,7 +1108,10 @@ class TranscriptList(QWidget):
         sides = sides_aloud(pieces)
         if not sides:
             return
-        into = menu.addMenu(say_it_text())
+        # a side with no voice says how to get one in the box beside (1013)
+        into = DescribedMenu(menu)
+        into.setTitle(say_it_text())
+        menu.addMenu(into)
         for side in reading.ordered(sides):
             state = reading.state(self, side)
 
@@ -1114,8 +1123,9 @@ class TranscriptList(QWidget):
 
             action = into.addAction(side_text(state, side.language), say)
             if state is Say.NO_VOICE:
-                action.setToolTip(no_voice_steps(side.language, reading.system_voice()))
-        into.setToolTipsVisible(True)
+                into.describe(
+                    action, no_voice_steps(side.language, reading.system_voice())
+                )
 
     def better_voice(self, reading: SelectionReading, language: str) -> QMessageBox:
         """Read in a basic voice (polyglotic-hq 518): how to add a better
@@ -1336,8 +1346,8 @@ class _AppTag(QWidget):
 
     def show_label(self, label: SourceLabel, mic: bool, color: str) -> None:
         self.label, self.mic, self.color = label, mic, color
-        self.setToolTip(
-            _tr("{app} - shows my speech").format(app=label.name) if mic else label.name
+        set_help_tip(  # its name is drawn; that it shows my speech isn't (1013)
+            self, _tr("{app} - shows my speech").format(app=label.name) if mic else ""
         )
         self.updateGeometry()
         self.update()
@@ -1462,7 +1472,7 @@ class TranscriptWindow(QWidget):
         self.pill.setObjectName("transcript_window.back_to_live")
         self.pill.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pill.clicked.connect(self.go_live)
-        self.pill.setToolTip(live_tip(""))
+        self.pill.setAccessibleDescription(live_tip(""))  # it says it (1013)
         self.pill.hide()
         self.notice = QLabel(self.list)
         self.notice.setObjectName("transcript_window.notice")
@@ -1488,7 +1498,13 @@ class TranscriptWindow(QWidget):
         button = QToolButton(self)
         button.setObjectName(f"transcript_window.{name}")
         button.setText(text)
-        button.setToolTip(tip or text)
+        # a name for a code ("A+") or a chip; a button showing words says
+        # the rest to a screen reader only (1013)
+        help_words = "" if same_words(tip or text, text) else tip or text
+        if chip or not shows_words(text):
+            set_help_tip(button, help_words)
+        else:
+            button.setAccessibleDescription(help_words)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setProperty("chip", chip)
         button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -1529,12 +1545,13 @@ class TranscriptWindow(QWidget):
             "timing", "", _tr("Caption timing - for every window"), True
         )
         timing.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        timing_menu = QMenu(timing)
+        timing_menu = self.timing_menu = DescribedMenu(timing)
         group = QActionGroup(timing_menu)
         self.timing_actions: dict[CaptionMode, QAction] = {}
         for mode in (*OFFERED_MODES, CaptionMode.SCROLLING):
-            action = timing_menu.addAction(timing_name(mode))
-            action.setToolTip(timing_tip(mode))  # what it does (F22, 249)
+            action = timing_menu.add_described_action(
+                timing_name(mode), timing_tip(mode)
+            )  # full explanation in the box beside the menu (1013)
             action.setCheckable(True)
             group.addAction(action)
             action.triggered.connect(
@@ -1542,7 +1559,6 @@ class TranscriptWindow(QWidget):
             )
             action.setVisible(mode is not CaptionMode.SCROLLING)
             self.timing_actions[mode] = action
-        timing_menu.setToolTipsVisible(True)
         timing.setMenu(timing_menu)
         row.addWidget(timing)
         smaller = self._tool(
@@ -1598,10 +1614,11 @@ class TranscriptWindow(QWidget):
         code = self.translate_into
         chip = self.buttons["language"]
         chip.setText(f"{code.upper() if code else _tr('Original only')} ▾")
-        chip.setToolTip(
+        set_help_tip(
+            chip,
             in_sentence(_tr("Translate into: {language}"), language=language_name(code))
             if code
-            else _tr("Original only - no translation")
+            else _tr("Original only - no translation"),
         )
         action = self.language_actions.get(code)
         if action is not None:
@@ -1648,7 +1665,7 @@ class TranscriptWindow(QWidget):
         choices = offered(Use.WATCHING).timings if video else OFFERED_MODES
         for mode, action in self.timing_actions.items():
             action.setVisible(mode in choices)
-            action.setToolTip(timing_tip(mode, video=video))
+            self.timing_menu.describe(action, timing_tip(mode, video=video))
         if you != self.list.you:
             self.list.you = you
             self.list.update()
@@ -1764,7 +1781,7 @@ class TranscriptWindow(QWidget):
     def set_live_keys(self, keys: str) -> None:
         """Back to live's hotkey as the OS writes it ("" none), on its tip
         (polyglotic-hq 567)."""
-        self.pill.setToolTip(live_tip(keys))
+        self.pill.setAccessibleDescription(live_tip(keys))  # it says it (1013)
 
     # -- the rail -------------------------------------------------------------------------
 

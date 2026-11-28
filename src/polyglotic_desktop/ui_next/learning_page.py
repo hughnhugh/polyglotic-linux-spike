@@ -96,6 +96,7 @@ from polyglotic_desktop.ui_next.controls import (
     label,
     page_button,
     right_row,
+    with_info,
 )
 from polyglotic_desktop.ui_next.home import OneClick, Page
 from polyglotic_desktop.ui_next.known_map_card import KnownMapCard
@@ -426,8 +427,12 @@ class LanguageCardView(Card):
                 wrap=True,
             )
             self.recorded.setObjectName(f"learning.{card.code}.recorded")
-            self.recorded.setToolTip(card.recorded_credits)
-            self.add(self.recorded)
+            # who recorded the words, behind an ⓘ beside the line (1013)
+            self.add(
+                with_info(
+                    self.recorded, card.recorded_credits, _tr("Recordings"), fill=True
+                )
+            )
 
         self.pack: PackRow | None = None
         # a basic language's pack (decision 0122) - with none to be had too:
@@ -553,16 +558,26 @@ class LanguageCardView(Card):
                 in_sentence(_tr("Make {language} your main language"), language=name),
                 f"learning.{card.code}.switch",
             )
-            self.switch.setToolTip(_tr("Takes effect when Polyglotic next starts"))
-            buttons.addWidget(self.switch)
+            buttons.addWidget(
+                with_info(
+                    self.switch,
+                    _tr("Takes effect when Polyglotic next starts"),
+                    self.switch.text(),
+                )
+            )
         if not card.main:
             self.stop = _button(
                 in_sentence(_tr("Stop learning {language}"), language=name),
                 f"learning.{card.code}.stop",
             )
             self.stop.setProperty("kind", "ghost")
-            self.stop.setToolTip(_tr("Keeps its words; delete them on Account"))
-            buttons.addWidget(self.stop)
+            buttons.addWidget(
+                with_info(
+                    self.stop,
+                    _tr("Keeps its words; delete them on Account"),
+                    self.stop.text(),
+                )
+            )
         if self.switch is not None or self.stop is not None:
             self.add(buttons)
 
@@ -609,7 +624,9 @@ class LanguageCardView(Card):
         self._first_chosen()
         if quick.undo is not None:
             self.undo_known = _button(_tr("Undo"), f"learning.{code}.undo_known")
-            self.undo_known.setToolTip(
+            # "Undo" beside what it undoes says enough (1013): to a screen
+            # reader, where it goes back to
+            self.undo_known.setAccessibleDescription(
                 _tr("Back to: {level}").format(level=_ended(level_text(quick.undo)))
             )
             self.undo_known.clicked.connect(self.undo_known_wanted)
@@ -688,7 +705,6 @@ class LanguageCardView(Card):
             least=QLocale().toString(MIN_WINDOW), most=QLocale().toString(MAX_WINDOW)
         )
         self.window_custom.setPlaceholderText(bounds)
-        self.window_custom.setToolTip(bounds)
         self.window_custom.setFixedWidth(style.px(96))
         self.window_custom.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._show_custom(size)

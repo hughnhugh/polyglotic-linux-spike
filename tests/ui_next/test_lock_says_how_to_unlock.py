@@ -20,6 +20,7 @@ from polyglotic_desktop.ui.recorded_captions import APP, MIC
 from polyglotic_desktop.ui_next import caption_window as caption_window_module
 from polyglotic_desktop.ui_next.caption_window import LOCKED_SEC, lock_tip, locked_text
 from polyglotic_desktop.ui_next.caption_windows import CaptionWindows
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.os_words import hotkeys_here as keys
 from polyglotic_desktop.ui_next.os_words import pc_mac_or_linux
 from polyglotic_desktop.ui_next.unlock_spot import REST_LOOKS, UnlockSpot
@@ -143,7 +144,7 @@ def test_with_no_hotkey_the_windows_say_where_to_unlock_and_the_log_says_why(
         desktop.hotkeys_not_working(not_working(desktop.hotkeys, {}, []))
     assert f"not working, not shown: {APP_HOTKEYS}" in caplog.text
     assert window.unlock_keys == ""
-    assert "rest the mouse on the lock" in window.controls["lock"].toolTip()
+    assert "rest the mouse on the lock" in help_text(window.controls["lock"])
     desktop.lock_windows.setChecked(True)
     assert window.notice.text() == LOCKED_SAID
 
@@ -153,7 +154,7 @@ def test_the_lock_button_s_tip_names_the_hotkey_while_it_works(
 ) -> None:
     _, windows = wired
     (window,) = windows.windows.values()
-    assert window.controls["lock"].toolTip().endswith(keys("Ctrl+Alt+L"))
+    assert help_text(window.controls["lock"]).endswith(keys("Ctrl+Alt+L"))
     assert lock_tip("") != lock_tip(keys("Ctrl+Alt+L"))
 
 

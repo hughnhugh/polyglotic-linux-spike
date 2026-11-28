@@ -10,6 +10,7 @@ import shiboken6
 from PySide6.QtWidgets import QApplication, QWidget
 
 from polyglotic_desktop.ui_next import colour_controls
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.panels import LookPanel
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook
 from polyglotic_desktop.ui_next.views.panels import LookView
@@ -119,12 +120,12 @@ def test_the_tiles_choose_a_preset_and_show_custom_from_it(qapp: QApplication) -
     tiles = panel.presets.tiles
     assert len(tiles) == 11 and tiles["custom"].isHidden()
     assert tiles["classic"].isChecked()
-    assert all(tiles[p.key].toolTip() for p in PRESETS)  # what each suits
+    assert all(help_text(tiles[p.key]) for p in PRESETS)  # what each suits
     tiles["violet"].click()
     assert preset_of(view.value) is PRESETS[4] and tiles["violet"].isChecked()
     panel.colours["original"].swatches.chosen.emit("#cfe8ff")  # a swatch
     assert not tiles["custom"].isHidden() and tiles["custom"].isChecked()
-    assert "Violet" in tiles["custom"].toolTip()
+    assert "Violet" in help_text(tiles["custom"])
     assert not any(tiles[p.key].isChecked() for p in PRESETS)
     tiles["paper"].click()
     assert tiles["custom"].isHidden() and tiles["paper"].isChecked()

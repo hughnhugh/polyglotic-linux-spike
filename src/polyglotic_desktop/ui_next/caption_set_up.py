@@ -62,6 +62,7 @@ from PySide6.QtWidgets import (
 )
 
 from polyglotic_desktop.ui_next import style
+from polyglotic_desktop.ui_next.controls import with_info
 from polyglotic_desktop.ui_next.settings_popover import (
     ACCENT,
     SettingsPopover,
@@ -162,10 +163,15 @@ class CaptionSetUp(SettingsPopover):
         self.as_default = QAction(_tr("Use as my default"), self)
         self.as_default.setObjectName("caption_set_up.as_default")
         self.as_default.setCheckable(True)
-        self.as_default.setToolTip(
-            _tr("Use these choices for new caption windows and skip this card")
+        line.addWidget(
+            with_info(
+                self._button(self.as_default, row, switch=True),
+                _tr("Use these choices for new caption windows and skip this card"),
+                self.as_default.text(),
+                fill=True,
+            ),
+            1,
         )
-        line.addWidget(self._button(self.as_default, row, switch=True), 1)
         self.start = QPushButton(_tr("Start captions"), row)
         self.start.setObjectName("caption_set_up.start")
         self.start.setCursor(Qt.CursorShape.PointingHandCursor)

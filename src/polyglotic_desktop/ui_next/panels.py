@@ -99,6 +99,7 @@ from polyglotic_desktop.ui_next.controls import (
     INSET,
     Card,
     Combo,
+    InfoIcon,
     Row,
     Segmented,
     SwitchButton,
@@ -819,12 +820,10 @@ class TimingPanel(Panel):
             assert isinstance(button, _TaggedChoiceButton)
             if rec is not None and rec[0] is mode:
                 button.set_tag(recommended_tag())
-                button.setToolTip(f"{rec[1]}\n{timing_tip(mode, video=video)}")
                 button.setAccessibleName(f"{timing_name(mode)}. {rec[1]}")
                 button.setAccessibleDescription(rec[1])
             else:
                 button.set_tag("")
-                button.setToolTip(timing_tip(mode, video=video))
                 button.setAccessibleName("")
                 button.setAccessibleDescription("")
         if (mode_layout := self.mode.layout()) is not None:
@@ -1769,14 +1768,18 @@ class ResetCard(Card):
         super().__init__(_tr("Reset"), parent=parent)
         self.reset = WrapButton(_tr("Reset the look to Polyglotic's defaults"))
         self.reset.setObjectName("look.reset")
-        self.reset.setToolTip(
-            _tr(
-                "Colours, panel, font, word links and fading. To move the windows "
-                "back, use Reset positions on Home."
-            )
-        )
         self.reset.clicked.connect(view.reset)
         reset = QVBoxLayout()
         reset.setContentsMargins(INSET - 1, 0, 0, 0)
-        _row(reset, self.reset)
+        row = _row(reset, self.reset)
+        row.insertWidget(  # what it resets, behind an ⓘ beside it (1013)
+            1,
+            InfoIcon(
+                _tr(
+                    "Colours, panel, font, word links and fading. To move the windows "
+                    "back, use Reset positions on Home."
+                ),
+                self.reset.text(),
+            ),
+        )
         self.add(reset)

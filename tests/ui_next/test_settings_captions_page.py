@@ -18,7 +18,7 @@ from tools.ui_lab import checks, lab
 
 from polyglotic_desktop.core.listening.timing import CaptionMode
 from polyglotic_desktop.ui_next import panels, settings_page, style
-from polyglotic_desktop.ui_next.controls import Card
+from polyglotic_desktop.ui_next.controls import Card, help_text
 from polyglotic_desktop.ui_next.face_rows import FacesPanel
 from polyglotic_desktop.ui_next.lab_panel import LabPanel
 from polyglotic_desktop.ui_next.main_window import MainWindow, roomy_size
@@ -323,16 +323,29 @@ def test_settings_points_to_the_learning_page_and_holds_nothing_of_it(
 
 
 def test_every_caption_setting_has_its_line_and_its_tooltip(qapp: QApplication) -> None:
-    """F18: a line under every setting that isn't obvious, and the same on
-    hover - 248's section 2.4's copy."""
+    """F18: a line under every setting that isn't obvious - 248's section
+    2.4's copy - and the same to a screen reader; never again on hover,
+    where it only repeated the line (1013)."""
     page = page_with()
     look = page.look
-    assert look.background.toolTip().startswith("0 % is no box at all")
-    assert look.colours["translation"].toolTip().startswith("The colour of the trans")
-    assert page.behaviour.fade.toolTip().startswith("Captions disappear after")
-    assert page.word_links.word_links.toolTip().startswith(
-        "Words in what was said and its"
+    controls = (
+        look.background,
+        look.colours["translation"],
+        page.behaviour.fade,
+        page.word_links.word_links,
     )
+    for control, starts in zip(
+        controls,
+        (
+            "0 % is no box at all",
+            "The colour of the trans",
+            "Captions disappear after",
+            "Words in what was said and its",
+        ),
+        strict=True,
+    ):
+        assert control.accessibleDescription().startswith(starts), starts
+    assert not any(help_text(c) for c in controls)
 
 
 def test_the_hub_opens_at_960_by_680_at_least(qapp: QApplication) -> None:
@@ -703,4 +716,4 @@ def test_the_respelling_description_says_how_many_words_are_covered(
     page.show_section("readings")
     switch = page.findChild(QWidget, "look.reading_en")
     assert switch is not None
-    assert "42 commonest words" in switch.toolTip()
+    assert "42 commonest words" in switch.accessibleDescription()

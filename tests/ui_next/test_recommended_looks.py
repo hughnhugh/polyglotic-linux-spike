@@ -16,6 +16,7 @@ from polyglotic_desktop.main import caption_look, look_settings
 from polyglotic_desktop.ui.settings import AppSettings, with_changed
 from polyglotic_desktop.ui_next import fonts
 from polyglotic_desktop.ui_next.colour_controls import RecommendedTiles
+from polyglotic_desktop.ui_next.controls import help_text
 from polyglotic_desktop.ui_next.panels import LookPanel
 from polyglotic_desktop.ui_next.views.caption_window import CaptionLook, TextEdge
 from polyglotic_desktop.ui_next.views.panels import LookView
@@ -230,7 +231,7 @@ def test_each_tile_says_what_it_sets(made: list[object]) -> None:
     made.append(tiles)
     for key, tile in tiles.tiles.items():
         assert tile.objectName() == f"look.recommended.{key}"
-        assert tile.toolTip() and tile.accessibleDescription() == tile.toolTip()
+        assert help_text(tile) and tile.accessibleDescription() == help_text(tile)
         assert tile.text() in ("Quiet", "Paper", "Broadcast")
 
 

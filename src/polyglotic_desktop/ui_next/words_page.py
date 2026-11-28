@@ -97,10 +97,12 @@ from polyglotic_desktop.ui_next.controls import (
     Card,
     Combo,
     Flow,
+    InfoIcon,
     WrapCheckBox,
     focus_kept,
     label,
     page_button,
+    set_help_tip,
     swatch,
 )
 from polyglotic_desktop.ui_next.heard_card import HeardCard
@@ -275,7 +277,7 @@ class CategoryRow(QWidget):
         self.colour = QToolButton()
         self.colour.setObjectName(f"category.color.{category.id}")
         self.colour.setIcon(swatch(category.color, 18))
-        self.colour.setToolTip(_tr("Choose colour"))
+        set_help_tip(self.colour, _tr("Choose colour"))  # a swatch's name (1013)
         self.colour.setAccessibleName(
             _tr("Colour for {name}").format(name=category.name)
         )
@@ -292,10 +294,15 @@ class CategoryRow(QWidget):
         self.delete = QPushButton(_tr("Delete"))
         self.delete.setObjectName(f"category.delete.{category.id}")
         self.delete.setProperty("kind", "ghost")
-        self.delete.setToolTip(_tr("Delete this category and remove its saved words"))
         self.delete.setCursor(Qt.CursorShape.PointingHandCursor)
         row.addWidget(self.delete)
+        # what Delete also removes, behind an ⓘ beside it (1013)
+        self.delete_info = InfoIcon(
+            _tr("Delete this category and remove its saved words"), _tr("Delete")
+        )
+        row.addWidget(self.delete_info)
         self.delete.setHidden(not deletable)  # once it has a parent: never a window
+        self.delete_info.setHidden(not deletable)
 
 
 class LanguageWords(QWidget):
