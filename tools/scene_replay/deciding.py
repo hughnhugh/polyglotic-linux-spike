@@ -61,6 +61,7 @@ FILES = (
     "ui_next/views/scroll.py",
     "ui_next/views/sentences.py",
     "ui_next/views/tone.py",
+    "ui_next/views/wave.py",
     "ui_next/views/zones.py",
     # three smaller files
     "ui_next/caption_surface.py",

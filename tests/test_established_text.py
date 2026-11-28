@@ -73,10 +73,30 @@ def test_counted_through_the_clauses_with_nothing_between() -> None:
 def test_established_text_is_kept_where_the_caption_shows_the_same() -> None:
     heard = (clause("The train leaves at seven"),)
     assert kept_established(heard, 16, heard) == 16
-    # settled words kept as first shown: established only as far as they agree,
-    # never ending inside a word
+    # settled words kept as first shown: the count carried over what the two
+    # share, so the words kept stop nothing after them (1070), never ending
+    # inside a word
     shown = (clause("The trains leave at seven"),)
-    assert kept_established(heard, 16, shown) == len("The ")
+    assert kept_established(heard, 16, shown) == len("The trains leave")
+    assert kept_established(heard, 13, shown) == len("The trains ")
+
+
+def test_a_settled_word_heard_again_leaves_the_rest_established() -> None:
+    # Steady's screenshot of 2026-11-29: "ugly." white, the rest of its
+    # line grey long after its words were spoken (polyglotic-hq 1070)
+    heard = (clause("ugly."), clause("Like I, I, I do not think I am this odd."))
+    shown = (clause("ugly."), clause("Like, I, I, I do not think I am this odd."))
+    count = len("ugly.Like I, I, I do not think")
+    assert kept_established(heard, count, shown) == len(
+        "ugly.Like, I, I, I do not think"
+    )
+
+
+def test_where_one_clause_ends_is_a_words_edge() -> None:
+    heard = (clause("Like I do"), clause("it now"))
+    shown = (clause("Like, I do"), clause("it now"))
+    # nothing between the clauses in the count: "do" and "it" are two words
+    assert kept_established(heard, len("Like I do"), shown) == len("Like, I do")
 
 
 def test_no_correction_while_an_update_keeps_the_established_words() -> None:

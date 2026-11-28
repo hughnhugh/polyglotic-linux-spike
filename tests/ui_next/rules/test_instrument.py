@@ -125,7 +125,7 @@ def test_the_patched_clock_rings_timers_in_order(qapp: QApplication) -> None:
 
 def test_the_kept_list_of_deciding_functions_is_a_list() -> None:
     kept = json.loads((rulebook.RULES / "deciding.json").read_text("utf-8"))
-    assert len(kept["files"]) == 29 and len(kept["deciding"]) > 500
+    assert len(kept["files"]) == 30 and len(kept["deciding"]) > 500
     today = {each.key for each in deciding.scan(rulebook.ROOT).listed}
     for rule in rulebook.load():
         assert {each["function"] for each in rule.decided} <= today
@@ -133,7 +133,7 @@ def test_the_kept_list_of_deciding_functions_is_a_list() -> None:
 
 def test_every_display_file_is_scanned() -> None:
     found = deciding.scan(rulebook.ROOT)
-    assert len(deciding.FILES) == 28
+    assert len(deciding.FILES) == 29
     assert set(found.files) == {*deciding.FILES, *deciding.LATER}
 
 

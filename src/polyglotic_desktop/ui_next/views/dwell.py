@@ -102,7 +102,7 @@ HOLD_VIDEO_SEC = tunable(
 most this long while the card it would take out of reading isn't read
 (`CaptionWindow.set_reading_hold`) - it catches up in the next pause.
 Elsewhere the hold is off: there a new card pushes the stack by a card,
-and the card it takes out of reading turns away on the drum, still there
+and the card it takes out of reading scrolls up, still there
 (585 proposes 4 s if it is turned on)."""
 
 

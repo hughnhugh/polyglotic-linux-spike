@@ -304,16 +304,6 @@
    "file": "ui_next/caption_window.py",
    "in_paint": true,
    "kinds": [
-    "what",
-    "where"
-   ],
-   "name": "Canvas._rolled"
-  },
-  {
-   "choices": 2,
-   "file": "ui_next/caption_window.py",
-   "in_paint": true,
-   "kinds": [
     "where"
    ],
    "name": "Canvas._height"
@@ -480,7 +470,7 @@
    "name": "Canvas._list_positions"
   },
   {
-   "choices": 120,
+   "choices": 117,
    "file": "ui_next/caption_window.py",
    "in_paint": true,
    "kinds": [
@@ -523,6 +513,39 @@
     "when"
    ],
    "name": "Canvas._cover"
+  },
+  {
+   "choices": 6,
+   "file": "ui_next/caption_window.py",
+   "in_paint": true,
+   "kinds": [
+    "what",
+    "ink",
+    "when"
+   ],
+   "name": "Canvas._lit"
+  },
+  {
+   "choices": 1,
+   "file": "ui_next/caption_window.py",
+   "in_paint": true,
+   "kinds": [
+    "what",
+    "ink",
+    "when"
+   ],
+   "name": "Canvas._lit.lit"
+  },
+  {
+   "choices": 1,
+   "file": "ui_next/caption_window.py",
+   "in_paint": false,
+   "kinds": [
+    "what",
+    "where",
+    "when"
+   ],
+   "name": "Canvas.waving"
   },
   {
    "choices": 7,
@@ -932,7 +955,7 @@
    "name": "ZoneCanvas.line_height"
   },
   {
-   "choices": 5,
+   "choices": 7,
    "file": "ui_next/caption_window.py",
    "in_paint": false,
    "kinds": [
@@ -1220,6 +1243,16 @@
     "when"
    ],
    "name": "CaptionWindow.reading_hold"
+  },
+  {
+   "choices": 2,
+   "file": "ui_next/caption_window.py",
+   "in_paint": false,
+   "kinds": [
+    "what",
+    "when"
+   ],
+   "name": "CaptionWindow._note_lighting"
   },
   {
    "choices": 2,
@@ -1799,6 +1832,7 @@
    "file": "ui_next/caption_window.py",
    "in_paint": false,
    "kinds": [
+    "what",
     "where",
     "ink",
     "when"
@@ -2306,6 +2340,25 @@
     "when"
    ],
    "name": "CaptionWindow.hideEvent"
+  },
+  {
+   "choices": 1,
+   "file": "ui_next/caption_window.py",
+   "in_paint": false,
+   "kinds": [
+    "where"
+   ],
+   "name": "CaptionWindow._wide_enough"
+  },
+  {
+   "choices": 2,
+   "file": "ui_next/caption_window.py",
+   "in_paint": false,
+   "kinds": [
+    "what",
+    "where"
+   ],
+   "name": "CaptionWindow._keep_wide_enough"
   },
   {
    "choices": 10,
@@ -2982,7 +3035,7 @@
    "name": "CaptionLayout._composed"
   },
   {
-   "choices": 64,
+   "choices": 75,
    "file": "ui_next/caption_layout.py",
    "in_paint": false,
    "kinds": [
@@ -6174,25 +6227,6 @@
    "name": "Glide.to"
   },
   {
-   "choices": 8,
-   "file": "ui_next/views/cards.py",
-   "in_paint": false,
-   "kinds": [
-    "where",
-    "ink"
-   ],
-   "name": "drum"
-  },
-  {
-   "choices": 2,
-   "file": "ui_next/views/cards.py",
-   "in_paint": false,
-   "kinds": [
-    "where"
-   ],
-   "name": "drum.turned"
-  },
-  {
    "choices": 2,
    "file": "ui_next/views/cards.py",
    "in_paint": false,
@@ -6260,13 +6294,6 @@
    "in_paint": false,
    "kinds": [],
    "name": "_between"
-  },
-  {
-   "choices": 1,
-   "file": "ui_next/views/cards.py",
-   "in_paint": false,
-   "kinds": [],
-   "name": "drum_room"
   },
   {
    "choices": 1,
@@ -7551,6 +7578,64 @@
   },
   {
    "choices": 2,
+   "file": "ui_next/views/wave.py",
+   "in_paint": false,
+   "kinds": [
+    "where"
+   ],
+   "name": "ease"
+  },
+  {
+   "choices": 5,
+   "file": "ui_next/views/wave.py",
+   "in_paint": false,
+   "kinds": [
+    "ink",
+    "when"
+   ],
+   "name": "Lit.within"
+  },
+  {
+   "choices": 7,
+   "file": "ui_next/views/wave.py",
+   "in_paint": false,
+   "kinds": [
+    "what",
+    "when"
+   ],
+   "name": "Wave.to"
+  },
+  {
+   "choices": 4,
+   "file": "ui_next/views/wave.py",
+   "in_paint": false,
+   "kinds": [
+    "ink",
+    "when"
+   ],
+   "name": "Wave.lit"
+  },
+  {
+   "choices": 1,
+   "file": "ui_next/views/wave.py",
+   "in_paint": false,
+   "kinds": [
+    "when"
+   ],
+   "name": "Wave.moving"
+  },
+  {
+   "choices": 1,
+   "file": "ui_next/views/wave.py",
+   "in_paint": false,
+   "kinds": [
+    "what",
+    "when"
+   ],
+   "name": "Waves.moving"
+  },
+  {
+   "choices": 2,
    "file": "ui_next/views/zones.py",
    "in_paint": false,
    "kinds": [
@@ -7976,8 +8061,8 @@
   "ui_next/caption_layout.py": {
    "aside": 0,
    "choosing": 98,
-   "functions": 113,
-   "lines": 3401
+   "functions": 114,
+   "lines": 3437
   },
   "ui_next/caption_marks.py": {
    "aside": 0,
@@ -7999,9 +8084,9 @@
   },
   "ui_next/caption_window.py": {
    "aside": 129,
-   "choosing": 408,
-   "functions": 532,
-   "lines": 10153
+   "choosing": 413,
+   "functions": 538,
+   "lines": 10231
   },
   "ui_next/joined_window.py": {
    "aside": 16,
@@ -8053,9 +8138,9 @@
   },
   "ui_next/views/cards.py": {
    "aside": 0,
-   "choosing": 49,
-   "functions": 64,
-   "lines": 1336
+   "choosing": 46,
+   "functions": 61,
+   "lines": 1282
   },
   "ui_next/views/dwell.py": {
    "aside": 0,
@@ -8134,6 +8219,12 @@
    "choosing": 13,
    "functions": 19,
    "lines": 354
+  },
+  "ui_next/views/wave.py": {
+   "aside": 0,
+   "choosing": 6,
+   "functions": 9,
+   "lines": 149
   },
   "ui_next/views/zones.py": {
    "aside": 0,

@@ -41,7 +41,7 @@ def painted_sizes(window: "CaptionWindow") -> dict[str, int]:
     )
     for line, laid, rect in [
         *canvas.placed,
-        *((line, laid, rect) for line, laid, rect, _ in canvas.turning),
+        *canvas.fading,
     ]:
         # Re-measure this line with the same engine and the user's two sizes,
         # independently of the layout that was actually sent to the painter.

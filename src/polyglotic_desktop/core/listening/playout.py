@@ -22,6 +22,10 @@ of its own:
   at once. A live update's newest word is held back until the next update
   confirms it (`hold_back`) unless the server already calls it established;
   a finished caption's words are all released, still at their moments.
+  Late words keep the speaker's intervals while they can, but a caption
+  whose words were all heard - finished, or the next one answered - has
+  shown them by the delay after (`_Caption.settled_at`): the playout never
+  falls further behind than that, caption after caption (1070).
 - **Shown stays shown:** a word once shown stays while the newer hearing
   still has it. A hearing that changes shown words changes them in place -
   the caption display's quiet correction (`established`).
@@ -35,7 +39,9 @@ of its own:
   update. With `Ahead.WAITING` (karaoke), the complete original can already
   be visible in faint ink. Its confirmed translation comes with it unless
   the reading path delays it. The `established` count gives the lit prefix.
-  `Ahead.ALL` adds the held-back newest word.
+  `Ahead.ALL` adds the held-back newest word. Each says how long the word
+  it newly shows took to say (`CaptionUpdate.lighting`), so a window lights
+  its letters one after another at that pace (Steady's wave, 1070).
 
 Holds caption text: never log it.
 """
@@ -275,6 +281,15 @@ class _Caption:
     revealed: set[str] = field(default_factory=set)
     """The clauses, by their text, whose translation has been given."""
     passed: bool = False  # never finished, and no longer waited for (`STALE_SEC`)
+    settled_at: float | None = None
+    """When all its words had been heard: its finished update came, or the
+    next caption of its source did. Its words are all shown by the delay
+    after it (`_due`)."""
+    lasts: list[float] = field(default_factory=list)
+    """How long each word took to say, in seconds (`_lasts`)."""
+    lighting: float = 0.0
+    """How long the word last shown lights, letter by letter
+    (`CaptionUpdate.lighting`)."""
 
     @property
     def finished(self) -> bool:
@@ -289,6 +304,11 @@ class _Caption:
 class _Source:
     captions: dict[CaptionId, _Caption] = field(default_factory=dict)  # oldest first
     last_release: float = float("-inf")
+    gone: dict[CaptionId, None] = field(default_factory=dict)
+    """Captions withdrawn or replaced by a join, newest last: an update for
+    one that comes after is too late, as for a caption history - it came
+    back live, and stayed so, for good. Not a display member (a
+    continuation's later audio): a recheck can show it alone again."""
 
 
 class Playout:
@@ -327,7 +347,10 @@ class Playout:
         """A caption update that came at `at`: what to show now."""
         out = list(self.release(at))
         source = self._sources.setdefault(update.source_id, _Source())
+        if update.caption_id in source.gone:
+            return tuple(out)
         if update.kind is CaptionKind.WITHDRAWN:
+            _went(source, update.caption_id)
             gone = source.captions.pop(update.caption_id, None)
             if gone is None or gone.announced:
                 out.append(update)  # one never shown is never taken back
@@ -339,6 +362,15 @@ class Playout:
         speech_start, speech_end = self._speech(update, at)
         previous_end = speech_start
         announced = False
+        settled = at if update.kind is CaptionKind.FINISHED else None
+        if before is not None and not update.replaces:
+            settled = _earlier(settled, before.settled_at)
+        if before is None:  # a later caption: the ones said before it are all heard
+            for said_before in source.captions.values():
+                if self._speech(said_before.update, said_before.heard_at)[0] < (
+                    speech_start
+                ):
+                    said_before.settled_at = _earlier(said_before.settled_at, at)
         if before is not None:
             old_keys = [w.key for w in before.words]
             old_moments = list(before.moments)
@@ -348,10 +380,13 @@ class Playout:
                 before.announced,
             )
         for other in update.replaces:  # a join: what its captions showed is carried
-            joined = (
-                source.captions.pop(other, None) if other != update.caption_id else None
-            )
+            joined = None
+            if other != update.caption_id:
+                if other != update.display_member:  # it may stand alone again
+                    _went(source, other)
+                joined = source.captions.pop(other, None)
             if joined is not None:
+                settled = _earlier(settled, joined.settled_at)
                 old_keys = old_keys[:shown] + [
                     w.key for w in joined.words[: joined.shown]
                 ]
@@ -384,6 +419,8 @@ class Playout:
             at,
             speech_end,
             announced=announced,
+            settled_at=settled,
+            lasts=_lasts(update.clauses, words, moments, speech_end),
         )
         if before is not None:
             caption.given = before.given
@@ -504,6 +541,7 @@ class Playout:
                 source.last_release = at
                 changed = True
                 self._note_whole(caption, at)
+                caption.lighting = self._lighting(source, caption, at)
             for caption in source.captions.values():
                 for text, whole in caption.whole_at.items():
                     due = whole + self.rules.translation_after
@@ -528,17 +566,38 @@ class Playout:
             return None
         moment = caption.moments[caption.shown]
         gap = MIN_GAP_SEC
-        if caption.shown and moment + self.rules.delay <= source.last_release:
+        late = caption.shown and moment + self.rules.delay <= source.last_release
+        if late:
             # Keep the speaker's word intervals when an answer or a paint
             # tick is late. The speech clock itself keeps longer pauses.
             gap = max(
                 gap, min(moment - caption.moments[caption.shown - 1], self.rules.delay)
             )
-        return max(
-            moment + self.rules.delay,
-            source.last_release + gap,
-            caption.heard_at,
+        due = max(
+            moment + self.rules.delay, source.last_release + gap, caption.heard_at
         )
+        if caption.settled_at is None:
+            return due
+        # A caption whose words were all heard shows them by the delay after:
+        # late words come closer than they were said, never further behind
+        # than that (polyglotic-hq 1070: the lag grew caption by caption)
+        deadline = caption.settled_at + self.rules.delay
+        left = caption.releasable - caption.shown
+        if late:
+            room = (deadline - source.last_release) / left
+            due = min(due, source.last_release + max(MIN_GAP_SEC, room))
+        latest = deadline - (left - 1) * MIN_GAP_SEC
+        return max(source.last_release + MIN_GAP_SEC, min(due, latest))
+
+    def _lighting(self, source: _Source, caption: _Caption, at: float) -> float:
+        """How long the word `caption` just showed lights, letter by letter:
+        as long as it took to say, but done by the time the next word is
+        due - so a word shown late lights sooner - and never longer than
+        the delay."""
+        lasts = caption.lasts[caption.shown - 1]
+        if (due := self._due(source)) is not None:
+            lasts = min(lasts, due - at)
+        return max(0.0, min(lasts, self.rules.delay))
 
     def _blocking(self, source: _Source) -> _Caption | None:
         """An unfinished caption with no releasable word and another caption
@@ -571,6 +630,8 @@ class Playout:
             update = caption.update if caption.done else _partial(caption, upto, held)
             if held and caption.done:
                 update = _withheld(caption)
+            if caption.lighting:
+                update = replace(update, lighting=caption.lighting)
             # A translation or its links can arrive between two word ticks.
             state = (
                 update.kind,
@@ -582,13 +643,13 @@ class Playout:
                 continue
             caption.given = state
             if update.replaces:
-                # The deck can take over placed words on the first draft.
-                # A caption history retires replaced IDs only at the finish.
-                if update.display_member is None:
-                    sent = caption.announced  # an ordinary audio join is announced once
-                else:
-                    sent = caption.sent_replacements is update.kind
-                if sent:
+                # Named on the first draft, where the deck takes over placed
+                # words, and again at the finish, where a caption history
+                # retires replaced IDs (never on a live update). A join keeps
+                # the earlier caption's ID, already shown: named only while
+                # unannounced, the live caption it replaced stayed live,
+                # part unestablished for good, its words shown twice (1070).
+                if caption.sent_replacements is update.kind:
                     update = replace(update, replaces=())
                 caption.sent_replacements = update.kind
             caption.announced = True
@@ -603,6 +664,47 @@ class Playout:
         ]
         for key in done[:-_KEPT_DONE]:
             del source.captions[key]
+
+
+_GONE_KEPT = 64  # captions withdrawn or replaced remembered per source
+
+
+def _went(source: _Source, caption: CaptionId) -> None:
+    source.gone[caption] = None
+    while len(source.gone) > _GONE_KEPT:
+        del source.gone[next(iter(source.gone))]
+
+
+def _earlier(a: float | None, b: float | None) -> float | None:
+    return b if a is None else a if b is None else min(a, b)
+
+
+def _lasts(
+    clauses: Sequence[Clause],
+    words: Sequence[_Word],
+    moments: Sequence[float],
+    speech_end: float,
+) -> list[float]:
+    """How long each word took to say: from the server's word times where
+    the update carries them (its spans' first start to their last end),
+    else to the next word's moment - the last word's, to the end of the
+    speech heard."""
+    out: list[float] = []
+    for n, (word, moment) in enumerate(zip(words, moments, strict=True)):
+        lo, hi = word.start, word.start + len(word.text)
+        spans = [
+            t
+            for t in clauses[word.clause].words
+            if t.original[0] < hi and t.original[1] > lo
+        ]
+        if spans:
+            out.append(
+                max(0.0, max(t.end for t in spans) - min(t.start for t in spans))
+            )
+            continue
+        after = moments[n + 1] if n + 1 < len(moments) else speech_end
+        out.append(max(0.0, after - moment))
+    return out
 
 
 def _true_moments(

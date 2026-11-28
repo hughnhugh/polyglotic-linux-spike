@@ -23,7 +23,10 @@ before the caption is finished:
   so they are never corrected.
 - **Counting:** characters (code points) of the clauses' originals counted
   in order, as if joined with nothing between them - the protocol's count,
-  whatever this app puts between clauses when it shows them.
+  whatever this app puts between clauses when it shows them. Where settled
+  words differ from the update's, the count is carried over the text the
+  two share (`kept_established`), so one word kept as first heard leaves
+  the rest of the line drawn as final.
 
 Holds caption text: never log it.
 """
@@ -73,16 +76,36 @@ def kept_established(
 ) -> int:
     """How much of `shown` - the update's clauses as the caption now shows
     them, its settled text kept - is established, given the update's
-    `established` count: all of it where the two start alike, else as far
-    as they do, never ending inside a word."""
+    `established` count: the count itself where the two start alike; else
+    the count carried over the text the two share, to where it ends in
+    `shown`, never ending inside a word. A settled word the update heard
+    differently is passed over, not a stop: cut there, everything after it
+    stayed unestablished until the caption finished - on Steady's cards,
+    until every caption on the card had (polyglotic-hq 1070)."""
     heard, now = said(update), said(shown)
-    count = max(0, min(established, len(heard), len(now)))
+    count = max(0, min(established, len(heard)))
     if now[:count] == heard[:count]:
         return count
-    same = 0
-    while same < count and now[same] == heard[same]:
-        same += 1
-    return _not_inside_a_word(now, same)
+    end = 0
+    for tag, i1, i2, j1, j2 in SequenceMatcher(
+        None, heard, now, autojunk=False
+    ).get_opcodes():
+        if i1 >= count:
+            break
+        if i2 <= count:
+            end = j2
+        elif tag == "equal":
+            end = j1 + count - i1
+        else:  # the count ends inside a stretch the two heard differently
+            end = j1 + (count - i1) * (j2 - j1) // (i2 - i1)
+    # where one clause ends and the next begins is a word's edge, though
+    # nothing stands between them in the count
+    start = 0
+    for clause in shown:
+        if start < end < start + len(clause.original):
+            return start + _not_inside_a_word(clause.original, end - start)
+        start += len(clause.original)
+    return end
 
 
 def corrected(

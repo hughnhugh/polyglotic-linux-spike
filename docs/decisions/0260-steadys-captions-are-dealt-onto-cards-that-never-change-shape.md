@@ -1,6 +1,6 @@
 # 0260 Steady's captions are dealt onto cards that never change shape
 
-- **Status:** accepted
+- **Status:** accepted; its drum line replaced by [0307](0307-steadys-older-cards-scroll-flat.md) (2026-11-29)
 - **Date:** 2026-11-20
 - **Decided by:** the user, on preview 0.1.10-preview.1 (2026-11-20:
   "I just want a smooth mode in steady that feels responsive, there is no
@@ -57,6 +57,8 @@ window deals its captions onto **cards** (`ui_next.views.cards.Deck`):
 - **Older cards turn away on a drum** (`views.cards.drum`): flat in the
   foot of the window, then closer together, flatter and fainter, gone
   before the top edge. Left edges stay in line; no edge cuts a card.
+  *Replaced by [0307](0307-steadys-older-cards-scroll-flat.md)
+  (2026-11-29): older cards scroll flat, and the drum is gone.*
 - **The deck sits between the playout and the window's view, and gives
   caption updates again**: each card is a small caption (`CaptionId`
   "card:N") whose clauses fit one line, with its share of each

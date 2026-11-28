@@ -2,7 +2,6 @@
 user's complaints as rules - a shown word never changes card or place, a
 translation moves nothing, the stack never comes back down."""
 
-import math
 from dataclasses import replace
 from itertools import pairwise
 
@@ -25,18 +24,14 @@ from polyglotic_desktop.ui_next.views.cards import (
     COMING_SEC,
     DEPTH_SCALES,
     DEPTH_SEC,
-    FAR_INK,
     FIT,
     GLIDE_FASTEST,
-    GONE_AT,
     NEW_CARD_AFTER_SEC,
     Deck,
     Depth,
     Glide,
     depth_alpha,
     depth_scale,
-    drum,
-    drum_room,
     ease,
     pieces,
 )
@@ -588,36 +583,6 @@ def test_a_card_is_seen_coming_before_the_playout_shows_it() -> None:
     assert not table.deck.coming(10.0 + COMING_SEC + 1.0)  # never shown: not coming
     table.deck.hear(CaptionUpdate(CaptionId("b"), APP, CaptionKind.WITHDRAWN), now=11.0)
     assert not table.deck.coming(11.0)
-
-
-# -- the drum -----------------------------------------------------------------------------
-
-
-def test_cards_at_the_foot_are_flat() -> None:
-    assert drum(300.0, 60.0, 400.0) == (300.0, 1.0, 1.0)
-
-
-def test_cards_turn_away_in_order_and_are_gone_before_the_top() -> None:
-    view, tall = 400.0, 60.0
-    room = drum_room(view)
-    tops, inks, feet = [], [], []
-    top = 400.0 - tall
-    while top > -room - tall:
-        at, squash, ink = drum(top, tall, view)
-        if ink > 0.0:
-            tops.append(at)
-            feet.append(at + tall * squash)
-            inks.append(ink)
-            assert at >= 0.0
-        top -= tall
-    assert tops == sorted(tops, reverse=True)
-    assert inks == sorted(inks, reverse=True)
-    # a card's foot is on the top of the card under it: no holes, no overlap
-    for foot, under in zip(feet[1:], tops[:-1], strict=True):
-        assert math.isclose(foot, under, abs_tol=0.01)
-    assert drum(-room - tall, tall, view)[2] == 0.0  # past the far end: gone
-    assert min(inks) >= FAR_INK.value  # never an empty band where cards are
-    assert math.pi / 2 > GONE_AT  # gone before it is edge on
 
 
 def test_a_change_that_would_move_the_words_after_it_waits() -> None:

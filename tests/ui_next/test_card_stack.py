@@ -45,7 +45,6 @@ from polyglotic_desktop.ui_next.views.card_window_defaults import (
     TRANSLATION_WIDTH_RATIO,
 )
 from polyglotic_desktop.ui_next.views.cards import (
-    FLAT_ENOUGH,
     GLIDE_FASTEST,
     NEW_CARD_AFTER_SEC,
 )
@@ -232,10 +231,9 @@ def test_refinished_translation_leaves_no_card_sized_hole_in_a_tall_stack(
     for n in range(25, 28):
         say(windows, update(n), update(n, "地圖"))
 
-    boxes = [(rect.top(), laid.height) for _, laid, rect in canvas.placed]
-    boxes.extend(
-        (rect.top(), laid.height * scale) for _, laid, rect, scale in canvas.turning
-    )
+    boxes = [
+        (rect.top(), laid.height) for _, laid, rect in [*canvas.placed, *canvas.fading]
+    ]
     boxes.sort()
     assert 1 < len(boxes) < len(window.view.lines)
     gaps = [boxes[0][0] - PAD, PAD + canvas._seen_height() - sum(boxes[-1])]
@@ -691,7 +689,7 @@ def test_a_notch_is_a_card_eased_and_the_view_rests_on_whole_cards(
         # the last card stands at the foot, as the newest does when live
         last, _, rect = canvas.placed[-1]
         assert rect.top() + canvas._tall(last) >= foot - 1.5
-        assert not canvas.turning
+        assert not canvas.fading
     pill = window.pill.geometry()
     assert all(rect.bottom() <= pill.top() for _, _, rect in canvas.placed)
 
@@ -735,7 +733,7 @@ def test_back_to_live_is_one_slide_and_never_fast(windows: CaptionWindows) -> No
         assert 0.0 <= last - px <= GLIDE_FASTEST.value / 60 + 0.01  # never fast
         last = px
         drawn = [rect.top() for _, _, rect in window.canvas.placed]
-        drawn += [rect.top() for _, _, rect, _ in window.canvas.turning]
+        drawn += [rect.top() for _, _, rect in window.canvas.fading]
         assert drawn and min(drawn) < 2 * pitch  # never an empty band above
     rest(windows)
     assert window.view.lines[-1].caption_id in tops(window)
@@ -768,7 +766,7 @@ def test_back_to_live_from_far_comes_home_behind_a_fade(
     assert window.veil(clock.now) == 1.0
     assert window.view.lines[-1].caption_id in home
     canvas = window.canvas
-    assert len(canvas.placed) + len(canvas.turning) >= 5  # full: not half empty
+    assert len(canvas.placed) + len(canvas.fading) >= 5  # full: not half empty
 
 
 @pytest.mark.parametrize("timer_after", [VEIL_SEC / 2 - 0.007, VEIL_SEC + 0.05])
@@ -1152,55 +1150,47 @@ def test_cards_that_arrived_while_reading_do_not_roll_through_the_window(
     assert all(max(ys) - min(ys) < 0.5 for ys in positions.values())
 
 
-def test_a_card_all_but_flat_on_the_drum_is_drawn_flat(
-    windows: CaptionWindows, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from polyglotic_desktop.ui_next import caption_window
+def test_older_cards_scroll_up_flat(windows: CaptionWindows) -> None:
+    # the founder, 2026-11-29: "remove this weird 3d flip thing on older
+    # captions in calm and steady" - every card drawn while live is drawn
+    # whole, at its own height, a card's pitch above the one after it
+    # (decision 0307; it turned and squashed on a drum before)
+    window = say(windows, *(caption(n) for n in range(1, 13)))
+    rest(windows)
+    canvas = window.canvas
+    assert window.view.scroll.following
+    drawn = sorted(
+        (rect.top(), rect.height(), canvas._tall(line))
+        for line, _, rect in [*canvas.placed, *canvas.fading]
+    )
+    assert len(drawn) >= 3
+    assert all(abs(height - tall) < 0.5 for _, height, tall in drawn)
+    pitch = window._card_pitch()
+    for (top, _, _), (below, _, _) in pairwise(drawn):
+        assert below - top == pytest.approx(pitch, abs=0.5)
+    # the card a new one takes out of reading is one of those drawn
+    assert window._leaving() in {line.key for line, _, _ in canvas.placed}
 
-    # 584: Video's older card squashed only to 0.967. Feed that geometry
-    # directly so the test exercises the threshold at any card height.
-    raw_squashes: list[float] = []
 
-    def almost_flat(
-        top: float, _height: float, _view: float
-    ) -> tuple[float, float, float]:
-        scale = (1.0 + FLAT_ENOUGH) / 2.0
-        raw_squashes.append(scale)
-        return top, scale, 1.0
-
-    monkeypatch.setattr(caption_window, "drum", almost_flat)
-    window = say(windows, caption(1), caption(2))
-    assert raw_squashes
-    assert window.canvas.placed
-    assert not window.canvas.turning
-
-
-def test_translation_moves_continuously_as_its_card_turns(
+def test_rows_move_continuously_as_the_stack_glides(
     windows: CaptionWindows,
 ) -> None:
-    # Follow each painted row through one card's travel. The translation
-    # sits well below the top: a sudden change of scale moves it visibly.
+    # Follow each painted row through one card's travel: nothing steps or
+    # changes its scale on the way.
     window = say(windows, *(caption(n) for n in range(1, 9)))
     canvas = window.canvas
     before: dict[tuple[int, int], float] = {}
-    was_flat: set[int] = set()
-    crossed: set[int] = set()
     for offset in range(round(window._card_pitch()), -1, -1):
         window.glide.px = float(offset)
         window.grab()
-        flat = {line.key for line, _, _ in canvas.placed}
-        crossed.update(was_flat & {line.key for line, _, _, _ in canvas.turning})
-        was_flat = flat
-        geometry = [(*placed, 1.0) for placed in canvas.placed] + canvas.turning
         current = {
-            (line.key, row.index): rect.top() + scale * row.top
-            for line, laid, rect, scale in geometry
+            (line.key, row.index): rect.top() + row.top
+            for line, laid, rect in [*canvas.placed, *canvas.fading]
             for row in laid.rows
         }
         for key in before.keys() & current.keys():
             assert abs(before[key] - current[key]) <= 1.1  # one pixel of travel
         before = current
-    assert crossed
 
 
 def test_server_continuation_keeps_the_first_card_and_shown_words(

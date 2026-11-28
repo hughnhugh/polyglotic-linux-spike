@@ -334,7 +334,7 @@ class Stage:
                 canvas: Any = widget
                 top, foot = float(canvas.clear_top), float(canvas.height())
                 page = [(ln, laid, rect, 1.0) for ln, laid, rect in canvas.placed]
-                page.extend(canvas.turning)
+                page.extend((ln, laid, rect, 1.0) for ln, laid, rect in canvas.fading)
             surfaces.append(
                 Surface(
                     name,

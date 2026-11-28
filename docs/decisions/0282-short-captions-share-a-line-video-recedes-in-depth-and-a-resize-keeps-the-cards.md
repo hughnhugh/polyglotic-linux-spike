@@ -108,6 +108,9 @@
    drawn flat. A card fading (on the drum, coming in, in depth, under the
    toolbar) fades through its colours' alpha, not the painter's opacity,
    so 584's outline stays solid under faint text.
+   *The drum and `FLAT_ENOUGH` are gone since
+   [0307](0307-steadys-older-cards-scroll-flat.md) (2026-11-29); a card
+   fading still fades through its colours' alpha.*
 
 **Video's depth is off for now (2026-11-21, 583's addendum).** Round 2
 fixed the cause the first film showed: a card dealt again was held back

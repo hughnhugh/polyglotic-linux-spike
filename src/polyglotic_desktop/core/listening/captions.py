@@ -137,6 +137,10 @@ class CaptionUpdate:
     earlier line. Its place can be folded away and opened again."""
     pace_wpm: int | None = None
     """This finished caption's words per minute, measured by the app."""
+    lighting: float = 0.0
+    """Seconds over which the text this update newly establishes lights,
+    letter by letter, at the speaker's pace: Steady's and Calm's wave (the
+    playout's; polyglotic-hq 1070). 0: at once. The app's own; never sent."""
 
 
 HAN_NOT_MANDARIN = frozenset({"ja", "yue"})
