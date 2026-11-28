@@ -1,0 +1,12 @@
+FOLD_BELOW	polyglotic_desktop.ui_next.transcript_window	FOLD_BELOW
+LINES_LAID_OUT	polyglotic_desktop.ui_next.transcript_window	LINES_LAID_OUT
+PAD	polyglotic_desktop.ui_next.transcript_window	PAD
+QFileDialog	PySide6.QtWidgets	QFileDialog
+QMessageBox	PySide6.QtWidgets	QMessageBox
+SettingsRail	polyglotic_desktop.ui_next.transcript_window	SettingsRail
+TranscriptColors	polyglotic_desktop.ui_next.transcript_window	TranscriptColors
+TranscriptList	polyglotic_desktop.ui_next.transcript_window	TranscriptList
+TranscriptWindow	polyglotic_desktop.ui_next.transcript_window	TranscriptWindow
+YOU	polyglotic_desktop.ui_next.transcript_window	YOU
+not_saved	polyglotic_desktop.ui_next.transcript_window	not_saved
+stylesheet	polyglotic_desktop.ui_next.transcript_window	stylesheet

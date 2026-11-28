@@ -1,0 +1,8 @@
+Copy	polyglotic_desktop.ui_next.video	Copy
+FRAME	polyglotic_desktop.ui_next.video	FRAME
+INSTANT_WORD_INTERVAL	polyglotic_desktop.ui_next.video	INSTANT_WORD_INTERVAL
+Pan	polyglotic_desktop.ui_next.video	Pan
+VIDEO_MARGIN	polyglotic_desktop.ui_next.video	VIDEO_MARGIN
+Video	polyglotic_desktop.ui_next.video	Video
+VideoFlow	polyglotic_desktop.ui_next.video	VideoFlow
+subtitle_height	polyglotic_desktop.ui_next.video	subtitle_height
