@@ -1,0 +1,144 @@
+# CI (polyglotic-hq ENGINEERING.md, "Quality checks"). The release train
+# (decision 0167, polyglotic-hq 379):
+# - **A pull request** runs Checks (Linux) - lint, format, types, the
+#   import rule and the tests that don't need Windows - on the public test
+#   copy's machines, sent and waited for from the light runner
+#   (polyglotic-hq 981), and the secret scan (secrets.yml).
+# - **The Windows jobs** (Checks (Windows), UI lab (Windows): windows.yml)
+#   run here on a push to main, on a pull request labelled `train` (Claude's
+#   train branch: ready pull requests merged together, checked once), and
+#   when run by hand (Actions > CI > Run workflow, any branch). A pull
+#   request that changes the Windows-only parts runs them too, through
+#   windows-parts.yml.
+# - **A draft** pull request runs nothing until it's marked ready.
+#
+# Not for a change to Markdown alone where nothing reads it (polyglotic-hq
+# project 055: Actions minutes): the root, docs/ and .github/. Markdown
+# anywhere else still runs CI. The secret scan runs on every change.
+name: CI
+
+on:
+  pull_request:
+    # ready_for_review: a draft marked ready runs, and the train's pull
+    # request, opened as a draft with its label, starts its checks that way
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "*.md"
+      - "docs/**/*.md"
+      - ".github/*.md"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**/*.md"
+      - ".github/*.md"
+  workflow_dispatch:
+
+# A newer push to the same pull request or branch cancels the older run.
+#
+# A pull request labelled `stacked` - a lower branch of a stack, whose top
+# pull request tests the whole tree - runs no jobs (polyglotic-hq 344: 50
+# runs queued for three runners, 2026-11-15). A label, not a base branch:
+# the stack's top isn't based on main either. Adding or taking off a label
+# starts nothing; the next push (or a re-run) does.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    # Lint, format, types, the import rule and the tests that don't need
+    # Windows (decision 0038), on the public test copy's free machines
+    # (polyglotic-hq 981; DECISIONS #266, #267: no paid minutes). This job,
+    # on the light runner (768 MiB, one CPU), only sends the checked-out
+    # tree through remote_test.py's path and waits for the result
+    # (tools/public_copy_checks.py): this PC's Linux runner is off, its
+    # 3.8 GB suite kept off live's VM (963a). Never for outside
+    # contributors (they get no secrets).
+    name: Checks (Linux)
+    if: ${{ !github.event.pull_request.draft && !contains(github.event.pull_request.labels.*.name, 'stacked') }}
+    runs-on: [light]
+    timeout-minutes: 60  # the copy's shards have 30, plus a queue behind other runs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # the pull request's base, for the literals' warning
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5"
+          enable-cache: false
+
+      # Nothing of the app is installed here: these two need the standard library only
+      - name: Warn when a large Python source file grows (847)
+        continue-on-error: true  # The ratchet schedules refactoring; it never gates a change.
+        run: uv run --no-project --python 3.12 python -m tools.size_ratchet
+
+      - name: Warn when a file gains unregistered literals (597)
+        env:
+          LITERALS_BASE: ${{ github.event.pull_request.base.sha }}
+        run: uv run --no-project --python 3.12 python -m tools.literals --warn --base "$LITERALS_BASE"
+
+      # The scan before anything leaves for the public copy, as
+      # remote_test.py's: the version pre-commit's hook runs, its SHA-256
+      # from the release's checksums (2026-11-27)
+      - name: gitleaks, pinned
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "$GITLEAKS_SHA256  $archive" | sha256sum -c -
+          tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
+          echo "GITLEAKS=$RUNNER_TEMP/gitleaks" >> "$GITHUB_ENV"
+
+      # Each test file's time from earlier runs, to cut the suite evenly
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build/public-copy/times-linux.json
+            build/public-copy/nodes-linux.json
+          key: public-copy-times-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: public-copy-times-
+
+      - name: The checks, on the public copy's machines
+        env:
+          # fine-grained, the public copy alone (polyglotic-hq 981's report)
+          PUBLIC_COPY_TOKEN: ${{ secrets.PUBLIC_COPY_TOKEN }}
+          # the owner's name, email and home paths, which can't be written in a tree that goes public
+          PUBLIC_COPY_SCAN: ${{ secrets.PUBLIC_COPY_SCAN }}
+          PUBLIC_COPY_AUTHOR: ${{ github.repository_owner }}|${{ github.repository_owner_id }}
+          PUBLIC_COPY_LABEL: ${{ github.event.pull_request.number && format('pr{0}', github.event.pull_request.number) || github.ref_name }}
+        run: uv run --no-project --python 3.12 python -m tools.public_copy_checks
+
+      # A cancelled job (a newer push) leaves no run going on the copy
+      - name: Clean up on the public copy
+        if: ${{ always() }}
+        env:
+          PUBLIC_COPY_TOKEN: ${{ secrets.PUBLIC_COPY_TOKEN }}
+        run: uv run --no-project --python 3.12 python -m tools.public_copy_checks --clean-up
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ always() }}
+        continue-on-error: true
+        with:
+          path: |
+            build/public-copy/times-linux.json
+            build/public-copy/nodes-linux.json
+          key: public-copy-times-${{ github.run_id }}-${{ github.run_attempt }}
+
+  windows:
+    # Not on an ordinary pull request (decision 0167): a push to main, the
+    # train's pull request, or by hand
+    name: Windows
+    if: >-
+      ${{ github.event_name != 'pull_request' || (
+      contains(github.event.pull_request.labels.*.name, 'train')
+      && !github.event.pull_request.draft
+      && !contains(github.event.pull_request.labels.*.name, 'stacked')) }}
+    uses: ./.github/workflows/windows.yml
